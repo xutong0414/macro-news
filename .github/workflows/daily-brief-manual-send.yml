@@ -1,0 +1,98 @@
+name: Daily Brief Manual Send
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_send:
+        description: "Type SEND to confirm one real email delivery."
+        required: true
+        default: "DRY_RUN_ONLY"
+
+permissions:
+  contents: read
+
+jobs:
+  manual-send:
+    name: Send One Live Brief
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Run tests
+        run: pytest -q
+
+      - name: Validate send confirmation and required secrets
+        env:
+          CONFIRM_SEND: ${{ inputs.confirm_send }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          BRIEF_FROM_EMAIL: ${{ secrets.BRIEF_FROM_EMAIL }}
+          BRIEF_TO_EMAIL: ${{ secrets.BRIEF_TO_EMAIL }}
+          BRIEF_TIMEZONE: ${{ secrets.BRIEF_TIMEZONE }}
+        run: |
+          python - <<'PY'
+          import os
+
+          if os.getenv("CONFIRM_SEND") != "SEND":
+              raise SystemExit("Manual send requires confirm_send=SEND.")
+
+          required = [
+              "GEMINI_API_KEY",
+              "SMTP_HOST",
+              "SMTP_PORT",
+              "SMTP_USER",
+              "SMTP_PASSWORD",
+              "BRIEF_FROM_EMAIL",
+              "BRIEF_TO_EMAIL",
+              "BRIEF_TIMEZONE",
+          ]
+          missing = [name for name in required if not os.getenv(name)]
+          if missing:
+              raise SystemExit("Missing GitHub Secrets: " + ", ".join(missing))
+          print("Send confirmation and required GitHub secret names are present.")
+          PY
+
+      - name: Send live brief email
+        env:
+          LLM_PROVIDER: gemini
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-2.5-flash-lite
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          BRIEF_FROM_EMAIL: ${{ secrets.BRIEF_FROM_EMAIL }}
+          BRIEF_TO_EMAIL: ${{ secrets.BRIEF_TO_EMAIL }}
+          BRIEF_TIMEZONE: ${{ secrets.BRIEF_TIMEZONE }}
+          BRIEF_RUN_MODE: live
+          MARKET_DATA_MODE: live
+          CALENDAR_MODE: live
+          THEME_SOURCE_MODE: live
+        run: macro-news run --send --use-llm --live-market-data --live-calendar --live-theme-radar
+
+      - name: Upload send artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: daily-brief-manual-send
+          path: |
+            outputs/latest/
+            outputs/archive/
+            logs/
+          if-no-files-found: ignore

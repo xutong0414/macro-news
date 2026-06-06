@@ -174,7 +174,17 @@ The second workflow tests the live prototype without sending email:
 - Uploads generated outputs/logs as workflow artifacts.
 - Sends no email.
 
-The next workflow step is a separate scheduled email-send workflow after the live dry run is confirmed.
+The third workflow sends one real live brief only when manually confirmed:
+
+- `.github/workflows/daily-brief-manual-send.yml`
+- Runs only on manual trigger.
+- Requires typing `SEND` in the confirmation input.
+- Reads GitHub Secrets for Gemini and Gmail configuration.
+- Runs tests.
+- Sends one live-source email brief.
+- Uploads generated outputs/logs as workflow artifacts.
+
+The next workflow step is a scheduled email-send workflow after the manual send is confirmed.
 
 ## Repo Control Files
 

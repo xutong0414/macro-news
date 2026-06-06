@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-GitHub-safe sample workflow is confirmed. Adding a manual GitHub live dry-run workflow that uses secrets and live sources but does not send email.
+GitHub live dry-run workflow is confirmed. Adding a manual GitHub email-send workflow that sends only after explicit confirmation.
 
 ## Whose Turn
 
-Agent turn: add and push the manual live dry-run workflow.
+Agent turn: add and push the manual email-send workflow.
 
-User turn: after the workflow is pushed, run `Daily Brief Live Dry Run` manually from the GitHub Actions tab and inspect the artifact/logs.
+User turn: after the workflow is pushed, run `Daily Brief Manual Send` manually, type `SEND`, and confirm that the email arrives.
 
 ## Locked Setup Choices
 
@@ -18,6 +18,7 @@ User turn: after the workflow is pushed, run `Daily Brief Live Dry Run` manually
 - GitHub: remote created and `main` pushed.
 - GitHub Actions first stage: sample dry-run workflow first, no secrets or email.
 - GitHub Actions second stage: manual live dry-run workflow with secrets, still no email.
+- GitHub Actions third stage: manual email-send workflow with a `SEND` confirmation input.
 - First run mode: sample data only.
 - Private process notes: keep in ignored `.worklog/`, then delete before final handoff.
 - LLM role: draft narrative sections only; code owns facts, tables, chart, validation, and logging.
@@ -29,12 +30,13 @@ User turn: after the workflow is pushed, run `Daily Brief Live Dry Run` manually
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. Confirm the manual GitHub live dry-run passes with repository secrets.
-3. Add a separate scheduled email-send workflow only after live dry-run confirmation.
+2. Confirm the manual GitHub email-send workflow delivers one real email.
+3. Add a separate scheduled email-send workflow only after manual send confirmation.
 4. Improve calendar source reliability or add a second source if the free feed remains rate-limited.
 5. Improve live data source coverage for Germany 10Y and any assets with intermittent Yahoo failures.
 6. Improve Theme Radar source diversity if any RSS feed is slow or unavailable.
-7. Generate final `memo.pdf` from `memo.md`.
+7. Polish brief assumptions wording so live mode describes source-level fallback instead of implying every market number must be live.
+8. Generate final `memo.pdf` from `memo.md`.
 
 ## Blockers
 

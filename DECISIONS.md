@@ -123,3 +123,11 @@ Decision: add a manual GitHub live dry-run workflow before any scheduled email-s
 Reason: repository secrets should be tested in GitHub Actions without risking accidental email delivery. The manual live dry run proves Gemini access, live-source fetching, logs, and artifact upload first.
 
 Tradeoff: this adds one extra workflow stage, but it keeps the automation safer and easier to debug.
+
+## 2026-06-06 - Manual Send Safety
+
+Decision: add a manual email-send workflow before any scheduled send workflow, with a required `SEND` confirmation input.
+
+Reason: email delivery should be proven from GitHub Actions, but only when the user explicitly triggers it. The confirmation input reduces accidental sends while preserving a simple one-click test path.
+
+Tradeoff: this adds one small manual step before sending, but it keeps the workflow controlled.
