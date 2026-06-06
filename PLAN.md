@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-GitHub manual email-send workflow is confirmed: the workflow passed and the user received the email.
+GitHub manual email-send workflow is confirmed. Adding a temporary scheduled-send test for 2026-06-06 15:30 Hong Kong time.
 
 ## Whose Turn
 
-Agent turn: record the manual-send confirmation and prepare the scheduled-send step.
+Agent turn: add and push the temporary scheduled-send test.
 
-User turn: confirm whether to enable automatic weekday scheduling, and confirm the preferred send time.
+User turn: check GitHub Actions and inbox around 2026-06-06 15:30 Hong Kong time, allowing a few minutes of GitHub scheduler delay.
 
 ## Locked Setup Choices
 
@@ -20,6 +20,7 @@ User turn: confirm whether to enable automatic weekday scheduling, and confirm t
 - GitHub Actions second stage: manual live dry-run workflow with secrets, still no email.
 - GitHub Actions third stage: manual email-send workflow with a `SEND` confirmation input.
 - GitHub Actions fourth stage: scheduled email-send workflow after explicit timing confirmation.
+- Temporary schedule test: send once at 2026-06-06 15:30 HKT, then remove or replace with the weekday schedule.
 - First run mode: sample data only.
 - Private process notes: keep in ignored `.worklog/`, then delete before final handoff.
 - LLM role: draft narrative sections only; code owns facts, tables, chart, validation, and logging.
@@ -31,13 +32,14 @@ User turn: confirm whether to enable automatic weekday scheduling, and confirm t
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. Confirm the automatic weekday send time, currently proposed as 07:30 Hong Kong time.
-3. Add a separate scheduled email-send workflow after timing confirmation.
-4. Improve calendar source reliability or add a second source if the free feed remains rate-limited.
-5. Improve live data source coverage for Germany 10Y and any assets with intermittent Yahoo failures.
-6. Improve Theme Radar source diversity if any RSS feed is slow or unavailable.
-7. Polish brief assumptions wording so live mode describes source-level fallback instead of implying every market number must be live.
-8. Generate final `memo.pdf` from `memo.md`.
+2. Confirm the temporary scheduled-send workflow triggers and delivers one email.
+3. Remove the temporary scheduled-send test or replace it with the weekday schedule.
+4. Confirm the automatic weekday send time, currently proposed as 07:30 Hong Kong time.
+5. Improve calendar source reliability or add a second source if the free feed remains rate-limited.
+6. Improve live data source coverage for Germany 10Y and any assets with intermittent Yahoo failures.
+7. Improve Theme Radar source diversity if any RSS feed is slow or unavailable.
+8. Polish brief assumptions wording so live mode describes source-level fallback instead of implying every market number must be live.
+9. Generate final `memo.pdf` from `memo.md`.
 
 ## Blockers
 

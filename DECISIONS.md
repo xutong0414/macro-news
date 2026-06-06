@@ -133,3 +133,13 @@ Reason: email delivery should be proven from GitHub Actions, but only when the u
 Tradeoff: this adds one small manual step before sending, but it keeps the workflow controlled.
 
 Outcome: confirmed on GitHub Actions; the workflow passed and the user received the email.
+
+## 2026-06-06 - Temporary Schedule Test
+
+Decision: add a temporary scheduled-send workflow before enabling the permanent weekday schedule.
+
+Reason: manual workflow success does not prove that GitHub's scheduler will trigger as expected. A near-term scheduled test proves the automation path without waiting until the next weekday morning.
+
+Test time: 2026-06-06 15:30 Hong Kong time, equal to 2026-06-06 07:30 UTC.
+
+Follow-up: remove the temporary workflow or replace it with the permanent weekday schedule after confirmation.
