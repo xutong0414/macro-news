@@ -47,3 +47,15 @@ Working rule:
 - `.worklog/session_notes.md` records private session breadcrumbs.
 - `.worklog/learning_notes.md` records plain-language concepts explained during development.
 - `.worklog/` is ignored by git and should be deleted before final submission.
+
+## 2026-06-06 - LLM Scope
+
+Decision: Gemini drafts only the narrative sections from structured facts.
+
+Reason: market numbers, chart output, source links, validation, token accounting, and delivery status should remain deterministic and auditable. This keeps the LLM from inventing data and makes the agent easier to test.
+
+Current LLM-written sections:
+
+- The 3 things that matter today.
+- Theme radar summaries and book-impact lines.
+- Contrarian corner.

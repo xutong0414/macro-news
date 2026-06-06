@@ -16,6 +16,7 @@ def build_parser() -> argparse.ArgumentParser:
     mode = run_parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--dry-run", action="store_true", help="Generate outputs without sending email")
     mode.add_argument("--send", action="store_true", help="Generate outputs and send email via SMTP")
+    run_parser.add_argument("--use-llm", action="store_true", help="Use Gemini to draft narrative sections from sample facts")
     run_parser.add_argument("--date", help="Run date in YYYY-MM-DD format. Defaults to today.")
     return parser
 
@@ -32,9 +33,11 @@ def main(argv: list[str] | None = None) -> int:
             missing = settings.missing_for_send()
             if missing:
                 parser.error("Missing required email environment variables for --send: " + ", ".join(missing))
+        if args.use_llm and not settings.gemini_api_key:
+            parser.error("GEMINI_API_KEY is required for --use-llm")
 
         try:
-            result = run_brief(settings, send=args.send, run_date=run_date)
+            result = run_brief(settings, send=args.send, run_date=run_date, use_llm=args.use_llm)
         except RuntimeError as exc:
             print(f"Error: {exc}", file=sys.stderr)
             return 1

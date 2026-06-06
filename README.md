@@ -6,7 +6,7 @@ The target reader is a macro PM who wants: what changed overnight, why it matter
 
 ## Current Status
 
-Stage: setup scaffold.
+Stage: sample data brief with Gemini narrative synthesis and Gmail delivery smoke-tested.
 
 Locked defaults:
 
@@ -25,6 +25,18 @@ Run the first sample dry run without secrets:
 PYTHONPATH=src python -m macro_news run --dry-run
 ```
 
+Run a sample dry run with Gemini drafting the narrative sections:
+
+```bash
+PYTHONPATH=src python -m macro_news run --dry-run --use-llm
+```
+
+Send a sample brief by email:
+
+```bash
+PYTHONPATH=src python -m macro_news run --send --use-llm
+```
+
 Expected local outputs:
 
 - `outputs/latest/brief.md`
@@ -40,7 +52,7 @@ python -m pip install -e .
 macro-news run --dry-run
 ```
 
-## Email Setup Placeholder
+## Email And LLM Setup
 
 Create a local `.env` file from `.env.example`.
 
@@ -52,6 +64,12 @@ Required for sending:
 - `SMTP_PASSWORD` from a Gmail app password
 - `BRIEF_FROM_EMAIL`
 - `BRIEF_TO_EMAIL`
+
+Required for Gemini synthesis:
+
+- `LLM_PROVIDER=gemini`
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL=gemini-2.5-flash-lite`
 
 Do not commit `.env`.
 
@@ -72,4 +90,3 @@ The final brief must include:
 - `DECISIONS.md`: decision log.
 - `costs.md`: expected and measured run costs.
 - `memo.md`: working source for the final 1-page memo.
-

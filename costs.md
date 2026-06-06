@@ -4,7 +4,7 @@ This file tracks expected and actual daily run cost.
 
 ## Current Estimate
 
-Status: setup scaffold only. No live API calls or LLM calls yet.
+Status: sample Gemini synthesis and Gmail delivery smoke test completed. Live market/calendar APIs are not connected yet.
 
 | Category | Provider | Expected cost | Notes |
 | --- | --- | ---: | --- |
@@ -18,11 +18,13 @@ Status: setup scaffold only. No live API calls or LLM calls yet.
 
 ## Token Accounting
 
-The runner will log token usage once an LLM provider is connected.
+The runner logs token usage and estimated LLM cost for `--use-llm` runs.
 
-Sample mode records zero actual LLM tokens.
+Plain sample mode records zero actual LLM tokens.
 
 ## Actual Runs
 
-No paid runs yet.
-
+| Date | Run id | Mode | Input tokens | Output tokens | Estimated LLM cost | Delivery |
+| --- | --- | --- | ---: | ---: | ---: | --- |
+| 2026-06-06 | `20260606T044327Z` | Gemini dry run | 1,631 | 561 | $0.0003875 | Not sent |
+| 2026-06-06 | `20260606T044351Z` | Gemini + email smoke test | 1,631 | 625 | $0.0004131 | Sent |
