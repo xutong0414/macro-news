@@ -186,6 +186,13 @@ The third workflow sends one real live brief only when manually confirmed:
 
 The temporary scheduler smoke test was removed after an inconclusive short-window test. GitHub recognized the workflow as active, but no scheduled run appeared during the test window.
 
+The temporary scheduled email proof workflow tests actual scheduled delivery:
+
+- `.github/workflows/daily-brief-scheduled-send-proof.yml`
+- Tries during a short 2026-06-06 evening window.
+- Sends at most one live-source email brief.
+- Should be removed or replaced after confirmation.
+
 The next workflow step is either a scheduled email-send workflow after the send time is confirmed, or an external scheduler if precise timing is required.
 
 ## Repo Control Files

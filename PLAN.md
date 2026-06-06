@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-GitHub manual email-send workflow is confirmed. GitHub recognized the scheduler smoke-test workflow as active, but no scheduled run appeared; the short-window scheduler test is inconclusive.
+GitHub manual email-send workflow is confirmed. Adding a temporary scheduled email proof that tries during a short 2026-06-06 evening window and sends at most once.
 
 ## Whose Turn
 
-Agent turn: remove the temporary scheduler smoke test and record the scheduler finding.
+Agent turn: add and push the temporary scheduled email proof workflow.
 
-User turn: switch the repository back to private if desired, then decide whether to rely on GitHub's weekday schedule or keep manual send for the assignment demo.
+User turn: watch GitHub Actions and inbox during 2026-06-06 17:40-18:15 Hong Kong time, while the repo remains public for API inspection.
 
 ## Locked Setup Choices
 
@@ -20,6 +20,7 @@ User turn: switch the repository back to private if desired, then decide whether
 - GitHub Actions second stage: manual live dry-run workflow with secrets, still no email.
 - GitHub Actions third stage: manual email-send workflow with a `SEND` confirmation input.
 - GitHub Actions fourth stage: scheduled email-send workflow after explicit timing confirmation, but short-window GitHub scheduler test was inconclusive.
+- Temporary scheduled proof: try every five minutes during 2026-06-06 17:40-18:15 HKT and send at most once.
 - First run mode: sample data only.
 - Private process notes: keep in ignored `.worklog/`, then delete before final handoff.
 - LLM role: draft narrative sections only; code owns facts, tables, chart, validation, and logging.
@@ -31,9 +32,9 @@ User turn: switch the repository back to private if desired, then decide whether
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. Decide whether to add the permanent weekday schedule despite the inconclusive short-window test.
-3. Confirm the automatic weekday send time, currently proposed as 07:15 Hong Kong time to target 07:30 inbox arrival.
-4. Consider an external scheduler alternative if precise timing is required.
+2. Confirm whether the temporary scheduled email proof triggers and delivers one email.
+3. Remove the temporary scheduled proof after confirmation or after the window passes.
+4. If GitHub scheduling remains unreliable, implement a local/server scheduler fallback.
 5. Improve calendar source reliability or add a second source if the free feed remains rate-limited.
 6. Improve live data source coverage for Germany 10Y and any assets with intermittent Yahoo failures.
 7. Improve Theme Radar source diversity if any RSS feed is slow or unavailable.

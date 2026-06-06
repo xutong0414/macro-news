@@ -144,4 +144,6 @@ Initial test time: 2026-06-06 15:30 Hong Kong time, equal to 2026-06-06 07:30 UT
 
 Update: the exact-minute test and guarded scheduled-send test did not trigger during the short test window. Replace the scheduled email test with a scheduler-only smoke test that prints timestamps and uses no secrets or email. GitHub recognized the smoke-test workflow as active, but the public Actions API still showed zero runs after multiple five-minute ticks. Remove the temporary smoke test and treat the short-window scheduler test as inconclusive.
 
+Second update: because scheduled delivery is a core requirement, add a temporary scheduled email proof for 2026-06-06 17:40-18:15 Hong Kong time. The workflow tries every five minutes in that window and checks for prior successful proof runs so it sends at most once.
+
 Follow-up: remove the temporary workflow or replace it with the permanent weekday schedule after confirmation.
