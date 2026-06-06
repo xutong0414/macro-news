@@ -90,13 +90,97 @@ def _safe_float(value: object) -> float | None:
     return number
 
 
+def _move_direction(quote: LiveQuote) -> str:
+    if quote.prior == 0:
+        return "flat"
+    if quote.change_style == "bp":
+        change = (quote.close - quote.prior) * 100
+        if change > 1:
+            return "up"
+        if change < -1:
+            return "down"
+        return "flat"
+    pct_change = (quote.close / quote.prior - 1) * 100
+    if pct_change > 0.2:
+        return "up"
+    if pct_change < -0.2:
+        return "down"
+    return "flat"
+
+
+def _why_it_matters(quote: LiveQuote) -> str:
+    direction = _move_direction(quote)
+    asset = quote.asset
+    if asset == "S&P 500":
+        return {
+            "up": "Risk tone improved; EM beta has some support if rates and the dollar stay contained.",
+            "down": "Risk tone softened; EM debt and high-beta FX should open on the defensive.",
+            "flat": "US equities give little direction; rates and FX are the cleaner overnight signal.",
+        }[direction]
+    if asset == "Euro Stoxx 50":
+        return {
+            "up": "Eurozone risk appetite is firming, a useful cross-check against the US equity signal.",
+            "down": "European risk appetite is fading, so the equity weakness is not just a US story.",
+            "flat": "Europe adds little new risk signal; watch rates and EUR/USD for the cleaner read.",
+        }[direction]
+    if asset == "US 10Y yield":
+        return {
+            "up": "Higher Treasury yields pressure gold and EM duration, while keeping dollar carry supported.",
+            "down": "Lower Treasury yields ease pressure on gold and EM duration, and can soften dollar carry.",
+            "flat": "Treasuries are not moving the story; watch dollar and commodity signals instead.",
+        }[direction]
+    if asset == "DXY":
+        return {
+            "up": "Dollar strength tightens EM financing conditions and is a headwind for gold and commodities.",
+            "down": "A softer dollar eases EM financing pressure and gives gold more room to stabilize.",
+            "flat": "The dollar is not adding a fresh shock; pair-specific FX moves matter more today.",
+        }[direction]
+    if asset == "EUR/USD":
+        return {
+            "up": "Euro firmness trims broad-dollar pressure; confirm with DXY before adding USD exposure.",
+            "down": "Euro weakness confirms dollar pressure and keeps policy-divergence trades in focus.",
+            "flat": "EUR/USD is not driving the dollar story; look to DXY and USD/JPY for signal.",
+        }[direction]
+    if asset == "USD/JPY":
+        return {
+            "up": "The long is working, but extension raises intervention and crowded-position risk.",
+            "down": "Yen strength tests the long and would make intervention headlines more credible.",
+            "flat": "Spot is pausing near elevated levels; intervention risk matters more than the tick change.",
+        }[direction]
+    if asset == "Gold":
+        return {
+            "up": "Gold is resisting rates and dollar pressure, giving the overweight some cushion.",
+            "down": "Gold weakness shows real-rate or dollar pressure is biting the overweight.",
+            "flat": "Gold is holding steady; rates and DXY will decide whether the overweight has cover.",
+        }[direction]
+    if asset == "WTI oil":
+        return {
+            "up": "Oil strength adds inflation risk and can delay the easing impulse rates want to price.",
+            "down": "Lower oil eases inflation pressure and gives duration-sensitive assets some relief.",
+            "flat": "Oil is not changing the inflation story today; rates carry the cleaner signal.",
+        }[direction]
+    if asset == "BTC":
+        return {
+            "up": "Speculative risk appetite is firm, but this remains a cross-check rather than a core book driver.",
+            "down": "Speculative risk appetite is softer, reinforcing caution toward high-beta exposures.",
+            "flat": "Crypto is not adding a risk signal; treat it as background, not a portfolio driver.",
+        }[direction]
+    if asset == "Japan 10Y yield":
+        return {
+            "up": "Higher JGB yields can narrow the US-Japan spread and add risk to long USD/JPY.",
+            "down": "Lower JGB yields support the yield spread behind long USD/JPY.",
+            "flat": "Japan rates add little today; intervention risk is the cleaner USD/JPY watchpoint.",
+        }[direction]
+    return quote.so_what
+
+
 def quote_to_row(quote: LiveQuote) -> MarketRow:
     return MarketRow(
         asset=quote.asset,
         close=_format_value(quote.close, quote.unit, quote.decimals),
         prior=_format_value(quote.prior, quote.unit, quote.decimals),
         change=_format_change(quote.close, quote.prior, quote.change_style),
-        so_what=quote.so_what,
+        so_what=_why_it_matters(quote),
     )
 
 
@@ -411,12 +495,12 @@ def replace_market_rows_with_live(
             "Frankfurter FX rows use the latest published daily reference rate vs the immediately previous published daily reference rate; "
             "BTC uses query-time price vs rolling 24-hour change."
         ),
-        "Hong Kong morning caveat: around 07:00-08:00 HKT, US/EU cash markets are closed from prior sessions, while FX and BTC are continuous and Asia may already be open.",
+        "Additional information about timing: around 07:00-08:00 HKT, US/EU cash markets are closed from prior sessions, while FX and BTC are continuous and Asia may already be open.",
         (
             "Sources: [Yahoo Finance chart endpoint](https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC) for equities/US rates/DXY/gold/oil, "
             "[Japan MOF JGB yield CSV](https://www.mof.go.jp/jgbs/reference/interest_rate/jgbcm.csv) for Japan 10Y, "
             "[Frankfurter](https://frankfurter.dev/) for EUR/USD and USD/JPY, "
-            "[CoinGecko](https://www.coingecko.com/en/api) for BTC; Source Status shows live, cached, or scaffold fallback rows."
+            "[CoinGecko](https://www.coingecko.com/en/api) for BTC."
         ),
     ]
     updated = replace(

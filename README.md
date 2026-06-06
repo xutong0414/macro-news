@@ -137,7 +137,8 @@ The market dashboard currently uses:
 - [Japan MOF JGB yield CSV](https://www.mof.go.jp/jgbs/reference/interest_rate/jgbcm.csv) for Japan 10Y.
 - [Frankfurter](https://frankfurter.dev/) for EUR/USD and USD/JPY daily reference-rate rows.
 - [CoinGecko](https://www.coingecko.com/en/api) for BTC.
-- Dashboard notes explaining extraction time, close/prior basis, Hong Kong morning caveat, Frankfurter's latest-versus-immediately-previous published daily reference-rate convention, and BTC rolling 24-hour change convention.
+- Dashboard notes explaining extraction time, close/prior basis, additional timing information for Hong Kong morning use, Frankfurter's latest-versus-immediately-previous published daily reference-rate convention, and BTC rolling 24-hour change convention.
+- Dashboard row read-throughs use the `Why it matters` label and describe the day's implication rather than repeating the instrument definition.
 - Cached real-source rows when a temporary source outage occurs.
 - Sample fallback rows when a source fails and no cached real-source row exists.
 

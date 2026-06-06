@@ -43,3 +43,4 @@ Plain sample mode records zero actual LLM tokens.
 | 2026-06-06 | `20260606T134645Z` | Japan 10Y + linked source note dry run | 5,353 | 1,451 | $0.0011157 | Not sent |
 | 2026-06-06 | `20260606T134951Z` | Japan 10Y + prompt v6 dry run | 2,674 | 752 | $0.0005682 | Not sent |
 | 2026-06-06 | `20260606T135317Z` | Japan 10Y + linked source note send with prompt v7 | 2,670 | 766 | $0.0005734 | Sent |
+| 2026-06-06 | `20260606T141150Z` | Dashboard tone revision full live dry run | 2,703 | 705 | $0.0005523 | Not sent |

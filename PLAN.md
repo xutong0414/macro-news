@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-Dashboard revision follow-up is complete. The latest sent run (`20260606T135317Z`) adds Japan 10Y from Japan MOF, clarifies the Frankfurter FX prior-rate convention, turns dashboard source names into clickable links, and uses Gemini prompt v7 with Japan-yield portfolio-logic validation.
+Dashboard tone revision is complete. The latest verified dry run (`20260606T141150Z`) keeps the full live prototype structure, renames the dashboard read-through column to `Why it matters`, uses daily market implications instead of repetitive instrument-definition language, and simplifies dashboard timing/source notes.
 
 ## Whose Turn
 
-Agent turn: wait for user review of the latest corrected email / `outputs/latest/brief.html`.
+Agent turn: wait for user review of the updated dashboard in `outputs/latest/brief.html`.
 
-User turn: review the latest corrected email / latest `outputs/latest/brief.html` for dashboard footnote clarity and PM-quality taste.
+User turn: review the updated dashboard in `outputs/latest/brief.html` for tone and PM-quality taste.
 
 ## Locked Setup Choices
 
@@ -32,7 +32,7 @@ User turn: review the latest corrected email / latest `outputs/latest/brief.html
 - Theme Radar role: fetch curated RSS sources, rank them against the assumed book/themes, and let Gemini synthesize only selected source facts.
 - LLM validation role: retry once when Gemini output fails strict JSON or word-limit validation.
 - Brief quality role: render source-status notes, keep live/cache/scaffold fallback explicit, and use Gemini prompt v7 for sharper PM-facing narrative and portfolio-logic validation.
-- Dashboard note role: document dashboard scope, extraction time, close/prior basis, Frankfurter FX reference-rate convention, BTC rolling 24-hour convention, and linked data-source basis in the brief itself.
+- Dashboard note role: document dashboard scope, extraction time, close/prior basis, additional timing information, Frankfurter FX reference-rate convention, BTC rolling 24-hour convention, and linked data-source basis in the brief itself.
 
 ## Next Tasks
 

@@ -33,7 +33,7 @@ def _inline_markdown_to_html(text: str) -> str:
 def render_markdown(data: BriefData, run_date: date | None = None) -> str:
     run_date = run_date or date.today()
     market_table = _table(
-        ["Asset", "Close", "Prior", "Change", "So what"],
+        ["Asset", "Close", "Prior", "Change", "Why it matters"],
         [[r.asset, r.close, r.prior, r.change, r.so_what] for r in data.market_rows],
     )
     calendar_table = _table(

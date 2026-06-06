@@ -45,6 +45,8 @@ def test_sample_brief_contains_required_sections() -> None:
     for section in required:
         assert section in brief
     assert "Dashboard notes:" in brief
+    assert "| Asset | Close | Prior | Change | Why it matters |" in brief
+    assert "| Asset | Close | Prior | Change | So what |" not in brief
     assert "EUR/USD" in brief
 
 
@@ -302,9 +304,12 @@ def test_live_market_data_replaces_rows_and_logs_fallback(tmp_path) -> None:
 
     assert row_by_asset["S&P 500"].close == "102.00"
     assert row_by_asset["S&P 500"].change == "+2.0%"
+    assert row_by_asset["S&P 500"].so_what == "Risk tone improved; EM beta has some support if rates and the dollar stay contained."
     assert row_by_asset["US 10Y yield"].change == "+5 bp"
+    assert row_by_asset["US 10Y yield"].so_what.startswith("Higher Treasury yields pressure gold")
     assert row_by_asset["Japan 10Y yield"].close == "2.671%"
     assert row_by_asset["Japan 10Y yield"].change == "+3 bp"
+    assert row_by_asset["Japan 10Y yield"].so_what == "Higher JGB yields can narrow the US-Japan spread and add risk to long USD/JPY."
     assert row_by_asset["EUR/USD"].close == "1.0900"
     assert row_by_asset["EUR/USD"].change == "+0.9%"
     assert row_by_asset["USD/JPY"].close == "159.00"
@@ -317,8 +322,11 @@ def test_live_market_data_replaces_rows_and_logs_fallback(tmp_path) -> None:
     assert "yahoo_chart:^GSPC" in result.sources
     assert result.cached_assets == []
     assert any("extracted at" in note for note in result.data.dashboard_notes)
+    assert any("Additional information about timing" in note for note in result.data.dashboard_notes)
     assert any("[Japan MOF JGB yield CSV]" in note for note in result.data.dashboard_notes)
-    assert "Frankfurter FX rows use the latest published daily reference rate" in render_markdown(result.data)
+    rendered = render_markdown(result.data)
+    assert "Frankfurter FX rows use the latest published daily reference rate" in rendered
+    assert "Source Status shows live, cached, or scaffold fallback rows" not in rendered
 
 
 class FailingMarketClient(FakeMarketClient):

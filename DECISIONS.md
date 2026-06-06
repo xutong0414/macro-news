@@ -235,3 +235,19 @@ Changes:
 - Add tests for the Japan 10Y row and linked dashboard notes.
 
 Outcome: sent run `20260606T135317Z` delivered successfully with 11 dashboard rows, Japan 10Y live from Japan MOF, linked dashboard sources rendered in HTML, prompt version `gemini_narrative_v7`, 10/11 market rows live, Germany 10Y scaffold fallback, and calendar cache fallback after a 429 rate limit.
+
+## 2026-06-06 - Dashboard Tone And Read-Through
+
+Decision: rename the dashboard's final column from `So what` to `Why it matters` and make row text describe the day's market implication rather than repeating static instrument definitions.
+
+Reason: the user correctly flagged that the old column mixed generic instrument explanations with daily read-throughs, which could feel repetitive and AI-written. A PM-facing dashboard should keep the table concise, consistent, and tied to today's moves.
+
+Changes:
+
+- Render the market dashboard header as `Why it matters`.
+- Generate live market row read-throughs deterministically from each asset's direction and move type.
+- Refresh sample dashboard row text to match the same daily-read-through style.
+- Rename `Hong Kong morning caveat` to `Additional information about timing`.
+- Remove the unnecessary `Source Status shows live, cached, or scaffold fallback rows` sentence from dashboard notes.
+
+Outcome: full live dry run `20260606T141150Z` passed with the updated dashboard header, cleaner timing/source notes, 10/11 live market rows, Germany 10Y scaffold fallback, prompt version `gemini_narrative_v7`, and delivery status `dry_run`.

@@ -48,17 +48,17 @@ class BriefData:
 def build_sample_brief_data() -> BriefData:
     return BriefData(
         market_rows=[
-            MarketRow("S&P 500", "5,412", "5,389", "+0.4%", "Risk tone is constructive but not broad enough to chase beta."),
-            MarketRow("Euro Stoxx 50", "5,020", "4,995", "+0.5%", "Europe is following the US lead, with cyclicals still rate-sensitive."),
-            MarketRow("US 10Y yield", "4.42%", "4.36%", "+6 bp", "Higher duration pressure matters for gold and EM duration."),
-            MarketRow("Germany 10Y yield", "2.61%", "2.58%", "+3 bp", "Bunds confirm the global rates move rather than a US-only story."),
-            MarketRow("Japan 10Y yield", "2.67%", "2.65%", "+2 bp", "Japan rates are the direct yield-spread risk for long USD/JPY."),
-            MarketRow("DXY", "104.8", "104.3", "+0.5%", "Dollar strength supports long USD/JPY but tightens EM conditions."),
-            MarketRow("EUR/USD", "1.0850", "1.0800", "+0.5%", "The largest FX pair is the cleanest euro-dollar policy divergence read."),
-            MarketRow("USD/JPY", "157.20", "156.10", "+0.7%", "Position is working, but intervention headlines remain the tail risk."),
-            MarketRow("Gold", "$2,352", "$2,371", "-0.8%", "Gold is absorbing real-rate pressure, not breaking the trend yet."),
-            MarketRow("WTI oil", "$78.40", "$77.10", "+1.7%", "Oil bounce raises inflation-risk asymmetry for rates."),
-            MarketRow("BTC", "$68,900", "$67,500", "+2.1%", "Crypto risk appetite is firm but not central to the assumed book."),
+            MarketRow("S&P 500", "5,412", "5,389", "+0.4%", "Risk tone improved; EM beta has some support if rates and the dollar stay contained."),
+            MarketRow("Euro Stoxx 50", "5,020", "4,995", "+0.5%", "Eurozone risk appetite is firming, a useful cross-check against the US equity signal."),
+            MarketRow("US 10Y yield", "4.42%", "4.36%", "+6 bp", "Higher Treasury yields pressure gold and EM duration, while keeping dollar carry supported."),
+            MarketRow("Germany 10Y yield", "2.61%", "2.58%", "+3 bp", "Higher Bund yields show Europe is sharing the rates pressure, not just following a US-only move."),
+            MarketRow("Japan 10Y yield", "2.67%", "2.65%", "+2 bp", "Higher JGB yields can narrow the US-Japan spread and add risk to long USD/JPY."),
+            MarketRow("DXY", "104.8", "104.3", "+0.5%", "Dollar strength tightens EM financing conditions and is a headwind for gold and commodities."),
+            MarketRow("EUR/USD", "1.0850", "1.0800", "+0.5%", "Euro firmness trims broad-dollar pressure; confirm with DXY before adding USD exposure."),
+            MarketRow("USD/JPY", "157.20", "156.10", "+0.7%", "The long is working, but extension raises intervention and crowded-position risk."),
+            MarketRow("Gold", "$2,352", "$2,371", "-0.8%", "Gold weakness shows real-rate or dollar pressure is biting the overweight."),
+            MarketRow("WTI oil", "$78.40", "$77.10", "+1.7%", "Oil strength adds inflation risk and can delay the easing impulse rates want to price."),
+            MarketRow("BTC", "$68,900", "$67,500", "+2.1%", "Speculative risk appetite is firm, but this remains a cross-check rather than a core book driver."),
         ],
         three_things=[
             "Rates are doing the heavy lifting overnight. The US 10Y yield rose 6 bp and the dollar firmed, so the book's USD/JPY long is aligned with momentum. So what: keep the FX view, but watch whether real-rate pressure starts to hurt gold more visibly.",
@@ -120,6 +120,6 @@ def build_sample_brief_data() -> BriefData:
         dashboard_notes=[
             "Dashboard scope: equities, rates, FX, gold, oil, and BTC are included because those are the PDF-required overnight market blocks.",
             "Timing basis: sample scaffold values are placeholders; live mode replaces them with source-level close/prior or query-time values where available.",
-            "Sources: live mode uses public/free data feeds and records live, cached, or scaffold status in Source Status.",
+            "Sources: live mode uses public/free data feeds and records live, cached, or scaffold status in the run log.",
         ],
     )
