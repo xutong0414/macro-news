@@ -6,7 +6,7 @@ The target reader is a macro PM who wants: what changed overnight, why it matter
 
 ## Current Status
 
-Stage: local agent loop with Gemini synthesis, Gmail delivery, live market rows, and live economic-calendar rows with fallback.
+Stage: local agent loop with Gemini synthesis, Gmail delivery, live market rows, live economic-calendar rows, and live Theme Radar source collection with fallback.
 
 Locked defaults:
 
@@ -43,10 +43,16 @@ Run with live economic calendar data and sample fallback:
 PYTHONPATH=src python -m macro_news run --dry-run --live-calendar
 ```
 
-Run with live market dashboard data, live calendar data, and Gemini narrative synthesis:
+Run with live Theme Radar source collection and sample fallback:
 
 ```bash
-PYTHONPATH=src python -m macro_news run --dry-run --live-market-data --live-calendar --use-llm
+PYTHONPATH=src python -m macro_news run --dry-run --live-theme-radar
+```
+
+Run with all live data layers and Gemini narrative synthesis:
+
+```bash
+PYTHONPATH=src python -m macro_news run --dry-run --live-market-data --live-calendar --live-theme-radar --use-llm
 ```
 
 Send a sample brief by email:
@@ -58,7 +64,7 @@ PYTHONPATH=src python -m macro_news run --send --use-llm
 Send the fuller prototype brief by email:
 
 ```bash
-PYTHONPATH=src python -m macro_news run --send --live-market-data --live-calendar --use-llm
+PYTHONPATH=src python -m macro_news run --send --live-market-data --live-calendar --live-theme-radar --use-llm
 ```
 
 Expected local outputs:
@@ -105,6 +111,11 @@ Calendar data mode:
 - `CALENDAR_MODE=sample` keeps the calendar deterministic.
 - `CALENDAR_MODE=live` fetches the weekly economic calendar where available, uses a local ignored cache after successful pulls, and falls back to sample rows if the public feed is unavailable or rate-limited.
 
+Theme source mode:
+
+- `THEME_SOURCE_MODE=sample` keeps Theme Radar deterministic.
+- `THEME_SOURCE_MODE=live` fetches curated RSS feeds, scores items against the assumed book/themes, and falls back to sample Theme Radar items if source collection fails.
+
 Do not commit `.env`.
 
 ## Assignment Modules
@@ -133,7 +144,15 @@ The calendar currently uses:
 - Local ignored cache under `.cache/calendar/` after successful pulls.
 - Sample fallback rows when the feed fails or is rate-limited.
 
-The next missing live piece is non-mainstream source collection for Theme Radar.
+Theme Radar currently uses:
+
+- Liberty Street Economics RSS.
+- Bank Underground RSS.
+- FRED Blog RSS when reachable.
+- Keyword scoring against the assumed book and house themes.
+- Sample fallback items when no relevant source candidates are found.
+
+The next missing piece is GitHub remote setup, then GitHub Actions scheduling.
 
 ## Repo Control Files
 

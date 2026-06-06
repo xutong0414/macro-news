@@ -12,6 +12,10 @@ Live market dashboard rows are fetched asset by asset, with sample fallback if a
 
 Live calendar rows use a free weekly feed with forecast values treated as consensus estimates. Because public feeds can rate-limit during repeated tests, the prototype keeps a local ignored cache after successful pulls and falls back to sample calendar rows if no live or cached data is available.
 
+Theme Radar uses curated RSS feeds rather than broad web search. The agent parses source titles, links, and descriptions; scores candidates against the assumed book and house themes; then sends only selected source facts to Gemini for synthesis. This keeps the process auditable and reduces hallucination risk.
+
+The LLM output is validated by code for JSON shape and assignment word limits. If Gemini misses a limit, the runner retries once with the exact validation error.
+
 ## Position And Theme Assumptions
 
 Initial assumed book:
@@ -30,7 +34,7 @@ Initial house themes:
 ## V2 Features
 
 1. Add real position/risk exposure import so "so what" can be portfolio-aware.
-2. Add source ranking and freshness checks for non-mainstream research inputs.
+2. Add more source diversity and freshness checks for non-mainstream research inputs.
 3. Add human feedback loop so the PM can rate each brief and improve selection.
 
 ## One-Month Roadmap

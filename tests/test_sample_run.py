@@ -13,6 +13,7 @@ import macro_news.runner as runner_module
 from macro_news.calendar_data import replace_calendar_with_live
 from macro_news.runner import run_brief
 from macro_news.sample_data import build_sample_brief_data
+from macro_news.theme_data import ThemeSource, replace_theme_radar_with_live
 
 
 def _word_count(text: str) -> int:
@@ -99,6 +100,7 @@ def test_dry_run_writes_outputs(tmp_path) -> None:
         run_mode="sample",
         market_data_mode="sample",
         calendar_mode="sample",
+        theme_source_mode="sample",
         output_dir=tmp_path / "outputs",
         log_dir=tmp_path / "logs",
     )
@@ -129,6 +131,7 @@ def test_dry_run_with_llm_writes_usage_log(tmp_path, monkeypatch) -> None:
         run_mode="sample",
         market_data_mode="sample",
         calendar_mode="sample",
+        theme_source_mode="sample",
         output_dir=tmp_path / "outputs",
         log_dir=tmp_path / "logs",
     )
@@ -154,8 +157,9 @@ def test_dry_run_with_llm_writes_usage_log(tmp_path, monkeypatch) -> None:
 
 
 class FakeResponse:
-    def __init__(self, payload):
+    def __init__(self, payload=None, text=""):
         self.payload = payload
+        self.text = text
 
     def raise_for_status(self) -> None:
         return None
@@ -355,6 +359,7 @@ def test_dry_run_with_live_calendar_writes_usage_log(tmp_path, monkeypatch) -> N
         run_mode="sample",
         market_data_mode="sample",
         calendar_mode="sample",
+        theme_source_mode="sample",
         output_dir=tmp_path / "outputs",
         log_dir=tmp_path / "logs",
     )
@@ -376,3 +381,151 @@ def test_dry_run_with_live_calendar_writes_usage_log(tmp_path, monkeypatch) -> N
     assert log_event["calendar_data"]["mode"] == "live_with_fallback"
     assert "USD Non-Farm Employment Change" in log_event["calendar_data"]["live_events"]
     assert log_event["calendar_data"]["fallback_events"] == []
+
+
+THEME_FEED_ONE = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <item>
+      <title>Why exclude food and energy from inflation measures?</title>
+      <link>https://fredblog.stlouisfed.org/example/core-pce/</link>
+      <pubDate>Thu, 04 Jun 2026 13:00:00 +0000</pubDate>
+      <description><![CDATA[
+        The Federal Reserve focuses on core PCE inflation because food and energy prices can be volatile.
+        The post compares core PCE, food inflation, and energy inflation, arguing that the signal-to-noise
+        ratio is better when volatile prices are excluded from the measure used for forward-looking policy.
+      ]]></description>
+    </item>
+    <item>
+      <title>Local museum attendance rises</title>
+      <link>https://example.com/museum</link>
+      <pubDate>Wed, 03 Jun 2026 13:00:00 +0000</pubDate>
+      <description>Not relevant to macro portfolios.</description>
+    </item>
+  </channel>
+</rss>
+"""
+
+THEME_FEED_TWO = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <item>
+      <title>Why Does the U.S. Always Run a Trade Deficit?</title>
+      <link>https://libertystreeteconomics.newyorkfed.org/example/trade-deficit/</link>
+      <pubDate>Wed, 03 Jun 2026 11:01:00 +0000</pubDate>
+      <description><![CDATA[
+        The article explains the saving gap framework for the current account. It argues that the trade
+        deficit is tied to the difference between domestic saving and investment, not only to tariff policy
+        or bilateral trade balances. The discussion links fiscal deficits, capital inflows, and external funding.
+      ]]></description>
+    </item>
+  </channel>
+</rss>
+"""
+
+
+class FakeThemeClient:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        return None
+
+    def get(self, url):
+        if "source-one" in url:
+            return FakeResponse(text=THEME_FEED_ONE)
+        if "source-two" in url:
+            return FakeResponse(text=THEME_FEED_TWO)
+        raise RuntimeError("unexpected feed")
+
+
+class FailingThemeClient:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        return None
+
+    def get(self, url):
+        raise RuntimeError(f"simulated feed outage: {url}")
+
+
+def _theme_sources() -> list[ThemeSource]:
+    return [
+        ThemeSource("FRED Blog", "https://source-one.test/feed/", "theme_feed:test_fred"),
+        ThemeSource("Liberty Street Economics", "https://source-two.test/feed/", "theme_feed:test_liberty"),
+    ]
+
+
+def test_live_theme_radar_replaces_sample_sources() -> None:
+    result = replace_theme_radar_with_live(
+        build_sample_brief_data(),
+        client_factory=FakeThemeClient,
+        sources=_theme_sources(),
+    )
+
+    titles = [item.title for item in result.data.theme_radar]
+
+    assert "Why exclude food and energy from inflation measures?" in titles
+    assert "Why Does the U.S. Always Run a Trade Deficit?" in titles
+    assert result.fallback_used is False
+    assert result.candidate_count == 2
+    assert "theme_feed:test_fred" in result.sources
+    assert "theme_feed:test_liberty" in result.sources
+    assert all(60 <= _word_count(item.summary) <= 100 for item in result.data.theme_radar)
+    assert all(item.link.startswith("https://") for item in result.data.theme_radar)
+
+
+def test_live_theme_radar_falls_back_when_sources_fail() -> None:
+    base = build_sample_brief_data()
+    result = replace_theme_radar_with_live(
+        base,
+        client_factory=FailingThemeClient,
+        sources=_theme_sources(),
+    )
+
+    assert result.data.theme_radar == base.theme_radar
+    assert result.fallback_used is True
+    assert result.candidate_count == 0
+    assert "theme_feed:test_fred" in result.errors
+    assert "theme_feed:test_liberty" in result.errors
+
+
+def test_dry_run_with_live_theme_radar_writes_usage_log(tmp_path, monkeypatch) -> None:
+    settings = Settings(
+        llm_provider="gemini",
+        gemini_api_key=None,
+        gemini_model="gemini-2.5-flash-lite",
+        deepseek_api_key=None,
+        deepseek_model="deepseek-v4-flash",
+        smtp_host=None,
+        smtp_port=587,
+        smtp_user=None,
+        smtp_password=None,
+        brief_from_email=None,
+        brief_to_email=None,
+        timezone="Asia/Hong_Kong",
+        run_mode="sample",
+        market_data_mode="sample",
+        calendar_mode="sample",
+        theme_source_mode="sample",
+        output_dir=tmp_path / "outputs",
+        log_dir=tmp_path / "logs",
+    )
+
+    def fake_replace_theme(data):
+        return replace_theme_radar_with_live(
+            data,
+            client_factory=FakeThemeClient,
+            sources=_theme_sources(),
+        )
+
+    monkeypatch.setattr(runner_module, "replace_theme_radar_with_live", fake_replace_theme)
+
+    result = run_brief(settings, send=False, live_theme_radar=True)
+    log_event = json.loads(result.log_path.read_text(encoding="utf-8"))
+
+    assert log_event["theme_data"]["mode"] == "live_with_fallback"
+    assert log_event["theme_data"]["candidate_count"] == 2
+    assert log_event["theme_data"]["fallback_used"] is False
+    assert "Why exclude food and energy from inflation measures?" in log_event["theme_data"]["selected_titles"]

@@ -10,7 +10,7 @@ from .config import Settings
 from .costing import TokenUsage, estimate_llm_cost_usd
 from .sample_data import BriefData, ThemeItem
 
-PROMPT_VERSION = "gemini_narrative_v1"
+PROMPT_VERSION = "gemini_narrative_v2"
 
 
 @dataclass(frozen=True)
@@ -84,7 +84,7 @@ def build_narrative_prompt(data: BriefData) -> str:
         "Constraints:\n"
         "- Each item in three_things must be 80 words or fewer and include a clear 'So what:' clause.\n"
         "- theme_radar must contain 1-3 items and reuse the provided title, source, and link values.\n"
-        "- Each theme_radar summary must be 60-100 words and explain the author's thesis and evidence.\n"
+        "- Each theme_radar summary must be 70-90 words and explain the author's thesis and evidence.\n"
         "- Each book_impact line must start with 'What this means for our book:'.\n"
         "- contrarian_corner must be 50-100 words.\n\n"
         f"Facts:\n{json.dumps(facts, indent=2)}"
@@ -149,43 +149,66 @@ def synthesize_with_gemini(settings: Settings, data: BriefData) -> SynthesisResu
 
     prompt = build_narrative_prompt(data)
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.gemini_model}:generateContent"
-    payload = {
-        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "temperature": 0.3,
-            "responseMimeType": "application/json",
-        },
-    }
+    total_usage = TokenUsage(input_tokens=0, output_tokens=0, total_tokens=0, provider="gemini")
+    generated_data: BriefData | None = None
+    last_validation_error: ValueError | None = None
 
-    try:
-        response = httpx.post(
-            url,
-            headers={"x-goog-api-key": settings.gemini_api_key},
-            json=payload,
-            timeout=60,
+    for attempt in range(2):
+        payload = {
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0.3,
+                "responseMimeType": "application/json",
+            },
+        }
+
+        try:
+            response = httpx.post(
+                url,
+                headers={"x-goog-api-key": settings.gemini_api_key},
+                json=payload,
+                timeout=60,
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise RuntimeError(f"Gemini request failed: {exc}") from exc
+
+        body = response.json()
+        candidates = body.get("candidates", [])
+        if not candidates:
+            raise RuntimeError("Gemini returned no candidates")
+
+        parts = candidates[0].get("content", {}).get("parts", [])
+        text = "".join(part.get("text", "") for part in parts if isinstance(part, dict))
+        if not text.strip():
+            raise RuntimeError("Gemini returned an empty text response")
+
+        usage_metadata = body.get("usageMetadata", {})
+        total_usage = TokenUsage(
+            input_tokens=total_usage.input_tokens + int(usage_metadata.get("promptTokenCount", 0)),
+            output_tokens=total_usage.output_tokens + int(usage_metadata.get("candidatesTokenCount", 0)),
+            total_tokens=total_usage.total_tokens + int(usage_metadata.get("totalTokenCount", 0)),
+            provider="gemini",
         )
-        response.raise_for_status()
-    except httpx.HTTPError as exc:
-        raise RuntimeError(f"Gemini request failed: {exc}") from exc
 
-    body = response.json()
-    candidates = body.get("candidates", [])
-    if not candidates:
-        raise RuntimeError("Gemini returned no candidates")
+        try:
+            generated_data = parse_narrative_response(text, data)
+            break
+        except ValueError as exc:
+            last_validation_error = exc
+            if attempt == 1:
+                break
+            prompt = (
+                f"{prompt}\n\n"
+                "Validation repair instruction:\n"
+                f"The previous JSON failed validation because: {exc}.\n"
+                "Return the full JSON object again. Be especially careful that every theme_radar summary is 70-90 words."
+            )
 
-    parts = candidates[0].get("content", {}).get("parts", [])
-    text = "".join(part.get("text", "") for part in parts if isinstance(part, dict))
-    if not text.strip():
-        raise RuntimeError("Gemini returned an empty text response")
+    if generated_data is None:
+        raise RuntimeError(f"Gemini response failed validation after retry: {last_validation_error}") from last_validation_error
 
-    generated_data = parse_narrative_response(text, data)
-    usage_metadata = body.get("usageMetadata", {})
-    usage = TokenUsage(
-        input_tokens=int(usage_metadata.get("promptTokenCount", 0)),
-        output_tokens=int(usage_metadata.get("candidatesTokenCount", 0)),
-        total_tokens=int(usage_metadata.get("totalTokenCount", 0)),
-        provider="gemini",
-    )
+    usage = total_usage
     estimated_cost = estimate_llm_cost_usd("gemini", settings.gemini_model, usage)
 
     return SynthesisResult(

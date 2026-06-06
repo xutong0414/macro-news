@@ -86,3 +86,32 @@ Current source:
 - Sample fallback if the feed fails and no cache is available.
 
 Tradeoff: this is good enough for a local assignment prototype, but a production version should add a second calendar provider or use a paid calendar API.
+
+## 2026-06-06 - Live Theme Radar Source Scope
+
+Decision: add curated RSS source collection for Theme Radar before broad web search.
+
+Reason: the assignment rewards real source selection and synthesis, but broad web search is noisy and hard to audit. A small curated list gives the agent real inputs while keeping the selection process explainable.
+
+Current sources:
+
+- Liberty Street Economics.
+- Bank Underground.
+- FRED Blog when reachable.
+
+Selection rule:
+
+- Parse RSS title/link/description.
+- Score source candidates against the assumed book and house themes.
+- Select the highest-scoring items, preferring source diversity.
+- Fall back to sample Theme Radar items if no relevant live candidates are available.
+
+Tradeoff: curated RSS is less comprehensive than web search, but it is more stable, cheaper, and easier to explain for a take-home prototype.
+
+## 2026-06-06 - LLM Validation Repair
+
+Decision: retry Gemini once when its JSON output fails code validation.
+
+Reason: the agent enforces strict word limits and required JSON shape. Gemini can occasionally miss by a few words, so the safer pattern is deterministic validation followed by one targeted repair instruction.
+
+Tradeoff: a retry can roughly double token use for that run, but the absolute cost remains well below one cent for this prototype.

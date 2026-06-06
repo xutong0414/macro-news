@@ -13,6 +13,7 @@ from .llm import synthesize_with_gemini
 from .market_data import MarketDataResult, replace_market_rows_with_live
 from .render import render_html, render_markdown, utc_run_id, write_outputs
 from .sample_data import build_sample_brief_data
+from .theme_data import ThemeDataResult, replace_theme_radar_with_live
 
 
 @dataclass(frozen=True)
@@ -31,12 +32,14 @@ def run_brief(
     use_llm: bool = False,
     live_market_data: bool = False,
     live_calendar: bool = False,
+    live_theme_radar: bool = False,
 ) -> RunResult:
     run_date = run_date or date.today()
     run_id = utc_run_id()
     data = build_sample_brief_data()
     market_data_result = MarketDataResult(data=data, live_assets=[], fallback_assets=[], errors={}, sources=[])
     calendar_data_result = CalendarDataResult(data=data, live_events=[], fallback_events=[], errors={}, sources=[])
+    theme_data_result = ThemeDataResult(data=data, selected_titles=[], candidate_count=0, fallback_used=False, errors={}, sources=[])
     token_usage = ZERO_TOKEN_USAGE
     llm_status = "not_used"
     llm_model = "none"
@@ -50,6 +53,10 @@ def run_brief(
     if live_calendar:
         calendar_data_result = replace_calendar_with_live(data, run_date=run_date, timezone_name=settings.timezone)
         data = calendar_data_result.data
+
+    if live_theme_radar:
+        theme_data_result = replace_theme_radar_with_live(data)
+        data = theme_data_result.data
 
     if use_llm:
         if settings.llm_provider != "gemini":
@@ -101,6 +108,14 @@ def run_brief(
             "fallback_events": calendar_data_result.fallback_events,
             "errors": calendar_data_result.errors,
             "sources": calendar_data_result.sources,
+        },
+        "theme_data": {
+            "mode": "live_with_fallback" if live_theme_radar else "sample",
+            "selected_titles": theme_data_result.selected_titles,
+            "candidate_count": theme_data_result.candidate_count,
+            "fallback_used": theme_data_result.fallback_used,
+            "errors": theme_data_result.errors,
+            "sources": theme_data_result.sources,
         },
         "token_usage": {
             "input_tokens": token_usage.input_tokens,
