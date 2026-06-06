@@ -71,7 +71,7 @@ Current sources:
 - Yahoo Finance chart endpoint for S&P 500, Euro Stoxx 50, US 10Y, DXY, gold, and WTI oil.
 - Frankfurter for USD/JPY.
 - CoinGecko for BTC.
-- Sample fallback for Germany 10Y and any failed live source.
+- Sample fallback for failed live sources when no cached real-source row exists.
 
 ## 2026-06-06 - Live Calendar Data Scope
 
@@ -283,3 +283,18 @@ Changes:
 - Keep the chart reading code-owned rather than LLM-written.
 
 Outcome: full live dry run `20260606T145317Z` passed with the chart title, bold `Reading:` label in Markdown/HTML, first-thing support sentence, prompt version `gemini_narrative_v7`, 9 live market rows, 1 cached Euro Stoxx 50 row, 1 Germany 10Y scaffold fallback row, and delivery status `dry_run`.
+
+## 2026-06-06 - Remove Germany 10Y From Dashboard
+
+Decision: remove `Germany 10Y yield` from the dashboard until a clean live source is added.
+
+Reason: the row was repeatedly using scaffold fallback, which made the Source Status look weaker and invited unnecessary explanation. For the assignment prototype, a smaller fully sourced dashboard is more credible than keeping a European rates row with placeholder data.
+
+Changes:
+
+- Remove `Germany 10Y yield` from sample market rows.
+- Remove `Germany 10Y yield` from the live dashboard target order.
+- Change dashboard scope from `rates (US/Germany/Japan 10Y)` to `rates (US/Japan 10Y)`.
+- Add tests confirming Germany 10Y is not rendered.
+
+Outcome: full live dry run `20260606T153505Z` passed with 10 dashboard rows, no Germany 10Y row, no scaffold fallback rows, 9/10 live rows, 1 cached real-source S&P 500 row after a Yahoo timeout, prompt version `gemini_narrative_v7`, and delivery status `dry_run`.

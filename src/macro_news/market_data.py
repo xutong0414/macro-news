@@ -398,7 +398,6 @@ def replace_market_rows_with_live(
         "S&P 500",
         "Euro Stoxx 50",
         "US 10Y yield",
-        "Germany 10Y yield",
         "Japan 10Y yield",
         "DXY",
         "EUR/USD",
@@ -489,7 +488,7 @@ def replace_market_rows_with_live(
     reference_now = reference_now or datetime.now(zone)
     extracted_at = reference_now.astimezone(zone).strftime("%Y-%m-%d %H:%M %Z")
     dashboard_notes = [
-        "Dashboard scope: equities (S&P 500, Euro Stoxx 50), rates (US/Germany/Japan 10Y), FX (DXY, EUR/USD, USD/JPY), gold, oil, and BTC.",
+        "Dashboard scope: equities (S&P 500, Euro Stoxx 50), rates (US/Japan 10Y), FX (DXY, EUR/USD, USD/JPY), gold, oil, and BTC.",
         (
             f"Timing basis: extracted at {extracted_at}; equity/rate/commodity rows use latest source daily close vs prior source daily close; "
             "Frankfurter FX rows use the latest published daily reference rate vs the immediately previous published daily reference rate; "

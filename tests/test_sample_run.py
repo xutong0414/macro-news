@@ -54,6 +54,7 @@ def test_sample_brief_contains_required_sections() -> None:
     assert "**Reading:** This chart supports the first thing that matters today (see above)." in brief
     assert "Caption:" not in brief
     assert "EUR/USD" in brief
+    assert "Germany 10Y yield" not in brief
 
 
 def test_sample_brief_html_renders_chart_reading_label() -> None:
@@ -316,6 +317,7 @@ def test_live_market_data_replaces_rows_and_logs_fallback(tmp_path) -> None:
 
     row_by_asset = {row.asset: row for row in result.data.market_rows}
 
+    assert "Germany 10Y yield" not in row_by_asset
     assert row_by_asset["S&P 500"].close == "102.00"
     assert row_by_asset["S&P 500"].change == "+2.0%"
     assert row_by_asset["S&P 500"].so_what == "Risk tone improved; EM beta has some support if rates and the dollar stay contained."
@@ -338,6 +340,7 @@ def test_live_market_data_replaces_rows_and_logs_fallback(tmp_path) -> None:
     assert any("extracted at" in note for note in result.data.dashboard_notes)
     assert any("Additional information about timing" in note for note in result.data.dashboard_notes)
     assert any("[Japan MOF JGB yield CSV]" in note for note in result.data.dashboard_notes)
+    assert any("rates (US/Japan 10Y)" in note for note in result.data.dashboard_notes)
     rendered = render_markdown(result.data)
     assert "Frankfurter FX rows use the latest published daily reference rate" in rendered
     assert "Source Status shows live, cached, or scaffold fallback rows" not in rendered

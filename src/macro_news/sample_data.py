@@ -51,7 +51,6 @@ def build_sample_brief_data() -> BriefData:
             MarketRow("S&P 500", "5,412", "5,389", "+0.4%", "Risk tone improved; EM beta has some support if rates and the dollar stay contained."),
             MarketRow("Euro Stoxx 50", "5,020", "4,995", "+0.5%", "Eurozone risk appetite is firming, a useful cross-check against the US equity signal."),
             MarketRow("US 10Y yield", "4.42%", "4.36%", "+6 bp", "Higher Treasury yields pressure gold and EM duration, while keeping dollar carry supported."),
-            MarketRow("Germany 10Y yield", "2.61%", "2.58%", "+3 bp", "Higher Bund yields show Europe is sharing the rates pressure, not just following a US-only move."),
             MarketRow("Japan 10Y yield", "2.67%", "2.65%", "+2 bp", "Higher JGB yields can narrow the US-Japan spread and add risk to long USD/JPY."),
             MarketRow("DXY", "104.8", "104.3", "+0.5%", "Dollar strength tightens EM financing conditions and is a headwind for gold and commodities."),
             MarketRow("EUR/USD", "1.0850", "1.0800", "+0.5%", "Euro firmness trims broad-dollar pressure; confirm with DXY before adding USD exposure."),

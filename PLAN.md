@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-Chart-section revision is complete. The latest verified dry run (`20260606T145317Z`) keeps the full live prototype structure, renders the chart as `USD/JPY in Five Days`, replaces `Caption:` with bold `Reading:`, and states that the chart supports the first thing that matters today.
+Market dashboard cleanup is complete. Germany 10Y was removed because it remained a recurring scaffold fallback row without a clean live source. The latest verified dry run (`20260606T153505Z`) renders a 10-row dashboard and reports no scaffold fallback rows.
 
 ## Whose Turn
 
-Agent turn: wait for user review of the updated chart section in `outputs/latest/brief.html`.
+Agent turn: wait for user review of the updated dashboard and Source Status.
 
-User turn: review the updated chart section in `outputs/latest/brief.html` for title, bold `Reading:` wording, and whether the first-thing reference feels natural.
+User turn: review the updated dashboard and Source Status after the next verified output.
 
 ## Locked Setup Choices
 
@@ -40,10 +40,9 @@ User turn: review the updated chart section in `outputs/latest/brief.html` for t
 
 1. Keep control files current as the project changes.
 2. Review whether the chart and earlier revised sections are assignment-ready enough to continue to calendar, Theme Radar, and contrarian-corner polishing.
-3. Improve live data source coverage for Germany 10Y if we want to reduce the last scaffold market row.
-4. Add a second calendar provider if the free weekly feed remains thin or stale outside weekday windows.
-5. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.
-6. Generate final `memo.pdf` from `memo.md`.
+3. Add a second calendar provider if the free weekly feed remains thin or stale outside weekday windows.
+4. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.
+5. Generate final `memo.pdf` from `memo.md`.
 
 ## Blockers
 
