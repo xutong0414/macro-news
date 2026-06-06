@@ -187,8 +187,9 @@ The third workflow sends one real live brief only when manually confirmed:
 The temporary schedule-test workflow verifies GitHub's scheduler:
 
 - `.github/workflows/daily-brief-scheduled-send-test.yml`
-- Sends one live-source email brief at the configured test time.
-- Includes a date guard and should be removed or replaced after confirmation.
+- Tries every five minutes during a temporary test window.
+- Sends at most one live-source email brief.
+- Includes date/time and prior-success guards and should be removed or replaced after confirmation.
 
 The next workflow step is a scheduled email-send workflow after the send time is confirmed.
 

@@ -140,6 +140,8 @@ Decision: add a temporary scheduled-send workflow before enabling the permanent 
 
 Reason: manual workflow success does not prove that GitHub's scheduler will trigger as expected. A near-term scheduled test proves the automation path without waiting until the next weekday morning.
 
-Test time: 2026-06-06 15:30 Hong Kong time, equal to 2026-06-06 07:30 UTC.
+Initial test time: 2026-06-06 15:30 Hong Kong time, equal to 2026-06-06 07:30 UTC.
+
+Update: the exact-minute test did not trigger. The revised workflow runs every five minutes during a short test window and checks prior successful scheduled runs so it sends at most once.
 
 Follow-up: remove the temporary workflow or replace it with the permanent weekday schedule after confirmation.
