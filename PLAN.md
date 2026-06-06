@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-GitHub manual email-send workflow is confirmed. A temporary scheduled email proof is active during a short 2026-06-06 evening window, but the first checkpoints showed zero scheduled workflow runs. Adding a controlled local/server scheduler fallback path.
+GitHub manual email-send workflow is confirmed. Short-window GitHub schedule tests did not create scheduled runs, including the 2026-06-06 17:40-18:15 Hong Kong proof window. The temporary proof workflow has been removed, and controlled local/server scheduling is the fallback path.
 
 ## Whose Turn
 
-Agent turn: keep checking the GitHub scheduled proof through the window, document the result, and add local/server scheduler support.
+Agent turn: remove the temporary proof workflow, commit the final scheduler result, and prepare the next implementation step.
 
-User turn: keep watching GitHub Actions and inbox during 2026-06-06 17:40-18:15 Hong Kong time. After this check, switch the repo back to private unless public access is still needed.
+User turn: switch the GitHub repo back to private unless public access is still needed.
 
 ## Locked Setup Choices
 
@@ -19,8 +19,8 @@ User turn: keep watching GitHub Actions and inbox during 2026-06-06 17:40-18:15 
 - GitHub Actions first stage: sample dry-run workflow first, no secrets or email.
 - GitHub Actions second stage: manual live dry-run workflow with secrets, still no email.
 - GitHub Actions third stage: manual email-send workflow with a `SEND` confirmation input.
-- GitHub Actions fourth stage: scheduled email-send workflow after explicit timing confirmation, but short-window GitHub scheduler tests have not created scheduled runs so far.
-- Temporary scheduled proof: try every five minutes during 2026-06-06 17:40-18:15 HKT and send at most once.
+- GitHub Actions fourth stage: scheduled email-send workflow is not treated as reliable after short-window scheduler tests created zero scheduled runs.
+- Temporary scheduled proof: removed after the 2026-06-06 17:40-18:15 HKT window produced zero scheduled runs.
 - Scheduler fallback: document and support local/server scheduling with `scripts/run_daily_brief.sh`, macOS `launchd`, Linux `cron`, and cloud-scheduler options.
 - First run mode: sample data only.
 - Private process notes: keep in ignored `.worklog/`, then delete before final handoff.
@@ -33,18 +33,17 @@ User turn: keep watching GitHub Actions and inbox during 2026-06-06 17:40-18:15 
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. Confirm whether the temporary scheduled email proof triggers and delivers one email.
-3. Remove the temporary scheduled proof after confirmation or after the window passes.
-4. Test the local/server scheduler command path.
-5. Improve calendar source reliability or add a second source if the free feed remains rate-limited.
-6. Improve live data source coverage for Germany 10Y and any assets with intermittent Yahoo failures.
-7. Improve Theme Radar source diversity if any RSS feed is slow or unavailable.
-8. Polish brief assumptions wording so live mode describes source-level fallback instead of implying every market number must be live.
-9. Generate final `memo.pdf` from `memo.md`.
+2. Test the local/server scheduler command path without installing a system scheduler.
+3. Decide whether the production scheduler should be macOS `launchd`, Linux/VPS `cron`, or a cloud scheduler.
+4. Improve calendar source reliability or add a second source if the free feed remains rate-limited.
+5. Improve live data source coverage for Germany 10Y and any assets with intermittent Yahoo failures.
+6. Improve Theme Radar source diversity if any RSS feed is slow or unavailable.
+7. Polish brief assumptions wording so live mode describes source-level fallback instead of implying every market number must be live.
+8. Generate final `memo.pdf` from `memo.md`.
 
 ## Blockers
 
-- GitHub scheduled events have not created runs in short-window tests so far; manual GitHub runs and email sending are confirmed.
+- GitHub scheduled events created zero runs in short-window tests; manual GitHub runs and email sending are confirmed.
 - Free public calendar feed can rate-limit during repeated development tests; local cache and sample fallback are implemented.
 - Some free RSS feeds can time out; source-level fallback is implemented.
 

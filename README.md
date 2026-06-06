@@ -6,7 +6,7 @@ The target reader is a macro PM who wants: what changed overnight, why it matter
 
 ## Current Status
 
-Stage: local agent loop with Gemini synthesis, Gmail delivery, live market rows, live economic-calendar rows, live Theme Radar source collection with fallback, and GitHub manual-send automation. Scheduled delivery is under proof; short-window GitHub schedule tests have not yet produced scheduled runs, so a local/server scheduler path is documented.
+Stage: local agent loop with Gemini synthesis, Gmail delivery, live market rows, live economic-calendar rows, live Theme Radar source collection with fallback, and GitHub manual-send automation. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is now routed through the documented local/server scheduler path.
 
 Locked defaults:
 
@@ -186,20 +186,19 @@ The third workflow sends one real live brief only when manually confirmed:
 
 The temporary scheduler smoke test was removed after an inconclusive short-window test. GitHub recognized the workflow as active, but no scheduled run appeared during the test window.
 
-The temporary scheduled email proof workflow tests actual scheduled delivery:
+The temporary scheduled email proof workflow was also removed after the proof window ended:
 
-- `.github/workflows/daily-brief-scheduled-send-proof.yml`
-- Tries during a short 2026-06-06 evening window.
-- Sends at most one live-source email brief.
-- Should be removed or replaced after confirmation.
+- GitHub recognized the workflow as active.
+- The 2026-06-06 17:40-18:15 Hong Kong test window produced zero scheduled runs.
+- Because no workflow run was created, the failure was at GitHub's scheduled trigger layer, not in Python, Gemini, or Gmail delivery.
 
-The next workflow step is either a scheduled email-send workflow after the send time is confirmed, or an external scheduler if precise timing is required.
+The next workflow step is to keep the proven manual GitHub send workflow and use an external or local/server scheduler when precise timing is required.
 
 ## Scheduling
 
 See `docs/scheduling.md` for the scheduler plan.
 
-Key idea: the brief command is proven, but a separate scheduler must wake it. Manual GitHub send is confirmed; GitHub scheduled events are still unproven in short-window tests. For dependable daily delivery, use an always-on Mac with `launchd`, a Linux workstation/VPS with `cron` or `systemd`, or a cloud scheduler.
+Key idea: the brief command is proven, but a separate scheduler must wake it. Manual GitHub send is confirmed; GitHub scheduled events failed our short-window proof. For dependable daily delivery, use an always-on Mac with `launchd`, a Linux workstation/VPS with `cron` or `systemd`, or a cloud scheduler.
 
 The reusable scheduler command is:
 
