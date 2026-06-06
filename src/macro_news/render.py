@@ -108,6 +108,16 @@ def _render_three_things_markdown(items: list[str]) -> str:
     return "\n\n".join(blocks)
 
 
+def _chart_reading(data: BriefData) -> str:
+    first_title = _three_thing_title(data.three_things[0]) if data.three_things else ""
+    caption = data.chart_caption.strip()
+    if first_title == "USD/JPY Intervention Risk":
+        prefix = "This chart supports Thing 1, USD/JPY Intervention Risk."
+    else:
+        prefix = "This chart tracks the assumed long USD/JPY position."
+    return f"{prefix} {caption}" if caption else prefix
+
+
 def render_markdown(data: BriefData, run_date: date | None = None) -> str:
     run_date = run_date or date.today()
     market_table = _table(
@@ -159,9 +169,9 @@ Dashboard notes:
 
 ## One Chart Worth Seeing
 
-![One chart worth seeing](chart.png)
+![USD/JPY in Five Days](chart.png)
 
-Caption: {data.chart_caption}
+Reading: {_chart_reading(data)}
 
 ## Theme Radar
 
@@ -192,7 +202,7 @@ def render_html(data: BriefData, run_date: date | None = None) -> str:
         "body{font-family:Arial,sans-serif;line-height:1.45;color:#111827;max-width:880px;margin:24px auto;padding:0 18px}",
         "table{border-collapse:collapse;width:100%;font-size:14px}th,td{border:1px solid #d1d5db;padding:8px;text-align:left;vertical-align:top}",
         "th{background:#f3f4f6}h1,h2,h3{line-height:1.2}h3{font-size:18px;margin:22px 0 6px}img{max-width:100%;height:auto}",
-        ".caption,.note-line,.read-more{color:#4b5563;font-size:14px}.note-line,.read-more{margin:4px 0 0 18px}",
+        ".reading,.note-line,.read-more{color:#4b5563;font-size:14px}.note-line,.read-more{margin:4px 0 0 18px}",
         ".read-more{margin-bottom:18px}",
         "</style>",
         "</head>",
@@ -232,9 +242,11 @@ def render_html(data: BriefData, run_date: date | None = None) -> str:
         elif line.startswith("### "):
             html_lines.append(f"<h3>{_inline_markdown_to_html(line[4:])}</h3>")
         elif line.startswith("!["):
-            html_lines.append('<img src="chart.png" alt="One chart worth seeing">')
+            html_lines.append('<img src="chart.png" alt="USD/JPY in Five Days">')
+        elif line.startswith("Reading:"):
+            html_lines.append(f'<p class="reading">{_inline_markdown_to_html(line)}</p>')
         elif line.startswith("Caption:"):
-            html_lines.append(f'<p class="caption">{_inline_markdown_to_html(line)}</p>')
+            html_lines.append(f'<p class="reading">{_inline_markdown_to_html(line)}</p>')
         elif line.startswith("**So what:"):
             html_lines.append(f'<p class="note-line">{_bold_label_to_html(line)}</p>')
         elif line.startswith("**Read more:"):
@@ -266,7 +278,7 @@ def write_chart(data: BriefData, chart_path: Path) -> None:
 
     fig, ax = plt.subplots(figsize=(7.2, 3.4))
     ax.plot(labels, values, marker="o", linewidth=2, color="#2563eb")
-    ax.set_title("USD/JPY Five-Day Path")
+    ax.set_title("USD/JPY in Five Days")
     ax.set_ylabel("Spot")
     ax.grid(True, alpha=0.25)
     fig.tight_layout()

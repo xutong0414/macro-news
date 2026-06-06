@@ -9,7 +9,7 @@ from macro_news.config import Settings, normalize_timezone
 from macro_news.costing import TokenUsage
 from macro_news.llm import SynthesisResult, parse_narrative_response
 from macro_news.market_data import replace_market_rows_with_live
-from macro_news.render import render_markdown
+from macro_news.render import render_html, render_markdown
 import macro_news.runner as runner_module
 from macro_news.calendar_data import replace_calendar_with_live
 from macro_news.runner import run_brief
@@ -50,7 +50,18 @@ def test_sample_brief_contains_required_sections() -> None:
     assert "### 1. USD/JPY Intervention Risk" in brief
     assert "momentum.\n\n**So what:** keep the FX view" in brief
     assert "**Read more:** [Yahoo Finance](https://finance.yahoo.com/search?p=USD+JPY+Japan+intervention+yield+spread)" in brief
+    assert "![USD/JPY in Five Days](chart.png)" in brief
+    assert "Reading: This chart supports Thing 1, USD/JPY Intervention Risk." in brief
+    assert "Caption:" not in brief
     assert "EUR/USD" in brief
+
+
+def test_sample_brief_html_renders_chart_reading_label() -> None:
+    html = render_html(build_sample_brief_data())
+
+    assert 'alt="USD/JPY in Five Days"' in html
+    assert '<p class="reading">Reading: This chart supports Thing 1, USD/JPY Intervention Risk.' in html
+    assert "Caption:" not in html
 
 
 def test_sample_brief_assignment_word_limits() -> None:

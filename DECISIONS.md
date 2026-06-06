@@ -267,3 +267,19 @@ Changes:
 - Add tests that the split paragraph and Yahoo Finance link render in Markdown/HTML output.
 
 Outcome: full live dry run `20260606T143027Z` passed with compact sub-titles, clean HTML `So what:` labels, clickable Yahoo Finance links in Markdown/HTML, prompt version `gemini_narrative_v7`, 10/11 live market rows, Germany 10Y scaffold fallback, and delivery status `dry_run`.
+
+## 2026-06-06 - USD/JPY Chart Reading
+
+Decision: keep the single required chart as a USD/JPY five-day line and rename the rendered note from `Caption:` to `Reading:`.
+
+Reason: the assumed book is long USD/JPY, and the leading narrative item often focuses on USD/JPY intervention or yen-reversal risk. The chart should therefore support that first item directly rather than sit as a generic decorative chart.
+
+Changes:
+
+- Rename the chart title to `USD/JPY in Five Days`.
+- Render the image alt text as `USD/JPY in Five Days`.
+- Render `Reading:` instead of `Caption:`.
+- When Thing 1 is `USD/JPY Intervention Risk`, state that the chart supports Thing 1 explicitly.
+- Keep the chart reading code-owned rather than LLM-written.
+
+Outcome: full live dry run `20260606T144542Z` passed with the new chart title, `Reading:` label in Markdown/HTML, explicit Thing 1 link, prompt version `gemini_narrative_v7`, 9 live market rows, 1 cached S&P 500 row, 1 Germany 10Y scaffold fallback row, and delivery status `dry_run`.

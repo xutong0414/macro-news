@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-Three Things layout revision is complete. The latest verified dry run (`20260606T143027Z`) keeps the full live prototype structure, adds compact sub-titles for each item, renders each `So what:` as a smaller supporting line, and adds a deterministic Yahoo Finance read-more link for each item.
+Chart-section revision is complete. The latest verified dry run (`20260606T144542Z`) keeps the full live prototype structure, renders the chart as `USD/JPY in Five Days`, replaces `Caption:` with `Reading:`, and explicitly states that the chart supports Thing 1 when the first narrative item is `USD/JPY Intervention Risk`.
 
 ## Whose Turn
 
-Agent turn: wait for user review of the updated `The 3 Things That Matter Today` layout in `outputs/latest/brief.html`.
+Agent turn: wait for user review of the updated chart section in `outputs/latest/brief.html`.
 
-User turn: review the updated 3 Things layout in `outputs/latest/brief.html` for visual hierarchy, link usefulness, and PM-quality taste.
+User turn: review the updated chart section in `outputs/latest/brief.html` for title, `Reading:` wording, and whether the explicit Thing 1 link feels natural.
 
 ## Locked Setup Choices
 
@@ -34,11 +34,12 @@ User turn: review the updated 3 Things layout in `outputs/latest/brief.html` for
 - Brief quality role: render source-status notes, keep live/cache/scaffold fallback explicit, and use Gemini prompt v7 for sharper PM-facing narrative and portfolio-logic validation.
 - Dashboard note role: document dashboard scope, extraction time, close/prior basis, additional timing information, Frankfurter FX reference-rate convention, BTC rolling 24-hour convention, and linked data-source basis in the brief itself.
 - Three Things link role: render compact item sub-titles, smaller `So what:` support lines, and deterministic Yahoo Finance topic-search links; the LLM does not invent those links.
+- Chart role: use USD/JPY because it is the assumed FX position and the most direct visual support for the intervention-risk item; render the note as `Reading:` rather than `Caption:`.
 
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. Review whether the next corrected email is assignment-ready enough to start final memo writing.
+2. Review whether the chart and earlier revised sections are assignment-ready enough to continue to calendar, Theme Radar, and contrarian-corner polishing.
 3. Improve live data source coverage for Germany 10Y if we want to reduce the last scaffold market row.
 4. Add a second calendar provider if the free weekly feed remains thin or stale outside weekday windows.
 5. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.

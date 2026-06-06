@@ -71,7 +71,7 @@ def build_sample_brief_data() -> BriefData:
             CalendarEvent("US", "20:30 CST", "US core PCE", "0.2% m/m", "The key event for rates, gold, and broad dollar direction."),
             CalendarEvent("US", "22:00 CST", "University of Michigan inflation expectations", "3.1%", "Inflation expectations can amplify or fade the PCE reaction."),
         ],
-        chart_caption="USD/JPY keeps grinding higher; intervention risk rises as momentum extends.",
+        chart_caption="Spot is extended enough that intervention risk is now the point of the chart.",
         chart_series=[
             ("Mon", 154.8),
             ("Tue", 155.1),
