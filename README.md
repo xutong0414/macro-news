@@ -6,7 +6,7 @@ The target reader is a macro PM who wants: what changed overnight, why it matter
 
 ## Current Status
 
-Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows including Japan 10Y, EUR/USD, and USD/JPY, dashboard timing/source notes with clickable source links, cached real-source market fallback, a USD/JPY chart reading linked to Thing 1 when relevant, live economic-calendar rows with Asia/Europe/US session targeting, live Theme Radar source collection with fallback, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
+Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows including Japan 10Y, EUR/USD, and USD/JPY, dashboard timing/source notes with clickable source links, cached real-source market fallback, a USD/JPY chart reading linked to the first thing that matters, live economic-calendar rows with Asia/Europe/US session targeting, live Theme Radar source collection with fallback, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
 
 Locked defaults:
 

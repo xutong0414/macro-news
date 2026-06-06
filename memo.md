@@ -12,7 +12,7 @@ Live market dashboard rows are fetched asset by asset, with cached real-source r
 
 The 3 Things section is rendered with compact item sub-titles, the market reasoning first, the `So what:` portfolio implication as a smaller support line, and a deterministic Yahoo Finance topic-search link for readers who want related news. The LLM does not invent these links; code derives them from the selected item's theme.
 
-The single chart is a USD/JPY five-day line because the assumed book is long USD/JPY and intervention risk is one of the most direct portfolio risks. The brief labels the chart note as `Reading:` and, when the first narrative item is USD/JPY intervention risk, explicitly says the chart supports Thing 1. This keeps the visual tied to the portfolio story rather than making it feel like a generic market chart.
+The single chart is a USD/JPY five-day line because the assumed book is long USD/JPY and intervention risk is one of the most direct portfolio risks. The brief labels the chart note with bold `Reading:` text and says the chart supports the first thing that matters today. This keeps the visual tied to the portfolio story rather than making it feel like a generic market chart.
 
 Live calendar rows use a free weekly feed with forecast values treated as consensus estimates. The selector targets Asia, Europe, and US coverage when the feed contains usable events. Because public feeds can rate-limit during repeated tests, the prototype keeps a local ignored cache after successful pulls and falls back to sample calendar rows if no live or cached data is available.
 

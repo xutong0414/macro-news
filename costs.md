@@ -47,3 +47,4 @@ Plain sample mode records zero actual LLM tokens.
 | 2026-06-06 | `20260606T142216Z` | Three Things paragraph + read-more link dry run | 2,706 | 752 | $0.0005714 | Not sent |
 | 2026-06-06 | `20260606T143027Z` | Three Things subtitle layout dry run | 2,706 | 766 | $0.0005770 | Not sent |
 | 2026-06-06 | `20260606T144542Z` | USD/JPY chart reading dry run | 2,704 | 700 | $0.0005504 | Not sent |
+| 2026-06-06 | `20260606T145317Z` | Bold chart reading wording dry run | 2,707 | 697 | $0.0005495 | Not sent |

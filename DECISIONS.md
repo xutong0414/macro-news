@@ -278,8 +278,8 @@ Changes:
 
 - Rename the chart title to `USD/JPY in Five Days`.
 - Render the image alt text as `USD/JPY in Five Days`.
-- Render `Reading:` instead of `Caption:`.
-- When Thing 1 is `USD/JPY Intervention Risk`, state that the chart supports Thing 1 explicitly.
+- Render bold `Reading:` instead of `Caption:`.
+- State that the chart supports the first thing that matters today, with a `see above` cue.
 - Keep the chart reading code-owned rather than LLM-written.
 
-Outcome: full live dry run `20260606T144542Z` passed with the new chart title, `Reading:` label in Markdown/HTML, explicit Thing 1 link, prompt version `gemini_narrative_v7`, 9 live market rows, 1 cached S&P 500 row, 1 Germany 10Y scaffold fallback row, and delivery status `dry_run`.
+Outcome: full live dry run `20260606T145317Z` passed with the chart title, bold `Reading:` label in Markdown/HTML, first-thing support sentence, prompt version `gemini_narrative_v7`, 9 live market rows, 1 cached Euro Stoxx 50 row, 1 Germany 10Y scaffold fallback row, and delivery status `dry_run`.

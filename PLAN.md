@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-Chart-section revision is complete. The latest verified dry run (`20260606T144542Z`) keeps the full live prototype structure, renders the chart as `USD/JPY in Five Days`, replaces `Caption:` with `Reading:`, and explicitly states that the chart supports Thing 1 when the first narrative item is `USD/JPY Intervention Risk`.
+Chart-section revision is complete. The latest verified dry run (`20260606T145317Z`) keeps the full live prototype structure, renders the chart as `USD/JPY in Five Days`, replaces `Caption:` with bold `Reading:`, and states that the chart supports the first thing that matters today.
 
 ## Whose Turn
 
 Agent turn: wait for user review of the updated chart section in `outputs/latest/brief.html`.
 
-User turn: review the updated chart section in `outputs/latest/brief.html` for title, `Reading:` wording, and whether the explicit Thing 1 link feels natural.
+User turn: review the updated chart section in `outputs/latest/brief.html` for title, bold `Reading:` wording, and whether the first-thing reference feels natural.
 
 ## Locked Setup Choices
 
@@ -34,7 +34,7 @@ User turn: review the updated chart section in `outputs/latest/brief.html` for t
 - Brief quality role: render source-status notes, keep live/cache/scaffold fallback explicit, and use Gemini prompt v7 for sharper PM-facing narrative and portfolio-logic validation.
 - Dashboard note role: document dashboard scope, extraction time, close/prior basis, additional timing information, Frankfurter FX reference-rate convention, BTC rolling 24-hour convention, and linked data-source basis in the brief itself.
 - Three Things link role: render compact item sub-titles, smaller `So what:` support lines, and deterministic Yahoo Finance topic-search links; the LLM does not invent those links.
-- Chart role: use USD/JPY because it is the assumed FX position and the most direct visual support for the intervention-risk item; render the note as `Reading:` rather than `Caption:`.
+- Chart role: use USD/JPY because it is the assumed FX position and the most direct visual support for the intervention-risk item; render the note as bold `Reading:` rather than `Caption:`.
 
 ## Next Tasks
 

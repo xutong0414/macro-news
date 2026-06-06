@@ -51,7 +51,7 @@ def test_sample_brief_contains_required_sections() -> None:
     assert "momentum.\n\n**So what:** keep the FX view" in brief
     assert "**Read more:** [Yahoo Finance](https://finance.yahoo.com/search?p=USD+JPY+Japan+intervention+yield+spread)" in brief
     assert "![USD/JPY in Five Days](chart.png)" in brief
-    assert "Reading: This chart supports Thing 1, USD/JPY Intervention Risk." in brief
+    assert "**Reading:** This chart supports the first thing that matters today (see above)." in brief
     assert "Caption:" not in brief
     assert "EUR/USD" in brief
 
@@ -60,7 +60,7 @@ def test_sample_brief_html_renders_chart_reading_label() -> None:
     html = render_html(build_sample_brief_data())
 
     assert 'alt="USD/JPY in Five Days"' in html
-    assert '<p class="reading">Reading: This chart supports Thing 1, USD/JPY Intervention Risk.' in html
+    assert '<p class="reading"><strong>Reading:</strong> This chart supports the first thing that matters today (see above).' in html
     assert "Caption:" not in html
 
 

@@ -109,12 +109,8 @@ def _render_three_things_markdown(items: list[str]) -> str:
 
 
 def _chart_reading(data: BriefData) -> str:
-    first_title = _three_thing_title(data.three_things[0]) if data.three_things else ""
     caption = data.chart_caption.strip()
-    if first_title == "USD/JPY Intervention Risk":
-        prefix = "This chart supports Thing 1, USD/JPY Intervention Risk."
-    else:
-        prefix = "This chart tracks the assumed long USD/JPY position."
+    prefix = "This chart supports the first thing that matters today (see above)."
     return f"{prefix} {caption}" if caption else prefix
 
 
@@ -171,7 +167,7 @@ Dashboard notes:
 
 ![USD/JPY in Five Days](chart.png)
 
-Reading: {_chart_reading(data)}
+**Reading:** {_chart_reading(data)}
 
 ## Theme Radar
 
@@ -243,6 +239,8 @@ def render_html(data: BriefData, run_date: date | None = None) -> str:
             html_lines.append(f"<h3>{_inline_markdown_to_html(line[4:])}</h3>")
         elif line.startswith("!["):
             html_lines.append('<img src="chart.png" alt="USD/JPY in Five Days">')
+        elif line.startswith("**Reading:"):
+            html_lines.append(f'<p class="reading">{_bold_label_to_html(line)}</p>')
         elif line.startswith("Reading:"):
             html_lines.append(f'<p class="reading">{_inline_markdown_to_html(line)}</p>')
         elif line.startswith("Caption:"):
