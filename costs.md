@@ -12,7 +12,7 @@ Status: Gemini synthesis, Gmail delivery, live market rows, live calendar rows, 
 | Optional LLM | DeepSeek V4 Flash | Near zero for expected token volume | Optional comparison provider later. |
 | Email delivery | Gmail SMTP | $0 | Uses user's Gmail account and app password. |
 | Scheduler | MacBook launchd / GitHub Actions | $0 expected | MacBook `launchd` is proven locally; GitHub manual runs are useful, but GitHub scheduled triggers failed short-window proof. |
-| Market data | Yahoo / Frankfurter / CoinGecko | $0 initially | Current live dashboard sources are free/public and use sample fallback rows. |
+| Market data | Yahoo / Frankfurter / CoinGecko | $0 initially | Current live dashboard sources are free/public, with cached real-source fallback before sample fallback rows. |
 | Calendar data | Forex Factory / Fair Economy | $0 initially | Free weekly feed with local cache and sample fallback; can rate-limit during repeated tests. |
 | Theme sources | Liberty Street / Bank Underground / FRED Blog | $0 initially | Curated RSS feeds with source-level fallback. |
 | Hosting | Local MacBook for proof | $0 expected | Production should use an always-on Mac/workstation/VPS if precise scheduled delivery is required. |
@@ -37,3 +37,4 @@ Plain sample mode records zero actual LLM tokens.
 | 2026-06-06 | `20260606T053032Z` | Full live prototype + Gemini email smoke test | 1,773 | 677 | $0.0004481 | Sent |
 | 2026-06-06 | `20260606T103404Z` | MacBook launchd scheduled send proof | 1,770 | 706 | $0.0004594 | Sent |
 | 2026-06-06 | `20260606T122512Z` | Brief quality pass live dry run | 1,818 | 682 | $0.0004546 | Not sent |
+| 2026-06-06 | `20260606T130031Z` | Round 2 brief revision live dry run | 2,092 | 703 | $0.0004904 | Not sent |

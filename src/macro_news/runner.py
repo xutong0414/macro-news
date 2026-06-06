@@ -37,7 +37,7 @@ def run_brief(
     run_date = run_date or date.today()
     run_id = utc_run_id()
     data = build_sample_brief_data()
-    market_data_result = MarketDataResult(data=data, live_assets=[], fallback_assets=[], errors={}, sources=[])
+    market_data_result = MarketDataResult(data=data, live_assets=[], cached_assets=[], fallback_assets=[], errors={}, sources=[])
     calendar_data_result = CalendarDataResult(data=data, live_events=[], fallback_events=[], errors={}, sources=[])
     theme_data_result = ThemeDataResult(data=data, selected_titles=[], candidate_count=0, fallback_used=False, errors={}, sources=[])
     token_usage = ZERO_TOKEN_USAGE
@@ -99,6 +99,7 @@ def run_brief(
         "market_data": {
             "mode": "live_with_fallback" if live_market_data else "sample",
             "live_assets": market_data_result.live_assets,
+            "cached_assets": market_data_result.cached_assets,
             "fallback_assets": market_data_result.fallback_assets,
             "errors": market_data_result.errors,
             "sources": market_data_result.sources,

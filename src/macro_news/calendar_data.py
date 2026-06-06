@@ -35,6 +35,8 @@ CURRENCY_SESSION = {
     "USD": "US",
 }
 
+REQUIRED_SESSIONS = ("Asia", "Europe", "US")
+
 
 @dataclass(frozen=True)
 class CalendarDataResult:
@@ -84,6 +86,28 @@ def _why_it_matters(title: str, currency: str, impact: str) -> str:
     if impact == "High":
         return f"High-impact {currency} event for rates, FX, and risk appetite."
     return f"{currency} macro event to keep on the radar."
+
+
+def _has_forecast(raw_event: dict) -> bool:
+    return bool(_clean_text(raw_event.get("forecast")))
+
+
+def _is_policy_event(raw_event: dict) -> bool:
+    title = _clean_text(raw_event.get("title")).lower()
+    return any(word in title for word in ("speaks", "speech", "fed", "fomc", "ecb", "boe", "boj", "rba", "rate decision"))
+
+
+def _is_usable_event(raw_event: dict) -> bool:
+    if not isinstance(raw_event, dict):
+        return False
+    impact = _clean_text(raw_event.get("impact"))
+    if impact not in IMPACT_SCORE:
+        return False
+    return _has_forecast(raw_event) or _is_policy_event(raw_event) or impact in {"High", "Medium"}
+
+
+def _session_for_event(raw_event: dict) -> str:
+    return _session_for_currency(_clean_text(raw_event.get("country")).upper())
 
 
 def _event_identity(event: CalendarEvent) -> tuple[str, str, str]:
@@ -141,7 +165,8 @@ def _event_sort_key(
     is_future = local_time >= reference_now if reference_now is not None else days_from_run >= 0
     future_penalty = 0 if is_future else 1
     impact = _clean_text(raw_event.get("impact"))
-    return (future_penalty, abs(days_from_run), -IMPACT_SCORE.get(impact, 0), local_time)
+    forecast_or_policy_penalty = 0 if _has_forecast(raw_event) or _is_policy_event(raw_event) else 1
+    return (future_penalty, forecast_or_policy_penalty, abs(days_from_run), -IMPACT_SCORE.get(impact, 0), local_time)
 
 
 def _select_events(
@@ -152,30 +177,27 @@ def _select_events(
     reference_now: datetime | None = None,
     max_events: int = 4,
 ) -> list[CalendarEvent]:
-    def has_forecast_or_is_policy(raw_event: dict) -> bool:
-        title = _clean_text(raw_event.get("title")).lower()
-        return bool(_clean_text(raw_event.get("forecast"))) or any(word in title for word in ("speaks", "speech", "fed", "ecb", "boe", "boj", "rba"))
-
-    groups = [
-        lambda item: _is_upcoming(item, run_date, timezone_name, reference_now) and _clean_text(item.get("impact")) in {"High", "Medium"},
-        lambda item: _is_upcoming(item, run_date, timezone_name, reference_now),
-        lambda item: _clean_text(item.get("impact")) in {"High", "Medium"} and has_forecast_or_is_policy(item),
-        lambda item: has_forecast_or_is_policy(item),
-    ]
-
+    usable_events = [item for item in raw_events if _is_usable_event(item)]
     selected: list[CalendarEvent] = []
     seen: set[tuple[str, str, str]] = set()
-    for group_index, group in enumerate(groups):
-        candidates = [item for item in raw_events if isinstance(item, dict) and group(item)]
+
+    def add_event(raw_event: dict) -> bool:
+        event = _raw_event_to_calendar_event(raw_event, timezone_name, run_date, reference_now)
+        if event is None or _event_identity(event) in seen:
+            return False
+        selected.append(event)
+        seen.add(_event_identity(event))
+        return len(selected) >= max_events
+
+    for session in REQUIRED_SESSIONS:
+        candidates = [item for item in usable_events if _session_for_event(item) == session]
         for raw_event in sorted(candidates, key=lambda item: _event_sort_key(item, run_date, timezone_name, reference_now)):
-            event = _raw_event_to_calendar_event(raw_event, timezone_name, run_date, reference_now)
-            if event is None or _event_identity(event) in seen:
-                continue
-            selected.append(event)
-            seen.add(_event_identity(event))
-            if len(selected) >= max_events:
+            if add_event(raw_event):
                 return selected
-        if group_index == 1 and selected:
+            break
+
+    for raw_event in sorted(usable_events, key=lambda item: _event_sort_key(item, run_date, timezone_name, reference_now)):
+        if add_event(raw_event):
             return selected
     return selected
 
@@ -282,9 +304,9 @@ def replace_calendar_with_live(
 
     sources.append(fetch_result.source)
     if fetch_result.refresh_error:
-        calendar_note = "Calendar: cached Fair Economy weekly feed used after live refresh failed."
+        calendar_note = "Calendar: cached Fair Economy weekly feed used after live refresh failed; selector still targets Asia/Europe/US coverage when available."
     else:
-        calendar_note = "Calendar: live Fair Economy weekly feed used; same-day events are labeled and next-session items are marked when included."
+        calendar_note = "Calendar: live Fair Economy weekly feed used; selector targets Asia/Europe/US coverage and labels same-day, next-session, or nearest source-week events."
     updated = replace(
         data,
         calendar=calendar,

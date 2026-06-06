@@ -6,7 +6,7 @@ The target reader is a macro PM who wants: what changed overnight, why it matter
 
 ## Current Status
 
-Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows, live economic-calendar rows, live Theme Radar source collection with fallback, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
+Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows, cached real-source market fallback, live economic-calendar rows with Asia/Europe/US session targeting, live Theme Radar source collection with fallback, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
 
 Locked defaults:
 
@@ -104,12 +104,12 @@ Required for Gemini synthesis:
 Market data mode:
 
 - `MARKET_DATA_MODE=sample` keeps the dashboard fully deterministic.
-- `MARKET_DATA_MODE=live` fetches live dashboard rows where available and falls back to sample rows asset by asset.
+- `MARKET_DATA_MODE=live` fetches live dashboard rows where available, uses cached real-source rows for temporary outages, and falls back to sample rows asset by asset only when neither live nor cached data is available.
 
 Calendar data mode:
 
 - `CALENDAR_MODE=sample` keeps the calendar deterministic.
-- `CALENDAR_MODE=live` fetches the weekly economic calendar where available, uses a local ignored cache after successful pulls, and falls back to sample rows if the public feed is unavailable or rate-limited.
+- `CALENDAR_MODE=live` fetches the weekly economic calendar where available, targets Asia/Europe/US session coverage, uses a local ignored cache after successful pulls, and falls back to sample rows if the public feed is unavailable or rate-limited.
 
 Theme source mode:
 
@@ -136,11 +136,13 @@ The market dashboard currently uses:
 - Yahoo Finance chart endpoint for broad equity, rate, dollar, gold, and oil instruments.
 - Frankfurter for USD/JPY.
 - CoinGecko for BTC.
-- Sample fallback rows when a source fails or is not yet connected.
+- Cached real-source rows when a temporary source outage occurs.
+- Sample fallback rows when a source fails and no cached real-source row exists.
 
 The calendar currently uses:
 
 - Forex Factory/Fair Economy weekly JSON feed for event names, impact, forecast/consensus, and previous values.
+- Session-aware selection that targets Asia, Europe, and US coverage when the feed contains usable events.
 - Local ignored cache under `.cache/calendar/` after successful pulls.
 - Sample fallback rows when the feed fails or is rate-limited.
 

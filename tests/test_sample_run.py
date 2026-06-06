@@ -217,9 +217,14 @@ class FakeMarketClient:
         raise AssertionError(f"Unexpected URL: {url} {params}")
 
 
-def test_live_market_data_replaces_rows_and_logs_fallback() -> None:
+def test_live_market_data_replaces_rows_and_logs_fallback(tmp_path) -> None:
     base = build_sample_brief_data()
-    result = replace_market_rows_with_live(base, run_date=date(2026, 6, 6), client_factory=FakeMarketClient)
+    result = replace_market_rows_with_live(
+        base,
+        run_date=date(2026, 6, 6),
+        cache_path=tmp_path / "market.json",
+        client_factory=FakeMarketClient,
+    )
 
     row_by_asset = {row.asset: row for row in result.data.market_rows}
 
@@ -232,6 +237,40 @@ def test_live_market_data_replaces_rows_and_logs_fallback() -> None:
     assert "DXY" in result.fallback_assets
     assert "DXY" in result.errors
     assert "yahoo_chart:^GSPC" in result.sources
+    assert result.cached_assets == []
+
+
+class FailingMarketClient(FakeMarketClient):
+    def get(self, url, params=None):
+        if "finance/chart" in url:
+            raise RuntimeError("simulated market outage")
+        return super().get(url, params=params)
+
+
+def test_live_market_data_uses_cached_real_rows_before_scaffold(tmp_path) -> None:
+    base = build_sample_brief_data()
+    cache_path = tmp_path / "market.json"
+
+    first = replace_market_rows_with_live(
+        base,
+        run_date=date(2026, 6, 6),
+        cache_path=cache_path,
+        client_factory=FakeMarketClient,
+    )
+    second = replace_market_rows_with_live(
+        base,
+        run_date=date(2026, 6, 6),
+        cache_path=cache_path,
+        client_factory=FailingMarketClient,
+    )
+
+    second_rows = {row.asset: row for row in second.data.market_rows}
+
+    assert first.live_assets
+    assert "S&P 500" in second.cached_assets
+    assert second_rows["S&P 500"].close == "102.00"
+    assert "S&P 500" not in second.fallback_assets
+    assert "DXY" in second.fallback_assets
 
 
 class FakeCalendarClient:

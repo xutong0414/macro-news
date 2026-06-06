@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import json
 import math
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from datetime import date, timedelta
+from pathlib import Path
 from typing import Callable
 
 import httpx
 
 from .sample_data import BriefData, MarketRow
+
+MARKET_CACHE_PATH = Path(".cache") / "market" / "live_quotes.json"
 
 
 @dataclass(frozen=True)
@@ -27,6 +31,7 @@ class LiveQuote:
 class MarketDataResult:
     data: BriefData
     live_assets: list[str]
+    cached_assets: list[str]
     fallback_assets: list[str]
     errors: dict[str, str]
     sources: list[str]
@@ -93,11 +98,21 @@ def quote_to_row(quote: LiveQuote) -> MarketRow:
 
 
 def fetch_yahoo_chart(client: httpx.Client, spec: YahooSpec) -> LiveQuote:
-    response = client.get(
-        f"https://query2.finance.yahoo.com/v8/finance/chart/{spec.symbol}",
-        params={"range": "5d", "interval": "1d"},
-    )
-    response.raise_for_status()
+    response = None
+    last_error: Exception | None = None
+    for host in ("query2.finance.yahoo.com", "query1.finance.yahoo.com"):
+        try:
+            response = client.get(
+                f"https://{host}/v8/finance/chart/{spec.symbol}",
+                params={"range": "5d", "interval": "1d"},
+            )
+            response.raise_for_status()
+            break
+        except Exception as exc:  # noqa: BLE001 - alternate Yahoo host is intentional.
+            last_error = exc
+            response = None
+    if response is None:
+        raise RuntimeError(f"Yahoo chart request failed: {last_error}") from last_error
     payload = response.json()
     result = payload.get("chart", {}).get("result", [])
     if not result:
@@ -115,6 +130,44 @@ def fetch_yahoo_chart(client: httpx.Client, spec: YahooSpec) -> LiveQuote:
         change_style=spec.change_style,
         source=spec.source,
         so_what=spec.so_what,
+    )
+
+
+def _read_market_cache(cache_path: Path) -> dict[str, LiveQuote]:
+    if not cache_path.exists():
+        return {}
+    try:
+        raw_cache = json.loads(cache_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(raw_cache, dict):
+        return {}
+    quotes: dict[str, LiveQuote] = {}
+    for asset, item in raw_cache.items():
+        if not isinstance(item, dict):
+            continue
+        try:
+            quotes[asset] = LiveQuote(
+                asset=str(item["asset"]),
+                close=float(item["close"]),
+                prior=float(item["prior"]),
+                unit=str(item["unit"]),
+                decimals=int(item["decimals"]),
+                change_style=str(item["change_style"]),
+                source=str(item["source"]),
+                so_what=str(item["so_what"]),
+                series=tuple((str(label), float(value)) for label, value in item.get("series", [])),
+            )
+        except (KeyError, TypeError, ValueError):
+            continue
+    return quotes
+
+
+def _write_market_cache(cache_path: Path, quotes: dict[str, LiveQuote]) -> None:
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    cache_path.write_text(
+        json.dumps({asset: asdict(quote) for asset, quote in quotes.items()}, indent=2),
+        encoding="utf-8",
     )
 
 
@@ -176,6 +229,7 @@ def replace_market_rows_with_live(
     data: BriefData,
     *,
     run_date: date,
+    cache_path: Path = MARKET_CACHE_PATH,
     client_factory: Callable[[], httpx.Client] | None = None,
 ) -> MarketDataResult:
     client_factory = client_factory or (
@@ -188,9 +242,12 @@ def replace_market_rows_with_live(
 
     fallback_by_asset = {row.asset: row for row in data.market_rows}
     target_order = ["S&P 500", "Euro Stoxx 50", "US 10Y yield", "Germany 10Y yield", "DXY", "USD/JPY", "Gold", "WTI oil", "BTC"]
+    cached_quotes = _read_market_cache(cache_path)
+    cache_updates = dict(cached_quotes)
     live_rows: dict[str, MarketRow] = {}
     live_chart_series: list[tuple[str, float]] | None = None
     live_assets: list[str] = []
+    cached_assets: list[str] = []
     fallback_assets: list[str] = []
     errors: dict[str, str] = {}
     sources: list[str] = []
@@ -206,15 +263,27 @@ def replace_market_rows_with_live(
             try:
                 quote = fetcher()
             except Exception as exc:  # noqa: BLE001 - logged fallback is intentional here.
-                if asset in fallback_by_asset:
+                cached_quote = cached_quotes.get(asset)
+                if cached_quote is not None:
+                    live_rows[asset] = quote_to_row(cached_quote)
+                    cached_assets.append(asset)
+                    sources.append(f"{cached_quote.source}:cache")
+                    if cached_quote.asset == "USD/JPY" and cached_quote.series:
+                        live_chart_series = list(cached_quote.series)
+                    errors[asset] = str(exc)
+                elif asset in fallback_by_asset:
                     fallback_assets.append(asset)
                     errors[asset] = str(exc)
                 continue
             live_rows[asset] = quote_to_row(quote)
             live_assets.append(asset)
             sources.append(quote.source)
+            cache_updates[asset] = quote
             if quote.asset == "USD/JPY" and quote.series:
                 live_chart_series = list(quote.series)
+
+    if live_assets:
+        _write_market_cache(cache_path, cache_updates)
 
     merged_rows: list[MarketRow] = []
     for asset in target_order:
@@ -230,17 +299,21 @@ def replace_market_rows_with_live(
             merged_rows.append(row)
 
     total_assets = len(merged_rows)
-    if fallback_assets:
-        market_note = (
-            f"Market: live public sources refreshed {len(live_assets)}/{total_assets} dashboard rows; "
-            f"scaffold fallback used for {', '.join(fallback_assets)}."
-        )
+    if fallback_assets or cached_assets:
+        status_parts = [f"live public sources refreshed {len(live_assets)}/{total_assets} dashboard rows"]
+        if cached_assets:
+            status_parts.append(f"cached real-source rows used for {', '.join(cached_assets)}")
+        if fallback_assets:
+            status_parts.append(f"scaffold fallback used for {', '.join(fallback_assets)}")
+        else:
+            status_parts.append("no scaffold fallback rows used")
+        market_note = f"Market: {'; '.join(status_parts)}."
     else:
         market_note = f"Market: all {total_assets} dashboard rows refreshed from live public sources."
 
     assumptions = [
         *data.assumptions,
-        "Market dashboard uses public live sources where available and row-level scaffold fallback for unavailable assets.",
+        "Market dashboard uses public live sources where available, cached real-source rows for temporary outages, and scaffold fallback only when neither is available.",
     ]
     updated = replace(
         data,
@@ -253,6 +326,7 @@ def replace_market_rows_with_live(
     return MarketDataResult(
         data=updated,
         live_assets=live_assets,
+        cached_assets=cached_assets,
         fallback_assets=fallback_assets,
         errors=errors,
         sources=sources,

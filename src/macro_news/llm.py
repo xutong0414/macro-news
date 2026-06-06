@@ -10,7 +10,7 @@ from .config import Settings
 from .costing import TokenUsage, estimate_llm_cost_usd
 from .sample_data import BriefData, ThemeItem
 
-PROMPT_VERSION = "gemini_narrative_v3"
+PROMPT_VERSION = "gemini_narrative_v4"
 
 
 @dataclass(frozen=True)
@@ -59,6 +59,14 @@ def _normalize_book_impact(text: str) -> str:
     return f"{prefix} {stripped}"
 
 
+def _reject_generic_theme_language(summary: str, idx: int) -> None:
+    lowered = summary.lower()
+    banned_phrases = ("the article explores", "this piece explores", "this analysis examines", "it posits", "this is relevant")
+    for phrase in banned_phrases:
+        if phrase in lowered:
+            raise ValueError(f"theme_radar summary {idx} uses generic phrasing: {phrase}")
+
+
 def build_narrative_prompt(data: BriefData) -> str:
     facts = {
         "market_dashboard": [asdict(row) for row in data.market_rows],
@@ -87,12 +95,12 @@ def build_narrative_prompt(data: BriefData) -> str:
         '  "contrarian_corner": "string"\n'
         "}\n\n"
         "Constraints:\n"
-        "- Each item in three_things must be 80 words or fewer and include a clear 'So what:' clause.\n"
+        "- Each item in three_things must be 80 words or fewer and include a clear 'So what:' clause tied to the assumed book.\n"
         "- theme_radar must contain 1-3 items and reuse the provided title, source, and link values.\n"
-        "- Each theme_radar summary must be 60-100 words and explain the author's thesis and evidence without saying 'this is relevant'.\n"
+        "- Each theme_radar summary must be 60-100 words and explain the author's thesis and evidence without generic openers like 'this piece explores', 'this analysis examines', or 'it posits'.\n"
         "- Each book_impact line must start with 'What this means for our book:' and must be specific to that source.\n"
         "- Do not repeat the same book_impact line across Theme Radar items.\n"
-        "- contrarian_corner must be 50-100 words and include one trigger that would challenge the consensus read.\n\n"
+        "- contrarian_corner must be 50-100 words, name the consensus narrative, and include one concrete trigger that would challenge it.\n\n"
         f"Facts:\n{json.dumps(facts, indent=2)}"
     )
 
@@ -128,6 +136,7 @@ def parse_narrative_response(text: str, base_data: BriefData) -> BriefData:
         if (title, source, link) not in allowed_theme_meta:
             raise ValueError(f"theme_radar item {idx} must reuse an existing title, source, and link")
         _require_word_range(f"theme_radar summary {idx}", summary, 60, 100)
+        _reject_generic_theme_language(summary, idx)
         impact_key = book_impact.lower()
         if impact_key in seen_book_impacts:
             raise ValueError("theme_radar book_impact lines must not repeat exactly")
@@ -215,6 +224,7 @@ def synthesize_with_gemini(settings: Settings, data: BriefData) -> SynthesisResu
                 f"The previous JSON failed validation because: {exc}.\n"
                 "Return the full JSON object again. Be especially careful that every theme_radar summary is 60-100 words."
                 " Also ensure Theme Radar book_impact lines are source-specific and not repeated."
+                " Avoid generic phrases such as 'this piece explores', 'this analysis examines', 'it posits', or 'this is relevant'."
             )
 
     if generated_data is None:

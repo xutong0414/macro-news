@@ -186,3 +186,19 @@ Changes:
 - Prefer Theme Radar source diversity by source and matched theme, including a credit-conditions rule.
 
 Outcome: live dry run `20260606T122512Z` passed with all six sections, chart output, source notes in the log, prompt version `gemini_narrative_v3`, and no contradictory live/sample assumption text.
+
+## 2026-06-06 - Round 2 Brief Revision
+
+Decision: revise the brief against the PDF requirements before memo finalization.
+
+Reason: the Round 1 audit found that the framework was sound, but evaluator-facing risks remained in calendar coverage, market fallback presentation, and generic narrative style.
+
+Changes:
+
+- Calendar selector now targets Asia, Europe, and US coverage when the live weekly feed contains usable events.
+- Weekend or thin-feed runs may include nearest source-week events, clearly labeled by date or same-day status, instead of collapsing to one US event.
+- Market source handling now uses cached real-source rows before scaffold fallback when public endpoints temporarily fail.
+- Market logs and Source Status now distinguish live rows, cached real-source rows, and scaffold fallback rows.
+- Gemini prompt upgraded to v4 and rejects generic Theme Radar phrases such as `this piece explores` or `this analysis examines`.
+
+Outcome: live dry run `20260606T130031Z` passed with all six sections, Asia/Europe/US calendar rows, 7 live market rows, 1 cached real-source market row, 1 scaffold fallback row, chart output, prompt version `gemini_narrative_v4`, and all assignment word limits satisfied.

@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-Brief quality pass is complete after scheduler proof. The latest live dry run (`20260606T122512Z`) uses Gemini prompt v3, shows source-status notes, labels next-session calendar items clearly, removes contradictory live/sample assumptions, and renders the chart successfully.
+Round 2 brief revision is complete after the PDF-aligned audit. The latest live dry run (`20260606T130031Z`) uses Gemini prompt v4, covers Asia/Europe/US calendar sessions, uses cached real-source market rows before scaffold fallback, shows source-status notes, and renders the chart successfully.
 
 ## Whose Turn
 
-Agent turn: commit and push the brief quality pass.
+Agent turn: commit and push the Round 2 revision.
 
-User turn: review the latest `outputs/latest/brief.md` or `outputs/latest/brief.html` and decide whether to continue data-source improvements or move to memo/finalization.
+User turn: review the latest `outputs/latest/brief.md` or `outputs/latest/brief.html` for PM-quality taste and decide whether to run another content revision or move to memo/finalization.
 
 ## Locked Setup Choices
 
@@ -27,21 +27,20 @@ User turn: review the latest `outputs/latest/brief.md` or `outputs/latest/brief.
 - First run mode: sample data only.
 - Private process notes: keep in ignored `.worklog/`, then delete before final handoff.
 - LLM role: draft narrative sections only; code owns facts, tables, chart, validation, and logging.
-- Market data role: fetch live dashboard rows where available; fall back to sample rows per asset and log status.
-- Calendar data role: fetch live economic-calendar rows where available; use ignored cache and sample fallback if the public feed fails or rate-limits.
+- Market data role: fetch live dashboard rows where available; use cached real-source rows for temporary outages; fall back to sample rows only when neither live nor cached data is available.
+- Calendar data role: fetch live economic-calendar rows where available; target Asia/Europe/US session coverage; use ignored cache and sample fallback if the public feed fails or rate-limits.
 - Theme Radar role: fetch curated RSS sources, rank them against the assumed book/themes, and let Gemini synthesize only selected source facts.
 - LLM validation role: retry once when Gemini output fails strict JSON or word-limit validation.
-- Brief quality role: render source-status notes, keep live/scaffold fallback explicit, and use Gemini prompt v3 for sharper PM-facing narrative.
+- Brief quality role: render source-status notes, keep live/cache/scaffold fallback explicit, and use Gemini prompt v4 for sharper PM-facing narrative.
 
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. Review whether the latest brief is assignment-ready enough to start final memo writing.
-3. Improve live data source coverage for Germany 10Y and intermittent Yahoo timeouts.
-4. Add a second calendar provider if the free feed remains thin or rate-limited.
-5. Improve Theme Radar source diversity if any RSS feed is slow or unavailable.
-6. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.
-7. Generate final `memo.pdf` from `memo.md`.
+2. Review whether the latest Round 2 brief is assignment-ready enough to start final memo writing.
+3. Improve live data source coverage for Germany 10Y if we want to reduce the last scaffold market row.
+4. Add a second calendar provider if the free weekly feed remains thin or stale outside weekday windows.
+5. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.
+6. Generate final `memo.pdf` from `memo.md`.
 
 ## Blockers
 
