@@ -146,4 +146,22 @@ Update: the exact-minute test and guarded scheduled-send test did not trigger du
 
 Second update: because scheduled delivery is a core requirement, add a temporary scheduled email proof for 2026-06-06 17:40-18:15 Hong Kong time. The workflow tries every five minutes in that window and checks for prior successful proof runs so it sends at most once.
 
+Checkpoint: GitHub recognized the temporary proof workflow as active, but API checks at 2026-06-06 17:48 and 17:52 Hong Kong time still showed zero scheduled runs. This suggests the current issue is GitHub's scheduled trigger, not Python, Gemini, or Gmail delivery.
+
 Follow-up: remove the temporary workflow or replace it with the permanent weekday schedule after confirmation.
+
+## 2026-06-06 - Scheduler Fallback Strategy
+
+Decision: add a local/server scheduler path alongside GitHub Actions.
+
+Reason: manual GitHub workflow execution and email delivery are confirmed, but GitHub scheduled triggers have not fired in short-window tests. Scheduled delivery is core to the assignment, so the project needs a scheduler path that can be controlled directly.
+
+Supported paths:
+
+- macOS `launchd` for an always-on Mac.
+- Linux `cron` or `systemd` for a workstation or VPS.
+- Cloud scheduler triggering a GitHub manual workflow or deployed endpoint.
+
+Default operational recommendation: start the job around 07:15 Hong Kong time for a 07:30 inbox target, then adjust earlier if measured runtime grows.
+
+Tradeoff: local/server scheduling requires the machine or server to be on. GitHub Actions does not require a local machine, but its schedule trigger is less controllable and is currently unproven in this repo.

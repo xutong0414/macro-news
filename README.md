@@ -6,7 +6,7 @@ The target reader is a macro PM who wants: what changed overnight, why it matter
 
 ## Current Status
 
-Stage: local agent loop with Gemini synthesis, Gmail delivery, live market rows, live economic-calendar rows, and live Theme Radar source collection with fallback.
+Stage: local agent loop with Gemini synthesis, Gmail delivery, live market rows, live economic-calendar rows, live Theme Radar source collection with fallback, and GitHub manual-send automation. Scheduled delivery is under proof; short-window GitHub schedule tests have not yet produced scheduled runs, so a local/server scheduler path is documented.
 
 Locked defaults:
 
@@ -194,6 +194,18 @@ The temporary scheduled email proof workflow tests actual scheduled delivery:
 - Should be removed or replaced after confirmation.
 
 The next workflow step is either a scheduled email-send workflow after the send time is confirmed, or an external scheduler if precise timing is required.
+
+## Scheduling
+
+See `docs/scheduling.md` for the scheduler plan.
+
+Key idea: the brief command is proven, but a separate scheduler must wake it. Manual GitHub send is confirmed; GitHub scheduled events are still unproven in short-window tests. For dependable daily delivery, use an always-on Mac with `launchd`, a Linux workstation/VPS with `cron` or `systemd`, or a cloud scheduler.
+
+The reusable scheduler command is:
+
+```bash
+/bin/bash /ABSOLUTE/PATH/TO/macro_news/scripts/run_daily_brief.sh
+```
 
 ## Repo Control Files
 
