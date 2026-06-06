@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-GitHub live dry-run workflow is confirmed. Adding a manual GitHub email-send workflow that sends only after explicit confirmation.
+GitHub manual email-send workflow is confirmed: the workflow passed and the user received the email.
 
 ## Whose Turn
 
-Agent turn: add and push the manual email-send workflow.
+Agent turn: record the manual-send confirmation and prepare the scheduled-send step.
 
-User turn: after the workflow is pushed, run `Daily Brief Manual Send` manually, type `SEND`, and confirm that the email arrives.
+User turn: confirm whether to enable automatic weekday scheduling, and confirm the preferred send time.
 
 ## Locked Setup Choices
 
@@ -19,6 +19,7 @@ User turn: after the workflow is pushed, run `Daily Brief Manual Send` manually,
 - GitHub Actions first stage: sample dry-run workflow first, no secrets or email.
 - GitHub Actions second stage: manual live dry-run workflow with secrets, still no email.
 - GitHub Actions third stage: manual email-send workflow with a `SEND` confirmation input.
+- GitHub Actions fourth stage: scheduled email-send workflow after explicit timing confirmation.
 - First run mode: sample data only.
 - Private process notes: keep in ignored `.worklog/`, then delete before final handoff.
 - LLM role: draft narrative sections only; code owns facts, tables, chart, validation, and logging.
@@ -30,8 +31,8 @@ User turn: after the workflow is pushed, run `Daily Brief Manual Send` manually,
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. Confirm the manual GitHub email-send workflow delivers one real email.
-3. Add a separate scheduled email-send workflow only after manual send confirmation.
+2. Confirm the automatic weekday send time, currently proposed as 07:30 Hong Kong time.
+3. Add a separate scheduled email-send workflow after timing confirmation.
 4. Improve calendar source reliability or add a second source if the free feed remains rate-limited.
 5. Improve live data source coverage for Germany 10Y and any assets with intermittent Yahoo failures.
 6. Improve Theme Radar source diversity if any RSS feed is slow or unavailable.

@@ -184,7 +184,7 @@ The third workflow sends one real live brief only when manually confirmed:
 - Sends one live-source email brief.
 - Uploads generated outputs/logs as workflow artifacts.
 
-The next workflow step is a scheduled email-send workflow after the manual send is confirmed.
+The next workflow step is a scheduled email-send workflow after the send time is confirmed.
 
 ## Repo Control Files
 

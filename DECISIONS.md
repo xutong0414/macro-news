@@ -131,3 +131,5 @@ Decision: add a manual email-send workflow before any scheduled send workflow, w
 Reason: email delivery should be proven from GitHub Actions, but only when the user explicitly triggers it. The confirmation input reduces accidental sends while preserving a simple one-click test path.
 
 Tradeoff: this adds one small manual step before sending, but it keeps the workflow controlled.
+
+Outcome: confirmed on GitHub Actions; the workflow passed and the user received the email.
