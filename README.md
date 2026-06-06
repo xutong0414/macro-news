@@ -152,7 +152,19 @@ Theme Radar currently uses:
 - Keyword scoring against the assumed book and house themes.
 - Sample fallback items when no relevant source candidates are found.
 
-The next missing piece is GitHub remote setup, then GitHub Actions scheduling.
+## GitHub Actions
+
+The first workflow is intentionally safe:
+
+- `.github/workflows/daily-brief-dry-run.yml`
+- Runs on manual trigger and weekday schedule.
+- Installs dependencies.
+- Runs tests.
+- Generates a sample dry-run brief.
+- Uploads generated outputs/logs as workflow artifacts.
+- Uses no secrets and sends no email.
+
+The next workflow step is adding GitHub Secrets and a separate full email-send workflow.
 
 ## Repo Control Files
 

@@ -6,9 +6,9 @@ Local agent loop with Gemini synthesis, Gmail delivery, live market rows, live e
 
 ## Whose Turn
 
-Agent turn: GitHub remote is configured and `main` is pushed.
+Agent turn: safe GitHub Actions dry-run workflow is being added and pushed.
 
-User turn: review the GitHub repo and decide when to add GitHub Actions scheduling/secrets.
+User turn: check the GitHub Actions tab after the workflow is pushed, then decide when to add secrets for full email scheduling.
 
 ## Locked Setup Choices
 
@@ -16,6 +16,7 @@ User turn: review the GitHub repo and decide when to add GitHub Actions scheduli
 - LLM: Gemini 2.5 Flash-Lite default.
 - DeepSeek: optional provider later.
 - GitHub: remote created and `main` pushed.
+- GitHub Actions first stage: sample dry-run workflow first, no secrets or email.
 - First run mode: sample data only.
 - Private process notes: keep in ignored `.worklog/`, then delete before final handoff.
 - LLM role: draft narrative sections only; code owns facts, tables, chart, validation, and logging.
@@ -27,7 +28,7 @@ User turn: review the GitHub repo and decide when to add GitHub Actions scheduli
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. Add GitHub Actions schedule after live/local send works.
+2. Confirm the safe GitHub Actions dry-run passes on GitHub.
 3. Add GitHub Secrets for Gemini and Gmail SMTP when scheduling is ready.
 4. Improve calendar source reliability or add a second source if the free feed remains rate-limited.
 5. Improve live data source coverage for Germany 10Y and any assets with intermittent Yahoo failures.

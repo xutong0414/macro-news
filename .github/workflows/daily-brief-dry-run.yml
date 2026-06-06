@@ -1,0 +1,53 @@
+name: Daily Brief Dry Run
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 07:30 Hong Kong time, Monday-Friday. GitHub schedules use UTC.
+    - cron: "30 23 * * 0-4"
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    name: Test And Generate Sample Brief
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Run tests
+        run: pytest -q
+
+      - name: Generate sample brief
+        env:
+          BRIEF_TIMEZONE: Asia/Hong_Kong
+          BRIEF_RUN_MODE: sample
+          MARKET_DATA_MODE: sample
+          CALENDAR_MODE: sample
+          THEME_SOURCE_MODE: sample
+        run: macro-news run --dry-run
+
+      - name: Upload dry-run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-brief-dry-run
+          path: |
+            outputs/latest/
+            outputs/archive/
+            logs/
+          if-no-files-found: ignore
