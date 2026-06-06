@@ -1,0 +1,27 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Local Python state
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Generated run outputs
+outputs/*
+!outputs/.gitkeep
+logs/*
+!logs/.gitkeep
+.cache/
+
+# Local artifacts
+.DS_Store
+
+# Keep the assignment PDF local unless explicitly approved for release.
+Case_Study__Daily_Macro_Brief_Agent.pdf
+
