@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-GitHub manual email-send workflow is confirmed. GitHub scheduled triggers failed short-window tests, but a MacBook `launchd` one-shot scheduled send succeeded on 2026-06-06 at 18:34 Hong Kong/Singapore time. Controlled local/server scheduling is now the proven scheduled-delivery path.
+GitHub manual email-send workflow is confirmed. GitHub scheduled triggers failed short-window tests, but a MacBook `launchd` one-shot scheduled send succeeded on 2026-06-06 at 18:34 Hong Kong/Singapore time and the user confirmed receipt. Controlled local/server scheduling is now the proven scheduled-delivery path.
 
 ## Whose Turn
 
-Agent turn: record the successful MacBook `launchd` scheduler proof and keep the temporary test job removed.
+Agent turn: prepare the next implementation stage after scheduler proof.
 
-User turn: confirm the 18:34 MacBook-scheduled email arrived, and switch the GitHub repo back to private unless public access is still needed.
+User turn: decide whether to install a permanent weekday MacBook `launchd` schedule now or continue improving the brief/data sources first.
 
 ## Locked Setup Choices
 
@@ -22,7 +22,8 @@ User turn: confirm the 18:34 MacBook-scheduled email arrived, and switch the Git
 - GitHub Actions fourth stage: scheduled email-send workflow is not treated as reliable after short-window scheduler tests created zero scheduled runs.
 - Temporary scheduled proof: removed after the 2026-06-06 17:40-18:15 HKT window produced zero scheduled runs.
 - Scheduler fallback: document and support local/server scheduling with `scripts/run_daily_brief.sh`, macOS `launchd`, Linux `cron`, and cloud-scheduler options.
-- MacBook scheduler proof: `launchd` ran the send command once at 2026-06-06 18:34 HKT/SGT and reported delivery status `sent`; the temporary LaunchAgent was unloaded and removed.
+- MacBook scheduler proof: `launchd` ran the send command once at 2026-06-06 18:34 HKT/SGT, reported delivery status `sent`, and the user confirmed inbox receipt; the temporary LaunchAgent was unloaded and removed.
+- GitHub visibility: repo returned to private after the public API inspection window.
 - First run mode: sample data only.
 - Private process notes: keep in ignored `.worklog/`, then delete before final handoff.
 - LLM role: draft narrative sections only; code owns facts, tables, chart, validation, and logging.
@@ -34,8 +35,8 @@ User turn: confirm the 18:34 MacBook-scheduled email arrived, and switch the Git
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. Confirm the user received the MacBook-scheduled email.
-3. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.
+2. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.
+3. Continue improving the live brief quality before final memo writing.
 4. Improve calendar source reliability or add a second source if the free feed remains rate-limited.
 5. Improve live data source coverage for Germany 10Y and any assets with intermittent Yahoo failures.
 6. Improve Theme Radar source diversity if any RSS feed is slow or unavailable.
@@ -44,7 +45,7 @@ User turn: confirm the 18:34 MacBook-scheduled email arrived, and switch the Git
 
 ## Blockers
 
-- GitHub scheduled events created zero runs in short-window tests; manual GitHub runs, email sending, and MacBook `launchd` scheduled sending are confirmed.
+- GitHub scheduled events created zero runs in short-window tests; manual GitHub runs, email sending, and MacBook `launchd` scheduled sending with inbox receipt are confirmed.
 - A permanent MacBook schedule requires the Mac to be on and awake enough at the scheduled time.
 - Free public calendar feed can rate-limit during repeated development tests; local cache and sample fallback are implemented.
 - Some free RSS feeds can time out; source-level fallback is implemented.

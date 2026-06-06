@@ -164,6 +164,8 @@ Supported paths:
 
 Default operational recommendation: start the job around 07:15 Hong Kong time for a 07:30 inbox target, then adjust earlier if measured runtime grows.
 
-Outcome: a temporary MacBook `launchd` job ran at 2026-06-06 18:34 Hong Kong/Singapore time. `launchctl` reported `runs = 1` and `last exit code = 0`; the agent log reported run id `20260606T103404Z` and delivery status `sent`. The temporary LaunchAgent was unloaded and removed after the test.
+Outcome: a temporary MacBook `launchd` job ran at 2026-06-06 18:34 Hong Kong/Singapore time. `launchctl` reported `runs = 1` and `last exit code = 0`; the agent log reported run id `20260606T103404Z` and delivery status `sent`; the user confirmed inbox receipt. The temporary LaunchAgent was unloaded and removed after the test.
+
+Repo visibility follow-up: the user switched the GitHub repository back to private after the public API inspection window.
 
 Tradeoff: local/server scheduling requires the machine or server to be on. GitHub Actions does not require a local machine, but its schedule trigger is less controllable and failed our short-window proof in this repo.
