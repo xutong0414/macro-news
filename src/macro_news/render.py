@@ -51,6 +51,12 @@ def render_markdown(data: BriefData, run_date: date | None = None) -> str:
         for item in data.theme_radar
     )
     assumptions = "\n".join(f"- {item}" for item in data.assumptions)
+    dashboard_notes = "\n".join(f"- {item}" for item in data.dashboard_notes)
+    dashboard_notes_section = f"""
+Dashboard notes:
+
+{dashboard_notes}
+""" if dashboard_notes else ""
     source_notes = "\n".join(f"- {item}" for item in data.source_notes)
     source_status_section = f"""
 ## Source Status
@@ -63,6 +69,7 @@ def render_markdown(data: BriefData, run_date: date | None = None) -> str:
 ## Overnight Market Dashboard
 
 {market_table}
+{dashboard_notes_section}
 
 ## The 3 Things That Matter Today
 

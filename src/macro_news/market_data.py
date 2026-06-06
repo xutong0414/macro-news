@@ -3,9 +3,10 @@ from __future__ import annotations
 import json
 import math
 from dataclasses import asdict, dataclass, replace
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Callable
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -171,33 +172,71 @@ def _write_market_cache(cache_path: Path, quotes: dict[str, LiveQuote]) -> None:
     )
 
 
-def fetch_usdjpy(client: httpx.Client, run_date: date) -> LiveQuote:
+def fetch_fx_reference(
+    client: httpx.Client,
+    *,
+    run_date: date,
+    asset: str,
+    base_currency: str,
+    quote_currency: str,
+    decimals: int,
+    source: str,
+    so_what: str,
+    include_series: bool = False,
+) -> LiveQuote:
     start = run_date - timedelta(days=7)
     response = client.get(
         f"https://api.frankfurter.app/{start.isoformat()}..{run_date.isoformat()}",
-        params={"from": "USD", "to": "JPY"},
+        params={"from": base_currency, "to": quote_currency},
     )
     response.raise_for_status()
     rates = response.json().get("rates", {})
     dated_values = [
-        (_day, _safe_float(item.get("JPY")))
+        (_day, _safe_float(item.get(quote_currency)))
         for _day, item in sorted(rates.items())
         if isinstance(item, dict)
     ]
     dated_values = [(day, value) for day, value in dated_values if value is not None]
     values = [value for _day, value in dated_values]
     if len(values) < 2:
-        raise ValueError("not enough USD/JPY values")
+        raise ValueError(f"not enough {asset} values")
     return LiveQuote(
-        asset="USD/JPY",
+        asset=asset,
         close=values[-1],
         prior=values[-2],
         unit="",
-        decimals=2,
+        decimals=decimals,
         change_style="pct",
+        source=source,
+        so_what=so_what,
+        series=tuple((day[-5:], value) for day, value in dated_values[-5:]) if include_series else (),
+    )
+
+
+def fetch_eurusd(client: httpx.Client, run_date: date) -> LiveQuote:
+    return fetch_fx_reference(
+        client,
+        run_date=run_date,
+        asset="EUR/USD",
+        base_currency="EUR",
+        quote_currency="USD",
+        decimals=4,
+        source="frankfurter:EURUSD",
+        so_what="The largest FX pair is the cleanest euro-dollar policy divergence read.",
+    )
+
+
+def fetch_usdjpy(client: httpx.Client, run_date: date) -> LiveQuote:
+    return fetch_fx_reference(
+        client,
+        run_date=run_date,
+        asset="USD/JPY",
+        base_currency="USD",
+        quote_currency="JPY",
+        decimals=2,
         source="frankfurter:USDJPY",
         so_what="Yen direction is the direct read-through for the assumed long USD/JPY.",
-        series=tuple((day[-5:], value) for day, value in dated_values[-5:]),
+        include_series=True,
     )
 
 
@@ -229,6 +268,8 @@ def replace_market_rows_with_live(
     data: BriefData,
     *,
     run_date: date,
+    timezone_name: str = "Asia/Hong_Kong",
+    reference_now: datetime | None = None,
     cache_path: Path = MARKET_CACHE_PATH,
     client_factory: Callable[[], httpx.Client] | None = None,
 ) -> MarketDataResult:
@@ -241,7 +282,7 @@ def replace_market_rows_with_live(
     )
 
     fallback_by_asset = {row.asset: row for row in data.market_rows}
-    target_order = ["S&P 500", "Euro Stoxx 50", "US 10Y yield", "Germany 10Y yield", "DXY", "USD/JPY", "Gold", "WTI oil", "BTC"]
+    target_order = ["S&P 500", "Euro Stoxx 50", "US 10Y yield", "Germany 10Y yield", "DXY", "EUR/USD", "USD/JPY", "Gold", "WTI oil", "BTC"]
     cached_quotes = _read_market_cache(cache_path)
     cache_updates = dict(cached_quotes)
     live_rows: dict[str, MarketRow] = {}
@@ -255,6 +296,7 @@ def replace_market_rows_with_live(
     with client_factory() as client:
         fetchers: list[tuple[str, Callable[[], LiveQuote]]] = [
             *[(spec.asset, lambda spec=spec: fetch_yahoo_chart(client, spec)) for spec in YAHOO_SPECS],
+            ("EUR/USD", lambda: fetch_eurusd(client, run_date)),
             ("USD/JPY", lambda: fetch_usdjpy(client, run_date)),
             ("BTC", lambda: fetch_btc(client)),
         ]
@@ -315,6 +357,21 @@ def replace_market_rows_with_live(
         *data.assumptions,
         "Market dashboard uses public live sources where available, cached real-source rows for temporary outages, and scaffold fallback only when neither is available.",
     ]
+    try:
+        zone = ZoneInfo(timezone_name)
+    except Exception:  # noqa: BLE001 - timezone validation happens in config.
+        zone = ZoneInfo("Asia/Hong_Kong")
+    reference_now = reference_now or datetime.now(zone)
+    extracted_at = reference_now.astimezone(zone).strftime("%Y-%m-%d %H:%M %Z")
+    dashboard_notes = [
+        "Dashboard scope: equities (S&P 500, Euro Stoxx 50), rates (US/Germany 10Y), FX (DXY, EUR/USD, USD/JPY), gold, oil, and BTC.",
+        (
+            f"Timing basis: extracted at {extracted_at}; equity/rate/commodity rows use latest source daily close vs prior source daily close; "
+            "FX rows use latest available Frankfurter reference fixing vs prior fixing; BTC uses query-time price vs rolling 24-hour change."
+        ),
+        "Hong Kong morning caveat: around 07:00-08:00 HKT, US/EU cash markets are closed from prior sessions, while FX and BTC are continuous and Asia may already be open.",
+        "Sources: Yahoo Finance chart endpoint for equities/rates/DXY/gold/oil, Frankfurter for EUR/USD and USD/JPY, CoinGecko for BTC; Source Status shows live, cached, or scaffold fallback rows.",
+    ]
     updated = replace(
         data,
         market_rows=merged_rows,
@@ -322,6 +379,7 @@ def replace_market_rows_with_live(
         assumptions=assumptions,
         data_sources=[*data.data_sources, *sources],
         source_notes=[*[note for note in data.source_notes if not note.startswith("Market:")], market_note],
+        dashboard_notes=dashboard_notes,
     )
     return MarketDataResult(
         data=updated,

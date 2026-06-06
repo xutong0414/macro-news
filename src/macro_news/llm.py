@@ -10,7 +10,7 @@ from .config import Settings
 from .costing import TokenUsage, estimate_llm_cost_usd
 from .sample_data import BriefData, ThemeItem
 
-PROMPT_VERSION = "gemini_narrative_v4"
+PROMPT_VERSION = "gemini_narrative_v5"
 
 
 @dataclass(frozen=True)
@@ -67,9 +67,18 @@ def _reject_generic_theme_language(summary: str, idx: int) -> None:
             raise ValueError(f"theme_radar summary {idx} uses generic phrasing: {phrase}")
 
 
+def _reject_portfolio_logic_errors(text: str, label: str) -> None:
+    lowered = text.lower()
+    if "dollar strength" in lowered and "risk to our long usd/jpy" in lowered:
+        raise ValueError(f"{label} incorrectly treats dollar strength itself as a risk to long USD/JPY")
+    if "stronger dollar" in lowered and "risk to our long usd/jpy" in lowered:
+        raise ValueError(f"{label} incorrectly treats stronger dollar itself as a risk to long USD/JPY")
+
+
 def build_narrative_prompt(data: BriefData) -> str:
     facts = {
         "market_dashboard": [asdict(row) for row in data.market_rows],
+        "dashboard_notes": data.dashboard_notes,
         "calendar": [asdict(event) for event in data.calendar],
         "chart_caption": data.chart_caption,
         "theme_inputs": [asdict(item) for item in data.theme_radar],
@@ -84,6 +93,7 @@ def build_narrative_prompt(data: BriefData) -> str:
         "Write like a PM-facing morning note: catalyst first, portfolio read-through second, no filler.\n\n"
         "Portfolio semantics:\n"
         "- A long USD/JPY position benefits when USD/JPY rises, but is hurt by intervention or yen-strength reversal risk.\n"
+        "- Do not say dollar strength itself is a risk to long USD/JPY; the risk is intervention, yen reversal, or position crowding after a large rise.\n"
         "- A gold overweight benefits when gold rises, but is pressured by higher real rates or dollar strength.\n"
         "- EM debt exposure is usually pressured by higher US yields, stronger dollar funding stress, or weaker China demand.\n\n"
         "Return only valid JSON with this exact shape:\n"
@@ -116,6 +126,7 @@ def parse_narrative_response(text: str, base_data: BriefData) -> BriefData:
         if "so what:" not in item.lower():
             raise ValueError(f"three_things item {idx} must include 'So what:'")
         _require_word_max(f"three_things item {idx}", item, 80)
+        _reject_portfolio_logic_errors(item, f"three_things item {idx}")
 
     allowed_theme_meta = {(item.title, item.source, item.link) for item in base_data.theme_radar}
     theme_payload = payload.get("theme_radar")
@@ -153,6 +164,7 @@ def parse_narrative_response(text: str, base_data: BriefData) -> BriefData:
 
     contrarian_corner = str(payload.get("contrarian_corner", "")).strip()
     _require_word_range("contrarian_corner", contrarian_corner, 50, 100)
+    _reject_portfolio_logic_errors(contrarian_corner, "contrarian_corner")
 
     return replace(
         base_data,
@@ -225,6 +237,7 @@ def synthesize_with_gemini(settings: Settings, data: BriefData) -> SynthesisResu
                 "Return the full JSON object again. Be especially careful that every theme_radar summary is 60-100 words."
                 " Also ensure Theme Radar book_impact lines are source-specific and not repeated."
                 " Avoid generic phrases such as 'this piece explores', 'this analysis examines', 'it posits', or 'this is relevant'."
+                " Do not frame dollar strength itself as a risk to long USD/JPY; only intervention, yen reversal, or crowding are risks."
             )
 
     if generated_data is None:

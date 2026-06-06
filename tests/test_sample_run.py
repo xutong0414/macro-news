@@ -44,6 +44,8 @@ def test_sample_brief_contains_required_sections() -> None:
     ]
     for section in required:
         assert section in brief
+    assert "Dashboard notes:" in brief
+    assert "EUR/USD" in brief
 
 
 def test_sample_brief_assignment_word_limits() -> None:
@@ -86,6 +88,36 @@ def test_parse_narrative_response_replaces_narrative_sections() -> None:
     assert generated.theme_radar[0].summary.startswith("The author argues")
     assert generated.contrarian_corner.startswith("The market may be")
     assert "gemini_synthesis" in generated.data_sources
+
+
+def test_parse_narrative_response_rejects_usdjpy_portfolio_logic_error() -> None:
+    base = build_sample_brief_data()
+    response = """
+    {
+      "three_things": [
+        "The DXY climbed and dollar strength is a direct risk to our long USD/JPY position. So what: this should fail because the portfolio logic is backwards.",
+        "Oil strength adds an awkward inflation tail to an otherwise calm risk tape. So what: EM duration exposure should stay hedged until energy stops pushing against the easing narrative.",
+        "Equities look firm, but the cross-asset mix is more about rates and the dollar than broad reflation. So what: avoid reading this as a simple risk-on day for the whole book."
+      ],
+      "theme_radar": [
+        {
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note says positioning remains too relaxed.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }
+      ],
+      "contrarian_corner": "The market may be too relaxed about the idea that policy easing can arrive without a renewed inflation problem. If oil, freight, or shelter data firm while Treasury supply keeps term premium elevated, the next surprise is higher real rates rather than weaker growth. That would support the dollar and challenge duration-heavy trades."
+    }
+    """
+
+    try:
+        parse_narrative_response(response, base)
+    except ValueError as exc:
+        assert "dollar strength" in str(exc)
+    else:
+        raise AssertionError("Expected USD/JPY portfolio logic validation to fail")
 
 
 def test_dry_run_writes_outputs(tmp_path) -> None:
@@ -211,6 +243,8 @@ class FakeMarketClient:
                 }
             )
         if "frankfurter" in url:
+            if params.get("from") == "EUR":
+                return FakeResponse({"rates": {"2026-06-04": {"USD": 1.08}, "2026-06-05": {"USD": 1.09}}})
             return FakeResponse({"rates": {"2026-06-04": {"JPY": 158.0}, "2026-06-05": {"JPY": 159.0}}})
         if "coingecko" in url:
             return FakeResponse({"bitcoin": {"usd": 60000, "usd_24h_change": 2.0}})
@@ -231,13 +265,17 @@ def test_live_market_data_replaces_rows_and_logs_fallback(tmp_path) -> None:
     assert row_by_asset["S&P 500"].close == "102.00"
     assert row_by_asset["S&P 500"].change == "+2.0%"
     assert row_by_asset["US 10Y yield"].change == "+5 bp"
+    assert row_by_asset["EUR/USD"].close == "1.0900"
+    assert row_by_asset["EUR/USD"].change == "+0.9%"
     assert row_by_asset["USD/JPY"].close == "159.00"
     assert row_by_asset["BTC"].change == "+2.0%"
     assert row_by_asset["DXY"].close == "104.8"
     assert "DXY" in result.fallback_assets
     assert "DXY" in result.errors
+    assert "frankfurter:EURUSD" in result.sources
     assert "yahoo_chart:^GSPC" in result.sources
     assert result.cached_assets == []
+    assert any("extracted at" in note for note in result.data.dashboard_notes)
 
 
 class FailingMarketClient(FakeMarketClient):

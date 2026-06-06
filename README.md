@@ -6,7 +6,7 @@ The target reader is a macro PM who wants: what changed overnight, why it matter
 
 ## Current Status
 
-Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows, cached real-source market fallback, live economic-calendar rows with Asia/Europe/US session targeting, live Theme Radar source collection with fallback, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
+Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows including EUR/USD and USD/JPY, dashboard timing/source notes, cached real-source market fallback, live economic-calendar rows with Asia/Europe/US session targeting, live Theme Radar source collection with fallback, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
 
 Locked defaults:
 
@@ -134,8 +134,9 @@ The final brief must include:
 The market dashboard currently uses:
 
 - Yahoo Finance chart endpoint for broad equity, rate, dollar, gold, and oil instruments.
-- Frankfurter for USD/JPY.
+- Frankfurter for EUR/USD and USD/JPY reference-rate rows.
 - CoinGecko for BTC.
+- Dashboard notes explaining extraction time, close/prior basis, Hong Kong morning caveat, and BTC rolling 24-hour change convention.
 - Cached real-source rows when a temporary source outage occurs.
 - Sample fallback rows when a source fails and no cached real-source row exists.
 

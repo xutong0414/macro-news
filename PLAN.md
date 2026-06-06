@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-Round 2 brief revision is complete after the PDF-aligned audit. The latest live dry run (`20260606T130031Z`) uses Gemini prompt v4, covers Asia/Europe/US calendar sessions, uses cached real-source market rows before scaffold fallback, shows source-status notes, and renders the chart successfully.
+Dashboard revision is complete after user review. The latest sent run (`20260606T132925Z`) adds EUR/USD, renders dashboard timing/source notes, uses Gemini prompt v5 with USD/JPY portfolio-logic validation, covers Asia/Europe/US calendar sessions, and sends successfully by Gmail.
 
 ## Whose Turn
 
-Agent turn: commit and push the Round 2 revision.
+Agent turn: commit and push the dashboard revision.
 
-User turn: review the latest `outputs/latest/brief.md` or `outputs/latest/brief.html` for PM-quality taste and decide whether to run another content revision or move to memo/finalization.
+User turn: review the corrected email / latest `outputs/latest/brief.html` for dashboard footnote clarity and PM-quality taste.
 
 ## Locked Setup Choices
 
@@ -31,12 +31,13 @@ User turn: review the latest `outputs/latest/brief.md` or `outputs/latest/brief.
 - Calendar data role: fetch live economic-calendar rows where available; target Asia/Europe/US session coverage; use ignored cache and sample fallback if the public feed fails or rate-limits.
 - Theme Radar role: fetch curated RSS sources, rank them against the assumed book/themes, and let Gemini synthesize only selected source facts.
 - LLM validation role: retry once when Gemini output fails strict JSON or word-limit validation.
-- Brief quality role: render source-status notes, keep live/cache/scaffold fallback explicit, and use Gemini prompt v4 for sharper PM-facing narrative.
+- Brief quality role: render source-status notes, keep live/cache/scaffold fallback explicit, and use Gemini prompt v5 for sharper PM-facing narrative and portfolio-logic validation.
+- Dashboard note role: document dashboard scope, extraction time, close/prior basis, BTC rolling 24-hour convention, and data-source basis in the brief itself.
 
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. Review whether the latest Round 2 brief is assignment-ready enough to start final memo writing.
+2. Review whether the latest corrected email is assignment-ready enough to start final memo writing.
 3. Improve live data source coverage for Germany 10Y if we want to reduce the last scaffold market row.
 4. Add a second calendar provider if the free weekly feed remains thin or stale outside weekday windows.
 5. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.

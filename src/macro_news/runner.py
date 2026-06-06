@@ -47,7 +47,7 @@ def run_brief(
     prompt_version = "none"
 
     if live_market_data:
-        market_data_result = replace_market_rows_with_live(data, run_date=run_date)
+        market_data_result = replace_market_rows_with_live(data, run_date=run_date, timezone_name=settings.timezone)
         data = market_data_result.data
 
     if live_calendar:
@@ -96,6 +96,7 @@ def run_brief(
         "delivery_status": delivery_status,
         "data_sources": data.data_sources,
         "source_notes": data.source_notes,
+        "dashboard_notes": data.dashboard_notes,
         "market_data": {
             "mode": "live_with_fallback" if live_market_data else "sample",
             "live_assets": market_data_result.live_assets,

@@ -202,3 +202,19 @@ Changes:
 - Gemini prompt upgraded to v4 and rejects generic Theme Radar phrases such as `this piece explores` or `this analysis examines`.
 
 Outcome: live dry run `20260606T130031Z` passed with all six sections, Asia/Europe/US calendar rows, 7 live market rows, 1 cached real-source market row, 1 scaffold fallback row, chart output, prompt version `gemini_narrative_v4`, and all assignment word limits satisfied.
+
+## 2026-06-06 - Dashboard Footnotes And EUR/USD
+
+Decision: add EUR/USD to the market dashboard and render explicit dashboard notes below the table.
+
+Reason: the PDF asks for FX coverage, and EUR/USD is the largest major FX pair. The user also correctly flagged that a Hong Kong morning brief needs a clear cutoff/prior convention, especially because BTC trades 24/7 while US/EU cash markets are already closed and some Asian markets may be open.
+
+Changes:
+
+- Add `EUR/USD` as a live Frankfurter FX row alongside DXY and USD/JPY.
+- Add dashboard notes for scope, extraction timestamp, close/prior basis, Hong Kong morning caveat, and source basis.
+- State that BTC uses query-time price versus rolling 24-hour change, matching common crypto app/API convention.
+- Log `dashboard_notes` with each run.
+- Upgrade Gemini prompt to v5 and add validation against the specific portfolio-logic error of treating dollar strength itself as a risk to long USD/JPY.
+
+Outcome: revised send `20260606T132925Z` delivered successfully with 10 dashboard rows, EUR/USD included, dashboard notes rendered, prompt version `gemini_narrative_v5`, 9/10 live market rows, and all assignment word limits satisfied.

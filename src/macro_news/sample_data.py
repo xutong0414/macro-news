@@ -42,6 +42,7 @@ class BriefData:
     assumptions: list[str]
     data_sources: list[str]
     source_notes: list[str] = field(default_factory=list)
+    dashboard_notes: list[str] = field(default_factory=list)
 
 
 def build_sample_brief_data() -> BriefData:
@@ -52,6 +53,7 @@ def build_sample_brief_data() -> BriefData:
             MarketRow("US 10Y yield", "4.42%", "4.36%", "+6 bp", "Higher duration pressure matters for gold and EM duration."),
             MarketRow("Germany 10Y yield", "2.61%", "2.58%", "+3 bp", "Bunds confirm the global rates move rather than a US-only story."),
             MarketRow("DXY", "104.8", "104.3", "+0.5%", "Dollar strength supports long USD/JPY but tightens EM conditions."),
+            MarketRow("EUR/USD", "1.0850", "1.0800", "+0.5%", "The largest FX pair is the cleanest euro-dollar policy divergence read."),
             MarketRow("USD/JPY", "157.20", "156.10", "+0.7%", "Position is working, but intervention headlines remain the tail risk."),
             MarketRow("Gold", "$2,352", "$2,371", "-0.8%", "Gold is absorbing real-rate pressure, not breaking the trend yet."),
             MarketRow("WTI oil", "$78.40", "$77.10", "+1.7%", "Oil bounce raises inflation-risk asymmetry for rates."),
@@ -113,5 +115,10 @@ def build_sample_brief_data() -> BriefData:
             "Market: sample scaffold rows are used until live market mode is enabled.",
             "Calendar: sample scaffold events are used until live calendar mode is enabled.",
             "Theme Radar: sample source items are used until live RSS mode is enabled.",
+        ],
+        dashboard_notes=[
+            "Dashboard scope: equities, rates, FX, gold, oil, and BTC are included because those are the PDF-required overnight market blocks.",
+            "Timing basis: sample scaffold values are placeholders; live mode replaces them with source-level close/prior or query-time values where available.",
+            "Sources: live mode uses public/free data feeds and records live, cached, or scaffold status in Source Status.",
         ],
     )

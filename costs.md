@@ -38,3 +38,5 @@ Plain sample mode records zero actual LLM tokens.
 | 2026-06-06 | `20260606T103404Z` | MacBook launchd scheduled send proof | 1,770 | 706 | $0.0004594 | Sent |
 | 2026-06-06 | `20260606T122512Z` | Brief quality pass live dry run | 1,818 | 682 | $0.0004546 | Not sent |
 | 2026-06-06 | `20260606T130031Z` | Round 2 brief revision live dry run | 2,092 | 703 | $0.0004904 | Not sent |
+| 2026-06-06 | `20260606T132711Z` | Dashboard footnote + EUR/USD revision send | 2,400 | 699 | $0.0005196 | Sent |
+| 2026-06-06 | `20260606T132925Z` | Corrected dashboard revision send with prompt v5 guardrail | 2,433 | 723 | $0.0005325 | Sent |
