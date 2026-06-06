@@ -187,7 +187,7 @@ The third workflow sends one real live brief only when manually confirmed:
 The temporary scheduler smoke-test workflow verifies GitHub's scheduler without touching secrets or email:
 
 - `.github/workflows/github-scheduler-smoke-test.yml`
-- Tries every five minutes during a temporary test window.
+- Tries every five minutes.
 - Prints UTC and Hong Kong timestamps only.
 - Should be removed after scheduler confirmation.
 

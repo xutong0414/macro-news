@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-GitHub manual email-send workflow is confirmed. Scheduled email test did not trigger during the short test window, so replacing it with a harmless scheduler smoke test that only prints timestamps.
+GitHub manual email-send workflow is confirmed. GitHub recognizes the scheduler smoke-test workflow as active, but no scheduled run has appeared, so simplifying the smoke-test cron to every five minutes.
 
 ## Whose Turn
 
-Agent turn: remove the temporary scheduled email test and add the scheduler-only smoke test.
+Agent turn: simplify the scheduler-only smoke-test cron and inspect runs through the public GitHub API.
 
-User turn: check GitHub Actions during the 2026-06-06 17:00-18:55 Hong Kong time smoke-test window.
+User turn: check GitHub Actions for the smoke test over the next 15-30 minutes.
 
 ## Locked Setup Choices
 
@@ -20,7 +20,7 @@ User turn: check GitHub Actions during the 2026-06-06 17:00-18:55 Hong Kong time
 - GitHub Actions second stage: manual live dry-run workflow with secrets, still no email.
 - GitHub Actions third stage: manual email-send workflow with a `SEND` confirmation input.
 - GitHub Actions fourth stage: scheduled email-send workflow after explicit timing confirmation.
-- Temporary scheduler smoke test: try every five minutes during a short 2026-06-06 HKT window and only print timestamps.
+- Temporary scheduler smoke test: try every five minutes and only print timestamps.
 - First run mode: sample data only.
 - Private process notes: keep in ignored `.worklog/`, then delete before final handoff.
 - LLM role: draft narrative sections only; code owns facts, tables, chart, validation, and logging.
