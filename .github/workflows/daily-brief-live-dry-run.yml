@@ -1,0 +1,89 @@
+name: Daily Brief Live Dry Run
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-dry-run:
+    name: Test Live Sources With Secrets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Run tests
+        run: pytest -q
+
+      - name: Validate required secrets are present
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          BRIEF_FROM_EMAIL: ${{ secrets.BRIEF_FROM_EMAIL }}
+          BRIEF_TO_EMAIL: ${{ secrets.BRIEF_TO_EMAIL }}
+          BRIEF_TIMEZONE: ${{ secrets.BRIEF_TIMEZONE }}
+        run: |
+          python - <<'PY'
+          import os
+
+          required = [
+              "GEMINI_API_KEY",
+              "SMTP_HOST",
+              "SMTP_PORT",
+              "SMTP_USER",
+              "SMTP_PASSWORD",
+              "BRIEF_FROM_EMAIL",
+              "BRIEF_TO_EMAIL",
+              "BRIEF_TIMEZONE",
+          ]
+          missing = [name for name in required if not os.getenv(name)]
+          if missing:
+              raise SystemExit("Missing GitHub Secrets: " + ", ".join(missing))
+          print("All required GitHub secret names are present.")
+          PY
+
+      - name: Generate live dry-run brief
+        env:
+          LLM_PROVIDER: gemini
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-2.5-flash-lite
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          BRIEF_FROM_EMAIL: ${{ secrets.BRIEF_FROM_EMAIL }}
+          BRIEF_TO_EMAIL: ${{ secrets.BRIEF_TO_EMAIL }}
+          BRIEF_TIMEZONE: ${{ secrets.BRIEF_TIMEZONE }}
+          BRIEF_RUN_MODE: live
+          MARKET_DATA_MODE: live
+          CALENDAR_MODE: live
+          THEME_SOURCE_MODE: live
+        run: macro-news run --dry-run --use-llm --live-market-data --live-calendar --live-theme-radar
+
+      - name: Upload live dry-run artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: daily-brief-live-dry-run
+          path: |
+            outputs/latest/
+            outputs/archive/
+            logs/
+          if-no-files-found: ignore

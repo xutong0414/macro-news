@@ -164,7 +164,17 @@ The first workflow is intentionally safe:
 - Uploads generated outputs/logs as workflow artifacts.
 - Uses no secrets and sends no email.
 
-The next workflow step is adding GitHub Secrets and a separate full email-send workflow.
+The second workflow tests the live prototype without sending email:
+
+- `.github/workflows/daily-brief-live-dry-run.yml`
+- Runs only on manual trigger.
+- Reads GitHub Secrets for Gemini and Gmail configuration.
+- Runs tests.
+- Generates a live-source dry-run brief with Gemini narrative synthesis.
+- Uploads generated outputs/logs as workflow artifacts.
+- Sends no email.
+
+The next workflow step is a separate scheduled email-send workflow after the live dry run is confirmed.
 
 ## Repo Control Files
 

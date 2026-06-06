@@ -115,3 +115,11 @@ Decision: retry Gemini once when its JSON output fails code validation.
 Reason: the agent enforces strict word limits and required JSON shape. Gemini can occasionally miss by a few words, so the safer pattern is deterministic validation followed by one targeted repair instruction.
 
 Tradeoff: a retry can roughly double token use for that run, but the absolute cost remains well below one cent for this prototype.
+
+## 2026-06-06 - GitHub Secret Workflow Staging
+
+Decision: add a manual GitHub live dry-run workflow before any scheduled email-send workflow.
+
+Reason: repository secrets should be tested in GitHub Actions without risking accidental email delivery. The manual live dry run proves Gemini access, live-source fetching, logs, and artifact upload first.
+
+Tradeoff: this adds one extra workflow stage, but it keeps the automation safer and easier to debug.

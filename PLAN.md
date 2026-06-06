@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-Local agent loop with Gemini synthesis, Gmail delivery, live market rows, live economic-calendar rows, and live Theme Radar source collection with fallback.
+GitHub-safe sample workflow is confirmed. Adding a manual GitHub live dry-run workflow that uses secrets and live sources but does not send email.
 
 ## Whose Turn
 
-Agent turn: safe GitHub Actions dry-run workflow is being added and pushed.
+Agent turn: add and push the manual live dry-run workflow.
 
-User turn: check the GitHub Actions tab after the workflow is pushed, then decide when to add secrets for full email scheduling.
+User turn: after the workflow is pushed, run `Daily Brief Live Dry Run` manually from the GitHub Actions tab and inspect the artifact/logs.
 
 ## Locked Setup Choices
 
@@ -17,6 +17,7 @@ User turn: check the GitHub Actions tab after the workflow is pushed, then decid
 - DeepSeek: optional provider later.
 - GitHub: remote created and `main` pushed.
 - GitHub Actions first stage: sample dry-run workflow first, no secrets or email.
+- GitHub Actions second stage: manual live dry-run workflow with secrets, still no email.
 - First run mode: sample data only.
 - Private process notes: keep in ignored `.worklog/`, then delete before final handoff.
 - LLM role: draft narrative sections only; code owns facts, tables, chart, validation, and logging.
@@ -28,8 +29,8 @@ User turn: check the GitHub Actions tab after the workflow is pushed, then decid
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. Confirm the safe GitHub Actions dry-run passes on GitHub.
-3. Add GitHub Secrets for Gemini and Gmail SMTP when scheduling is ready.
+2. Confirm the manual GitHub live dry-run passes with repository secrets.
+3. Add a separate scheduled email-send workflow only after live dry-run confirmation.
 4. Improve calendar source reliability or add a second source if the free feed remains rate-limited.
 5. Improve live data source coverage for Germany 10Y and any assets with intermittent Yahoo failures.
 6. Improve Theme Radar source diversity if any RSS feed is slow or unavailable.
