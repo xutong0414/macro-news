@@ -6,7 +6,7 @@ The target reader is a macro PM who wants: what changed overnight, why it matter
 
 ## Current Status
 
-Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows including EUR/USD and USD/JPY, dashboard timing/source notes, cached real-source market fallback, live economic-calendar rows with Asia/Europe/US session targeting, live Theme Radar source collection with fallback, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
+Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows including Japan 10Y, EUR/USD, and USD/JPY, dashboard timing/source notes with clickable source links, cached real-source market fallback, live economic-calendar rows with Asia/Europe/US session targeting, live Theme Radar source collection with fallback, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
 
 Locked defaults:
 
@@ -133,10 +133,11 @@ The final brief must include:
 
 The market dashboard currently uses:
 
-- Yahoo Finance chart endpoint for broad equity, rate, dollar, gold, and oil instruments.
-- Frankfurter for EUR/USD and USD/JPY reference-rate rows.
-- CoinGecko for BTC.
-- Dashboard notes explaining extraction time, close/prior basis, Hong Kong morning caveat, and BTC rolling 24-hour change convention.
+- [Yahoo Finance chart endpoint](https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC) for broad equity, US rate, dollar, gold, and oil instruments.
+- [Japan MOF JGB yield CSV](https://www.mof.go.jp/jgbs/reference/interest_rate/jgbcm.csv) for Japan 10Y.
+- [Frankfurter](https://frankfurter.dev/) for EUR/USD and USD/JPY daily reference-rate rows.
+- [CoinGecko](https://www.coingecko.com/en/api) for BTC.
+- Dashboard notes explaining extraction time, close/prior basis, Hong Kong morning caveat, Frankfurter's latest-versus-immediately-previous published daily reference-rate convention, and BTC rolling 24-hour change convention.
 - Cached real-source rows when a temporary source outage occurs.
 - Sample fallback rows when a source fails and no cached real-source row exists.
 

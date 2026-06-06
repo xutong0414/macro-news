@@ -52,6 +52,7 @@ def build_sample_brief_data() -> BriefData:
             MarketRow("Euro Stoxx 50", "5,020", "4,995", "+0.5%", "Europe is following the US lead, with cyclicals still rate-sensitive."),
             MarketRow("US 10Y yield", "4.42%", "4.36%", "+6 bp", "Higher duration pressure matters for gold and EM duration."),
             MarketRow("Germany 10Y yield", "2.61%", "2.58%", "+3 bp", "Bunds confirm the global rates move rather than a US-only story."),
+            MarketRow("Japan 10Y yield", "2.67%", "2.65%", "+2 bp", "Japan rates are the direct yield-spread risk for long USD/JPY."),
             MarketRow("DXY", "104.8", "104.3", "+0.5%", "Dollar strength supports long USD/JPY but tightens EM conditions."),
             MarketRow("EUR/USD", "1.0850", "1.0800", "+0.5%", "The largest FX pair is the cleanest euro-dollar policy divergence read."),
             MarketRow("USD/JPY", "157.20", "156.10", "+0.7%", "Position is working, but intervention headlines remain the tail risk."),

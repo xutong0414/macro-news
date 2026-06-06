@@ -120,6 +120,36 @@ def test_parse_narrative_response_rejects_usdjpy_portfolio_logic_error() -> None
         raise AssertionError("Expected USD/JPY portfolio logic validation to fail")
 
 
+def test_parse_narrative_response_rejects_japan_yield_carry_error() -> None:
+    base = build_sample_brief_data()
+    response = """
+    {
+      "three_things": [
+        "Higher Japanese yields reinforce the carry advantage for USD/JPY. So what: keep the long USD/JPY trade as the clean expression.",
+        "Gold is lower as rates rise. So what: the gold overweight needs tighter risk monitoring.",
+        "Equities are softer and the dollar is firmer. So what: EM debt exposure should be treated carefully."
+      ],
+      "theme_radar": [
+        {
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is a mix of auction tails, dealer balance-sheet constraints, and resilient breakevens. This is not a simple growth story; it is about the market demanding more compensation for duration risk. The note also says positioning has not fully adjusted, leaving rallies vulnerable when supply headlines return.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }
+      ],
+      "contrarian_corner": "The consensus narrative is that higher yields and dollar strength make the USD/JPY long straightforward. A trigger that would challenge this view is coordinated Japanese verbal intervention or a hawkish BOJ signal that makes yen shorts look crowded."
+    }
+    """
+
+    try:
+        parse_narrative_response(response, base)
+    except ValueError as exc:
+        assert "Japan yields" in str(exc)
+    else:
+        raise AssertionError("Expected Japan yield carry validation to fail")
+
+
 def test_dry_run_writes_outputs(tmp_path) -> None:
     settings = Settings(
         llm_provider="gemini",
@@ -194,9 +224,10 @@ def test_dry_run_with_llm_writes_usage_log(tmp_path, monkeypatch) -> None:
 
 
 class FakeResponse:
-    def __init__(self, payload=None, text=""):
+    def __init__(self, payload=None, text="", content: bytes | None = None):
         self.payload = payload
         self.text = text
+        self.content = content if content is not None else text.encode("utf-8")
 
     def raise_for_status(self) -> None:
         return None
@@ -246,6 +277,13 @@ class FakeMarketClient:
             if params.get("from") == "EUR":
                 return FakeResponse({"rates": {"2026-06-04": {"USD": 1.08}, "2026-06-05": {"USD": 1.09}}})
             return FakeResponse({"rates": {"2026-06-04": {"JPY": 158.0}, "2026-06-05": {"JPY": 159.0}}})
+        if "mof.go.jp" in url:
+            csv_text = (
+                "base date,1Y,2Y,3Y,4Y,5Y,6Y,7Y,8Y,9Y,10Y,15Y,20Y,25Y,30Y,40Y\n"
+                "R8.6.3,1.126,1.401,1.56,1.767,1.943,2.077,2.219,2.373,2.508,2.645,3.183,3.521,3.817,3.817,3.748\n"
+                "R8.6.4,1.148,1.417,1.579,1.787,1.966,2.105,2.242,2.395,2.535,2.671,3.225,3.554,3.835,3.833,3.749\n"
+            )
+            return FakeResponse(text=csv_text, content=csv_text.encode("cp932"))
         if "coingecko" in url:
             return FakeResponse({"bitcoin": {"usd": 60000, "usd_24h_change": 2.0}})
         raise AssertionError(f"Unexpected URL: {url} {params}")
@@ -265,6 +303,8 @@ def test_live_market_data_replaces_rows_and_logs_fallback(tmp_path) -> None:
     assert row_by_asset["S&P 500"].close == "102.00"
     assert row_by_asset["S&P 500"].change == "+2.0%"
     assert row_by_asset["US 10Y yield"].change == "+5 bp"
+    assert row_by_asset["Japan 10Y yield"].close == "2.671%"
+    assert row_by_asset["Japan 10Y yield"].change == "+3 bp"
     assert row_by_asset["EUR/USD"].close == "1.0900"
     assert row_by_asset["EUR/USD"].change == "+0.9%"
     assert row_by_asset["USD/JPY"].close == "159.00"
@@ -273,9 +313,12 @@ def test_live_market_data_replaces_rows_and_logs_fallback(tmp_path) -> None:
     assert "DXY" in result.fallback_assets
     assert "DXY" in result.errors
     assert "frankfurter:EURUSD" in result.sources
+    assert "mof_japan:jgbcm_10y" in result.sources
     assert "yahoo_chart:^GSPC" in result.sources
     assert result.cached_assets == []
     assert any("extracted at" in note for note in result.data.dashboard_notes)
+    assert any("[Japan MOF JGB yield CSV]" in note for note in result.data.dashboard_notes)
+    assert "Frankfurter FX rows use the latest published daily reference rate" in render_markdown(result.data)
 
 
 class FailingMarketClient(FakeMarketClient):

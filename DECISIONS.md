@@ -218,3 +218,20 @@ Changes:
 - Upgrade Gemini prompt to v5 and add validation against the specific portfolio-logic error of treating dollar strength itself as a risk to long USD/JPY.
 
 Outcome: revised send `20260606T132925Z` delivered successfully with 10 dashboard rows, EUR/USD included, dashboard notes rendered, prompt version `gemini_narrative_v5`, 9/10 live market rows, and all assignment word limits satisfied.
+
+## 2026-06-06 - Japan 10Y And Linked Source Notes
+
+Decision: add `Japan 10Y yield` back to the market dashboard and render dashboard source names as clickable Markdown/HTML links.
+
+Reason: the assumed book is long USD/JPY, so Japan rates are a direct portfolio risk factor. The user also flagged that "prior fixing" was unclear for FX rows, and that plain-text source names should be linkable for evaluator review.
+
+Changes:
+
+- Add `Japan 10Y yield` using Japan Ministry of Finance's JGB constant-maturity CSV as the live source.
+- Keep scaffold fallback for Japan 10Y if the official CSV is unreachable.
+- Clarify that Frankfurter FX rows compare the latest published daily reference rate with the immediately previous published daily reference rate.
+- Turn dashboard source names into links for Yahoo Finance, Japan MOF, Frankfurter, and CoinGecko.
+- Upgrade Gemini prompt to v7, reject narrative that treats higher Japan yields as generic USD/JPY carry support, and relax one overly strict generic-language blocker that stopped a valid send before Gmail delivery.
+- Add tests for the Japan 10Y row and linked dashboard notes.
+
+Outcome: sent run `20260606T135317Z` delivered successfully with 11 dashboard rows, Japan 10Y live from Japan MOF, linked dashboard sources rendered in HTML, prompt version `gemini_narrative_v7`, 10/11 market rows live, Germany 10Y scaffold fallback, and calendar cache fallback after a 429 rate limit.

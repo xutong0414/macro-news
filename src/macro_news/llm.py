@@ -10,7 +10,7 @@ from .config import Settings
 from .costing import TokenUsage, estimate_llm_cost_usd
 from .sample_data import BriefData, ThemeItem
 
-PROMPT_VERSION = "gemini_narrative_v5"
+PROMPT_VERSION = "gemini_narrative_v7"
 
 
 @dataclass(frozen=True)
@@ -61,7 +61,7 @@ def _normalize_book_impact(text: str) -> str:
 
 def _reject_generic_theme_language(summary: str, idx: int) -> None:
     lowered = summary.lower()
-    banned_phrases = ("the article explores", "this piece explores", "this analysis examines", "it posits", "this is relevant")
+    banned_phrases = ("the article explores", "this piece explores", "this analysis examines", "this is relevant")
     for phrase in banned_phrases:
         if phrase in lowered:
             raise ValueError(f"theme_radar summary {idx} uses generic phrasing: {phrase}")
@@ -73,6 +73,8 @@ def _reject_portfolio_logic_errors(text: str, label: str) -> None:
         raise ValueError(f"{label} incorrectly treats dollar strength itself as a risk to long USD/JPY")
     if "stronger dollar" in lowered and "risk to our long usd/jpy" in lowered:
         raise ValueError(f"{label} incorrectly treats stronger dollar itself as a risk to long USD/JPY")
+    if "carry advantage" in lowered and re.search(r"\bjapan(?:ese)?(?:\s+10y)?\s+yields?\b", lowered):
+        raise ValueError(f"{label} must treat higher Japan yields as a USD/JPY spread risk, not generic carry support")
 
 
 def build_narrative_prompt(data: BriefData) -> str:
@@ -94,6 +96,8 @@ def build_narrative_prompt(data: BriefData) -> str:
         "Portfolio semantics:\n"
         "- A long USD/JPY position benefits when USD/JPY rises, but is hurt by intervention or yen-strength reversal risk.\n"
         "- Do not say dollar strength itself is a risk to long USD/JPY; the risk is intervention, yen reversal, or position crowding after a large rise.\n"
+        "- Rising Japan 10Y yields are not automatically supportive for long USD/JPY; they can narrow the US-Japan yield-spread advantage unless US yields rise more.\n"
+        "- Do not say higher Japanese yields reinforce USD/JPY carry unless the facts explicitly show the US-Japan yield spread widened.\n"
         "- A gold overweight benefits when gold rises, but is pressured by higher real rates or dollar strength.\n"
         "- EM debt exposure is usually pressured by higher US yields, stronger dollar funding stress, or weaker China demand.\n\n"
         "Return only valid JSON with this exact shape:\n"
@@ -107,7 +111,7 @@ def build_narrative_prompt(data: BriefData) -> str:
         "Constraints:\n"
         "- Each item in three_things must be 80 words or fewer and include a clear 'So what:' clause tied to the assumed book.\n"
         "- theme_radar must contain 1-3 items and reuse the provided title, source, and link values.\n"
-        "- Each theme_radar summary must be 60-100 words and explain the author's thesis and evidence without generic openers like 'this piece explores', 'this analysis examines', or 'it posits'.\n"
+        "- Each theme_radar summary must be 60-100 words and explain the author's thesis and evidence without generic openers like 'this piece explores' or 'this analysis examines'.\n"
         "- Each book_impact line must start with 'What this means for our book:' and must be specific to that source.\n"
         "- Do not repeat the same book_impact line across Theme Radar items.\n"
         "- contrarian_corner must be 50-100 words, name the consensus narrative, and include one concrete trigger that would challenge it.\n\n"

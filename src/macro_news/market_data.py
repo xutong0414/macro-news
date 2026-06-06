@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+import io
 import json
 import math
 from dataclasses import asdict, dataclass, replace
@@ -240,6 +242,32 @@ def fetch_usdjpy(client: httpx.Client, run_date: date) -> LiveQuote:
     )
 
 
+def fetch_japan_10y_mof(client: httpx.Client) -> LiveQuote:
+    response = client.get("https://www.mof.go.jp/jgbs/reference/interest_rate/jgbcm.csv")
+    response.raise_for_status()
+    text = response.content.decode("cp932")
+    rows = csv.reader(io.StringIO(text))
+    values: list[float] = []
+    for row in rows:
+        if len(row) <= 10:
+            continue
+        value = _safe_float(row[10])
+        if value is not None:
+            values.append(value)
+    if len(values) < 2:
+        raise ValueError("not enough Japan 10Y yield values")
+    return LiveQuote(
+        asset="Japan 10Y yield",
+        close=values[-1],
+        prior=values[-2],
+        unit="%",
+        decimals=3,
+        change_style="bp",
+        source="mof_japan:jgbcm_10y",
+        so_what="Japan rates are the direct yield-spread risk for the assumed long USD/JPY.",
+    )
+
+
 def fetch_btc(client: httpx.Client) -> LiveQuote:
     response = client.get(
         "https://api.coingecko.com/api/v3/simple/price",
@@ -282,7 +310,19 @@ def replace_market_rows_with_live(
     )
 
     fallback_by_asset = {row.asset: row for row in data.market_rows}
-    target_order = ["S&P 500", "Euro Stoxx 50", "US 10Y yield", "Germany 10Y yield", "DXY", "EUR/USD", "USD/JPY", "Gold", "WTI oil", "BTC"]
+    target_order = [
+        "S&P 500",
+        "Euro Stoxx 50",
+        "US 10Y yield",
+        "Germany 10Y yield",
+        "Japan 10Y yield",
+        "DXY",
+        "EUR/USD",
+        "USD/JPY",
+        "Gold",
+        "WTI oil",
+        "BTC",
+    ]
     cached_quotes = _read_market_cache(cache_path)
     cache_updates = dict(cached_quotes)
     live_rows: dict[str, MarketRow] = {}
@@ -296,6 +336,7 @@ def replace_market_rows_with_live(
     with client_factory() as client:
         fetchers: list[tuple[str, Callable[[], LiveQuote]]] = [
             *[(spec.asset, lambda spec=spec: fetch_yahoo_chart(client, spec)) for spec in YAHOO_SPECS],
+            ("Japan 10Y yield", lambda: fetch_japan_10y_mof(client)),
             ("EUR/USD", lambda: fetch_eurusd(client, run_date)),
             ("USD/JPY", lambda: fetch_usdjpy(client, run_date)),
             ("BTC", lambda: fetch_btc(client)),
@@ -364,13 +405,19 @@ def replace_market_rows_with_live(
     reference_now = reference_now or datetime.now(zone)
     extracted_at = reference_now.astimezone(zone).strftime("%Y-%m-%d %H:%M %Z")
     dashboard_notes = [
-        "Dashboard scope: equities (S&P 500, Euro Stoxx 50), rates (US/Germany 10Y), FX (DXY, EUR/USD, USD/JPY), gold, oil, and BTC.",
+        "Dashboard scope: equities (S&P 500, Euro Stoxx 50), rates (US/Germany/Japan 10Y), FX (DXY, EUR/USD, USD/JPY), gold, oil, and BTC.",
         (
             f"Timing basis: extracted at {extracted_at}; equity/rate/commodity rows use latest source daily close vs prior source daily close; "
-            "FX rows use latest available Frankfurter reference fixing vs prior fixing; BTC uses query-time price vs rolling 24-hour change."
+            "Frankfurter FX rows use the latest published daily reference rate vs the immediately previous published daily reference rate; "
+            "BTC uses query-time price vs rolling 24-hour change."
         ),
         "Hong Kong morning caveat: around 07:00-08:00 HKT, US/EU cash markets are closed from prior sessions, while FX and BTC are continuous and Asia may already be open.",
-        "Sources: Yahoo Finance chart endpoint for equities/rates/DXY/gold/oil, Frankfurter for EUR/USD and USD/JPY, CoinGecko for BTC; Source Status shows live, cached, or scaffold fallback rows.",
+        (
+            "Sources: [Yahoo Finance chart endpoint](https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC) for equities/US rates/DXY/gold/oil, "
+            "[Japan MOF JGB yield CSV](https://www.mof.go.jp/jgbs/reference/interest_rate/jgbcm.csv) for Japan 10Y, "
+            "[Frankfurter](https://frankfurter.dev/) for EUR/USD and USD/JPY, "
+            "[CoinGecko](https://www.coingecko.com/en/api) for BTC; Source Status shows live, cached, or scaffold fallback rows."
+        ),
     ]
     updated = replace(
         data,

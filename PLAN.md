@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-Dashboard revision is complete after user review. The latest sent run (`20260606T132925Z`) adds EUR/USD, renders dashboard timing/source notes, uses Gemini prompt v5 with USD/JPY portfolio-logic validation, covers Asia/Europe/US calendar sessions, and sends successfully by Gmail.
+Dashboard revision follow-up is complete. The latest sent run (`20260606T135317Z`) adds Japan 10Y from Japan MOF, clarifies the Frankfurter FX prior-rate convention, turns dashboard source names into clickable links, and uses Gemini prompt v7 with Japan-yield portfolio-logic validation.
 
 ## Whose Turn
 
-Agent turn: commit and push the dashboard revision.
+Agent turn: wait for user review of the latest corrected email / `outputs/latest/brief.html`.
 
-User turn: review the corrected email / latest `outputs/latest/brief.html` for dashboard footnote clarity and PM-quality taste.
+User turn: review the latest corrected email / latest `outputs/latest/brief.html` for dashboard footnote clarity and PM-quality taste.
 
 ## Locked Setup Choices
 
@@ -31,13 +31,13 @@ User turn: review the corrected email / latest `outputs/latest/brief.html` for d
 - Calendar data role: fetch live economic-calendar rows where available; target Asia/Europe/US session coverage; use ignored cache and sample fallback if the public feed fails or rate-limits.
 - Theme Radar role: fetch curated RSS sources, rank them against the assumed book/themes, and let Gemini synthesize only selected source facts.
 - LLM validation role: retry once when Gemini output fails strict JSON or word-limit validation.
-- Brief quality role: render source-status notes, keep live/cache/scaffold fallback explicit, and use Gemini prompt v5 for sharper PM-facing narrative and portfolio-logic validation.
-- Dashboard note role: document dashboard scope, extraction time, close/prior basis, BTC rolling 24-hour convention, and data-source basis in the brief itself.
+- Brief quality role: render source-status notes, keep live/cache/scaffold fallback explicit, and use Gemini prompt v7 for sharper PM-facing narrative and portfolio-logic validation.
+- Dashboard note role: document dashboard scope, extraction time, close/prior basis, Frankfurter FX reference-rate convention, BTC rolling 24-hour convention, and linked data-source basis in the brief itself.
 
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. Review whether the latest corrected email is assignment-ready enough to start final memo writing.
+2. Review whether the next corrected email is assignment-ready enough to start final memo writing.
 3. Improve live data source coverage for Germany 10Y if we want to reduce the last scaffold market row.
 4. Add a second calendar provider if the free weekly feed remains thin or stale outside weekday windows.
 5. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.
