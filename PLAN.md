@@ -8,7 +8,7 @@ Sample data brief with Gemini narrative synthesis and Gmail delivery smoke-teste
 
 Agent turn: maintain `PLAN.md`, `DECISIONS.md`, and local `.worklog/` notes as implementation progresses.
 
-User turn: confirm the Gemini-written sample email looks acceptable, then decide when to create the GitHub remote.
+User turn: confirm the live-data/Gemini sample output looks acceptable, then decide when to create the GitHub remote.
 
 ## Locked Setup Choices
 
@@ -19,13 +19,14 @@ User turn: confirm the Gemini-written sample email looks acceptable, then decide
 - First run mode: sample data only.
 - Private process notes: keep in ignored `.worklog/`, then delete before final handoff.
 - LLM role: draft narrative sections only; code owns facts, tables, chart, validation, and logging.
+- Market data role: fetch live dashboard rows where available; fall back to sample rows per asset and log status.
 
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. Add live market data APIs for equities, rates, FX, gold, oil, and BTC.
-3. Add economic calendar source with consensus estimates.
-4. Add non-mainstream source collection for theme radar.
+2. Add economic calendar source with consensus estimates.
+3. Add non-mainstream source collection for theme radar.
+4. Improve live data source coverage for Germany 10Y and any assets with intermittent Yahoo failures.
 5. Add GitHub remote and push when the user is ready.
 6. Add GitHub Actions schedule after live/local send works.
 7. Generate final `memo.pdf` from `memo.md`.

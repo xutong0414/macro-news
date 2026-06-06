@@ -71,6 +71,7 @@ def build_narrative_prompt(data: BriefData) -> str:
     return (
         "You are writing a Daily Macro Brief for a time-poor macro portfolio manager.\n"
         "Use only the facts below. Do not invent market numbers, source names, links, or positions.\n"
+        "Do not add generic risk factors unless they appear in the facts.\n"
         "Keep the tone concise, investment-oriented, and opinionated.\n\n"
         "Return only valid JSON with this exact shape:\n"
         "{\n"
@@ -195,4 +196,3 @@ def synthesize_with_gemini(settings: Settings, data: BriefData) -> SynthesisResu
         model=settings.gemini_model,
         prompt_version=PROMPT_VERSION,
     )
-

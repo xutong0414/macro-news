@@ -9,6 +9,7 @@ from .config import Settings
 from .costing import ZERO_TOKEN_USAGE
 from .emailer import send_email
 from .llm import synthesize_with_gemini
+from .market_data import MarketDataResult, replace_market_rows_with_live
 from .render import render_html, render_markdown, utc_run_id, write_outputs
 from .sample_data import build_sample_brief_data
 
@@ -21,15 +22,27 @@ class RunResult:
     log_path: Path
 
 
-def run_brief(settings: Settings, *, send: bool = False, run_date: date | None = None, use_llm: bool = False) -> RunResult:
+def run_brief(
+    settings: Settings,
+    *,
+    send: bool = False,
+    run_date: date | None = None,
+    use_llm: bool = False,
+    live_market_data: bool = False,
+) -> RunResult:
     run_date = run_date or date.today()
     run_id = utc_run_id()
     data = build_sample_brief_data()
+    market_data_result = MarketDataResult(data=data, live_assets=[], fallback_assets=[], errors={}, sources=[])
     token_usage = ZERO_TOKEN_USAGE
     llm_status = "not_used"
     llm_model = "none"
     estimated_llm_cost_usd = 0.0
     prompt_version = "none"
+
+    if live_market_data:
+        market_data_result = replace_market_rows_with_live(data, run_date=run_date)
+        data = market_data_result.data
 
     if use_llm:
         if settings.llm_provider != "gemini":
@@ -68,6 +81,13 @@ def run_brief(settings: Settings, *, send: bool = False, run_date: date | None =
         "prompt_version": prompt_version,
         "delivery_status": delivery_status,
         "data_sources": data.data_sources,
+        "market_data": {
+            "mode": "live_with_fallback" if live_market_data else "sample",
+            "live_assets": market_data_result.live_assets,
+            "fallback_assets": market_data_result.fallback_assets,
+            "errors": market_data_result.errors,
+            "sources": market_data_result.sources,
+        },
         "token_usage": {
             "input_tokens": token_usage.input_tokens,
             "output_tokens": token_usage.output_tokens,

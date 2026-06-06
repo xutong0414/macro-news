@@ -31,6 +31,18 @@ Run a sample dry run with Gemini drafting the narrative sections:
 PYTHONPATH=src python -m macro_news run --dry-run --use-llm
 ```
 
+Run with live market dashboard data and sample fallbacks:
+
+```bash
+PYTHONPATH=src python -m macro_news run --dry-run --live-market-data
+```
+
+Run with live market dashboard data plus Gemini narrative synthesis:
+
+```bash
+PYTHONPATH=src python -m macro_news run --dry-run --live-market-data --use-llm
+```
+
 Send a sample brief by email:
 
 ```bash
@@ -71,6 +83,11 @@ Required for Gemini synthesis:
 - `GEMINI_API_KEY`
 - `GEMINI_MODEL=gemini-2.5-flash-lite`
 
+Market data mode:
+
+- `MARKET_DATA_MODE=sample` keeps the dashboard fully deterministic.
+- `MARKET_DATA_MODE=live` fetches live dashboard rows where available and falls back to sample rows asset by asset.
+
 Do not commit `.env`.
 
 ## Assignment Modules
@@ -83,6 +100,17 @@ The final brief must include:
 4. One chart worth seeing with a caption under 30 words.
 5. Theme radar summaries tied to assumed positions/themes.
 6. Contrarian corner.
+
+## Current Data Sources
+
+The market dashboard currently uses:
+
+- Yahoo Finance chart endpoint for broad equity, rate, dollar, gold, and oil instruments.
+- Frankfurter for USD/JPY.
+- CoinGecko for BTC.
+- Sample fallback rows when a source fails or is not yet connected.
+
+The next missing live piece is the economic calendar with consensus estimates.
 
 ## Repo Control Files
 

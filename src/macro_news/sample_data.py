@@ -46,7 +46,7 @@ class BriefData:
 def build_sample_brief_data() -> BriefData:
     return BriefData(
         market_rows=[
-            MarketRow("S&P 500 futures", "5,412", "5,389", "+0.4%", "Risk tone is constructive but not broad enough to chase beta."),
+            MarketRow("S&P 500", "5,412", "5,389", "+0.4%", "Risk tone is constructive but not broad enough to chase beta."),
             MarketRow("Euro Stoxx 50", "5,020", "4,995", "+0.5%", "Europe is following the US lead, with cyclicals still rate-sensitive."),
             MarketRow("US 10Y yield", "4.42%", "4.36%", "+6 bp", "Higher duration pressure matters for gold and EM duration."),
             MarketRow("Germany 10Y yield", "2.61%", "2.58%", "+3 bp", "Bunds confirm the global rates move rather than a US-only story."),

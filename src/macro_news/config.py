@@ -49,6 +49,7 @@ class Settings:
     brief_to_email: str | None
     timezone: str
     run_mode: str
+    market_data_mode: str
     output_dir: Path
     log_dir: Path
 
@@ -69,6 +70,7 @@ class Settings:
             brief_to_email=os.getenv("BRIEF_TO_EMAIL") or None,
             timezone=normalize_timezone(os.getenv("BRIEF_TIMEZONE", "Asia/Shanghai")),
             run_mode=os.getenv("BRIEF_RUN_MODE", "sample"),
+            market_data_mode=os.getenv("MARKET_DATA_MODE", "sample"),
             output_dir=Path(os.getenv("OUTPUT_DIR", "outputs")),
             log_dir=Path(os.getenv("LOG_DIR", "logs")),
         )

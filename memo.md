@@ -8,6 +8,8 @@ The system separates deterministic data collection from LLM writing. Market numb
 
 The current scaffold keeps tables, chart generation, validation, delivery, and token/cost logging in code. Gemini drafts only the narrative sections from structured facts.
 
+Live market dashboard rows are fetched asset by asset, with sample fallback if a free/public source is unavailable. The run log records which assets were live and which fell back, making the prototype auditable despite using free data sources.
+
 ## Position And Theme Assumptions
 
 Initial assumed book:

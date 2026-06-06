@@ -12,7 +12,7 @@ Status: sample Gemini synthesis and Gmail delivery smoke test completed. Live ma
 | Optional LLM | DeepSeek V4 Flash | Near zero for expected token volume | Optional comparison provider later. |
 | Email delivery | Gmail SMTP | $0 | Uses user's Gmail account and app password. |
 | Scheduler | GitHub Actions | $0 expected | Public standard runners are free; private repos have included minutes. |
-| Market data | TBD | $0 initially | Prefer free/public APIs where reliable. |
+| Market data | Yahoo / Frankfurter / CoinGecko | $0 initially | Current live dashboard sources are free/public and use sample fallback rows. |
 | Calendar data | TBD | $0 initially | Need source with consensus estimates. |
 | Hosting | GitHub Actions | $0 expected | No server planned for v1. |
 
@@ -28,3 +28,5 @@ Plain sample mode records zero actual LLM tokens.
 | --- | --- | --- | ---: | ---: | ---: | --- |
 | 2026-06-06 | `20260606T044327Z` | Gemini dry run | 1,631 | 561 | $0.0003875 | Not sent |
 | 2026-06-06 | `20260606T044351Z` | Gemini + email smoke test | 1,631 | 625 | $0.0004131 | Sent |
+| 2026-06-06 | `20260606T045635Z` | Live market data + Gemini dry run | 1,667 | 693 | $0.0004439 | Not sent |
+| 2026-06-06 | `20260606T045801Z` | Live market data + Gemini + email smoke test | 1,678 | 655 | $0.0004298 | Sent |

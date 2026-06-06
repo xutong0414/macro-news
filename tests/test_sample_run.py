@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
+from datetime import date
 
 from macro_news.config import Settings, normalize_timezone
 from macro_news.costing import TokenUsage
 from macro_news.llm import SynthesisResult, parse_narrative_response
+from macro_news.market_data import replace_market_rows_with_live
 from macro_news.render import render_markdown
 import macro_news.runner as runner_module
 from macro_news.runner import run_brief
@@ -94,6 +96,7 @@ def test_dry_run_writes_outputs(tmp_path) -> None:
         brief_to_email=None,
         timezone="Asia/Shanghai",
         run_mode="sample",
+        market_data_mode="sample",
         output_dir=tmp_path / "outputs",
         log_dir=tmp_path / "logs",
     )
@@ -122,6 +125,7 @@ def test_dry_run_with_llm_writes_usage_log(tmp_path, monkeypatch) -> None:
         brief_to_email=None,
         timezone="Asia/Shanghai",
         run_mode="sample",
+        market_data_mode="sample",
         output_dir=tmp_path / "outputs",
         log_dir=tmp_path / "logs",
     )
@@ -144,3 +148,75 @@ def test_dry_run_with_llm_writes_usage_log(tmp_path, monkeypatch) -> None:
     assert log_event["llm_status"] == "used"
     assert log_event["token_usage"]["input_tokens"] == 100
     assert log_event["estimated_llm_cost_usd"] == 0.00003
+
+
+class FakeResponse:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self):
+        return self.payload
+
+
+class FakeMarketClient:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        return None
+
+    def get(self, url, params=None):
+        params = params or {}
+        if "finance/chart" in url:
+            symbol = url.rsplit("/", 1)[-1]
+            if symbol == "DX-Y.NYB":
+                raise RuntimeError("simulated DXY outage")
+            closes = {
+                "^GSPC": [100.0, 102.0],
+                "^STOXX50E": [200.0, 198.0],
+                "^TNX": [4.40, 4.45],
+                "GC=F": [2300.0, 2310.0],
+                "CL=F": [80.0, 82.0],
+            }[symbol]
+            return FakeResponse(
+                {
+                    "chart": {
+                        "result": [
+                            {
+                                "indicators": {
+                                    "quote": [
+                                        {
+                                            "close": closes,
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
+            )
+        if "frankfurter" in url:
+            return FakeResponse({"rates": {"2026-06-04": {"JPY": 158.0}, "2026-06-05": {"JPY": 159.0}}})
+        if "coingecko" in url:
+            return FakeResponse({"bitcoin": {"usd": 60000, "usd_24h_change": 2.0}})
+        raise AssertionError(f"Unexpected URL: {url} {params}")
+
+
+def test_live_market_data_replaces_rows_and_logs_fallback() -> None:
+    base = build_sample_brief_data()
+    result = replace_market_rows_with_live(base, run_date=date(2026, 6, 6), client_factory=FakeMarketClient)
+
+    row_by_asset = {row.asset: row for row in result.data.market_rows}
+
+    assert row_by_asset["S&P 500"].close == "102.00"
+    assert row_by_asset["S&P 500"].change == "+2.0%"
+    assert row_by_asset["US 10Y yield"].change == "+5 bp"
+    assert row_by_asset["USD/JPY"].close == "159.00"
+    assert row_by_asset["BTC"].change == "+2.0%"
+    assert row_by_asset["DXY"].close == "104.8"
+    assert "DXY" in result.fallback_assets
+    assert "DXY" in result.errors
+    assert "yahoo_chart:^GSPC" in result.sources

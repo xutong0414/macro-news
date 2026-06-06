@@ -59,3 +59,16 @@ Current LLM-written sections:
 - The 3 things that matter today.
 - Theme radar summaries and book-impact lines.
 - Contrarian corner.
+
+## 2026-06-06 - Live Market Data Scope
+
+Decision: add live market dashboard data with asset-level sample fallback.
+
+Reason: the assignment requires market numbers from real APIs or scraping, but public/free endpoints can fail, rate-limit, or lack specific instruments. The agent should still produce a brief while logging which rows are live and which rows are fallback.
+
+Current sources:
+
+- Yahoo Finance chart endpoint for S&P 500, Euro Stoxx 50, US 10Y, DXY, gold, and WTI oil.
+- Frankfurter for USD/JPY.
+- CoinGecko for BTC.
+- Sample fallback for Germany 10Y and any failed live source.
