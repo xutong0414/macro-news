@@ -31,6 +31,11 @@ def _inline_markdown_to_html(text: str) -> str:
     return "".join(parts)
 
 
+def _bold_label_to_html(text: str) -> str:
+    escaped = _inline_markdown_to_html(text)
+    return re.sub(r"^\*\*([^*]+):\*\*", r"<strong>\1:</strong>", escaped)
+
+
 def _split_so_what(item: str) -> tuple[str, str]:
     match = re.search(r"\bSo what:\s*", item, flags=re.IGNORECASE)
     if not match:
@@ -69,14 +74,36 @@ def _three_thing_news_link(item: str) -> str:
     return f"https://finance.yahoo.com/search?p={quote_plus(_three_things_news_query(item))}"
 
 
+def _three_thing_title(item: str) -> str:
+    lowered = item.lower()
+    if any(term in lowered for term in ("usd/jpy", "yen", "boj", "japan", "jgb")):
+        return "USD/JPY Intervention Risk"
+    if any(term in lowered for term in ("us 10y", "treasury", "higher us yields", "yields rose")) and any(
+        term in lowered for term in ("dxy", "dollar", "gold", "em debt", "em financing")
+    ):
+        return "Rates And Dollar Pressure"
+    if any(term in lowered for term in ("s&p", "equities", "risk-off", "risk aversion", "risk assets")):
+        return "Risk Tone Turns Defensive"
+    if "gold" in lowered:
+        return "Gold Under Rate Pressure"
+    if any(term in lowered for term in ("em debt", "em duration", "emerging market")):
+        return "EM Debt Faces Tighter Conditions"
+    if "oil" in lowered or "inflation" in lowered:
+        return "Oil Keeps Inflation Risk Alive"
+    if any(term in lowered for term in ("dxy", "dollar")):
+        return "Dollar Strength Tightens Conditions"
+    return "Macro Signal To Watch"
+
+
 def _render_three_things_markdown(items: list[str]) -> str:
     blocks: list[str] = []
     for idx, item in enumerate(items, 1):
         main, so_what = _split_so_what(item)
-        parts = [f"{idx}. {main}"]
+        parts = [f"### {idx}. {_three_thing_title(item)}", main]
         if so_what:
-            parts.append(so_what)
-        parts.append(f"Read more: [Yahoo Finance]({_three_thing_news_link(item)})")
+            implication = so_what.removeprefix("So what:").strip()
+            parts.append(f"**So what:** {implication}")
+        parts.append(f"**Read more:** [Yahoo Finance]({_three_thing_news_link(item)})")
         blocks.append("\n\n".join(parts))
     return "\n\n".join(blocks)
 
@@ -164,8 +191,9 @@ def render_html(data: BriefData, run_date: date | None = None) -> str:
         "<style>",
         "body{font-family:Arial,sans-serif;line-height:1.45;color:#111827;max-width:880px;margin:24px auto;padding:0 18px}",
         "table{border-collapse:collapse;width:100%;font-size:14px}th,td{border:1px solid #d1d5db;padding:8px;text-align:left;vertical-align:top}",
-        "th{background:#f3f4f6}h1,h2,h3{line-height:1.2}img{max-width:100%;height:auto}",
-        ".caption{color:#4b5563;font-size:14px}",
+        "th{background:#f3f4f6}h1,h2,h3{line-height:1.2}h3{font-size:18px;margin:22px 0 6px}img{max-width:100%;height:auto}",
+        ".caption,.note-line,.read-more{color:#4b5563;font-size:14px}.note-line,.read-more{margin:4px 0 0 18px}",
+        ".read-more{margin-bottom:18px}",
         "</style>",
         "</head>",
         "<body>",
@@ -207,6 +235,10 @@ def render_html(data: BriefData, run_date: date | None = None) -> str:
             html_lines.append('<img src="chart.png" alt="One chart worth seeing">')
         elif line.startswith("Caption:"):
             html_lines.append(f'<p class="caption">{_inline_markdown_to_html(line)}</p>')
+        elif line.startswith("**So what:"):
+            html_lines.append(f'<p class="note-line">{_bold_label_to_html(line)}</p>')
+        elif line.startswith("**Read more:"):
+            html_lines.append(f'<p class="read-more">{_bold_label_to_html(line)}</p>')
         elif line.startswith("- "):
             html_lines.append(f"<p>{_inline_markdown_to_html(line)}</p>")
         else:

@@ -129,7 +129,7 @@ The final brief must include:
 5. Theme radar summaries tied to assumed positions/themes.
 6. Contrarian corner.
 
-The 3 Things section keeps Gemini responsible for concise PM-facing narrative, while rendering code splits `So what:` into its own paragraph and adds deterministic Yahoo Finance topic-search links. The LLM does not invent news links.
+The 3 Things section keeps Gemini responsible for concise PM-facing narrative, while rendering code adds compact item sub-titles, styles `So what:` as a smaller support line, and adds deterministic Yahoo Finance topic-search links. The LLM does not invent news links.
 
 ## Current Data Sources
 

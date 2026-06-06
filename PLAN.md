@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-Three Things formatting revision is complete. The latest verified dry run (`20260606T142216Z`) keeps the full live prototype structure, moves each `So what:` into its own paragraph, and adds a deterministic Yahoo Finance read-more link for each of the three items.
+Three Things layout revision is complete. The latest verified dry run (`20260606T143027Z`) keeps the full live prototype structure, adds compact sub-titles for each item, renders each `So what:` as a smaller supporting line, and adds a deterministic Yahoo Finance read-more link for each item.
 
 ## Whose Turn
 
-Agent turn: wait for user review of the updated `The 3 Things That Matter Today` section in `outputs/latest/brief.html`.
+Agent turn: wait for user review of the updated `The 3 Things That Matter Today` layout in `outputs/latest/brief.html`.
 
-User turn: review the updated 3 Things section in `outputs/latest/brief.html` for readability, link usefulness, and PM-quality taste.
+User turn: review the updated 3 Things layout in `outputs/latest/brief.html` for visual hierarchy, link usefulness, and PM-quality taste.
 
 ## Locked Setup Choices
 
@@ -33,7 +33,7 @@ User turn: review the updated 3 Things section in `outputs/latest/brief.html` fo
 - LLM validation role: retry once when Gemini output fails strict JSON or word-limit validation.
 - Brief quality role: render source-status notes, keep live/cache/scaffold fallback explicit, and use Gemini prompt v7 for sharper PM-facing narrative and portfolio-logic validation.
 - Dashboard note role: document dashboard scope, extraction time, close/prior basis, additional timing information, Frankfurter FX reference-rate convention, BTC rolling 24-hour convention, and linked data-source basis in the brief itself.
-- Three Things link role: render `So what:` as a separate paragraph and add deterministic Yahoo Finance topic-search links; the LLM does not invent those links.
+- Three Things link role: render compact item sub-titles, smaller `So what:` support lines, and deterministic Yahoo Finance topic-search links; the LLM does not invent those links.
 
 ## Next Tasks
 

@@ -47,8 +47,9 @@ def test_sample_brief_contains_required_sections() -> None:
     assert "Dashboard notes:" in brief
     assert "| Asset | Close | Prior | Change | Why it matters |" in brief
     assert "| Asset | Close | Prior | Change | So what |" not in brief
-    assert "momentum.\n\nSo what: keep the FX view" in brief
-    assert "Read more: [Yahoo Finance](https://finance.yahoo.com/search?p=USD+JPY+Japan+intervention+yield+spread)" in brief
+    assert "### 1. USD/JPY Intervention Risk" in brief
+    assert "momentum.\n\n**So what:** keep the FX view" in brief
+    assert "**Read more:** [Yahoo Finance](https://finance.yahoo.com/search?p=USD+JPY+Japan+intervention+yield+spread)" in brief
     assert "EUR/USD" in brief
 
 

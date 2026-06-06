@@ -254,15 +254,16 @@ Outcome: full live dry run `20260606T141150Z` passed with the updated dashboard 
 
 ## 2026-06-06 - Three Things Paragraphs And Read-More Links
 
-Decision: keep Gemini's `So what:` requirement for the three narrative items, but render each `So what:` as a separate paragraph and add a deterministic `Read more: Yahoo Finance` link under each item.
+Decision: keep Gemini's `So what:` requirement for the three narrative items, but render each item with a compact sub-title, a smaller `So what:` support line, and a deterministic `Read more: Yahoo Finance` link.
 
 Reason: the user wanted the portfolio implication to breathe visually instead of being embedded in the same paragraph, and wanted a simple clickable path for readers who want related news. Links should be code-owned rather than LLM-invented, so they remain predictable and auditable.
 
 Changes:
 
 - Split each Three Things item at `So what:` during rendering.
-- Render the market fact/reasoning, `So what:`, and `Read more:` as separate paragraphs.
+- Add deterministic high-level item titles such as `USD/JPY Intervention Risk`, `Rates And Dollar Pressure`, and `Risk Tone Turns Defensive`.
+- Render the market fact/reasoning, a smaller `So what:` support line, and a smaller `Read more:` support line.
 - Add Yahoo Finance topic-search links based on detected item themes such as USD/JPY, US yields, DXY, EM debt, equities, oil, and gold.
 - Add tests that the split paragraph and Yahoo Finance link render in Markdown/HTML output.
 
-Outcome: full live dry run `20260606T142216Z` passed with separated `So what:` paragraphs, clickable Yahoo Finance links in Markdown/HTML, prompt version `gemini_narrative_v7`, 10/11 live market rows, Germany 10Y scaffold fallback, and delivery status `dry_run`.
+Outcome: full live dry run `20260606T143027Z` passed with compact sub-titles, clean HTML `So what:` labels, clickable Yahoo Finance links in Markdown/HTML, prompt version `gemini_narrative_v7`, 10/11 live market rows, Germany 10Y scaffold fallback, and delivery status `dry_run`.
