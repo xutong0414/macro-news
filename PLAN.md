@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-Dashboard tone revision is complete. The latest verified dry run (`20260606T141150Z`) keeps the full live prototype structure, renames the dashboard read-through column to `Why it matters`, uses daily market implications instead of repetitive instrument-definition language, and simplifies dashboard timing/source notes.
+Three Things formatting revision is complete. The latest verified dry run (`20260606T142216Z`) keeps the full live prototype structure, moves each `So what:` into its own paragraph, and adds a deterministic Yahoo Finance read-more link for each of the three items.
 
 ## Whose Turn
 
-Agent turn: wait for user review of the updated dashboard in `outputs/latest/brief.html`.
+Agent turn: wait for user review of the updated `The 3 Things That Matter Today` section in `outputs/latest/brief.html`.
 
-User turn: review the updated dashboard in `outputs/latest/brief.html` for tone and PM-quality taste.
+User turn: review the updated 3 Things section in `outputs/latest/brief.html` for readability, link usefulness, and PM-quality taste.
 
 ## Locked Setup Choices
 
@@ -33,6 +33,7 @@ User turn: review the updated dashboard in `outputs/latest/brief.html` for tone 
 - LLM validation role: retry once when Gemini output fails strict JSON or word-limit validation.
 - Brief quality role: render source-status notes, keep live/cache/scaffold fallback explicit, and use Gemini prompt v7 for sharper PM-facing narrative and portfolio-logic validation.
 - Dashboard note role: document dashboard scope, extraction time, close/prior basis, additional timing information, Frankfurter FX reference-rate convention, BTC rolling 24-hour convention, and linked data-source basis in the brief itself.
+- Three Things link role: render `So what:` as a separate paragraph and add deterministic Yahoo Finance topic-search links; the LLM does not invent those links.
 
 ## Next Tasks
 

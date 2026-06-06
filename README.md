@@ -123,11 +123,13 @@ Do not commit `.env`.
 The final brief must include:
 
 1. Overnight market dashboard as a table.
-2. The 3 things that matter today, each with a clear "so what."
+2. The 3 things that matter today, each with a clear "so what" paragraph and a reader-facing news link.
 3. Today's calendar across Asia, EU, and US sessions with consensus.
 4. One chart worth seeing with a caption under 30 words.
 5. Theme radar summaries tied to assumed positions/themes.
 6. Contrarian corner.
+
+The 3 Things section keeps Gemini responsible for concise PM-facing narrative, while rendering code splits `So what:` into its own paragraph and adds deterministic Yahoo Finance topic-search links. The LLM does not invent news links.
 
 ## Current Data Sources
 

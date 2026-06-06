@@ -5,6 +5,7 @@ import os
 import re
 from datetime import date, datetime, timezone
 from pathlib import Path
+from urllib.parse import quote_plus
 
 from .sample_data import BriefData
 
@@ -30,6 +31,56 @@ def _inline_markdown_to_html(text: str) -> str:
     return "".join(parts)
 
 
+def _split_so_what(item: str) -> tuple[str, str]:
+    match = re.search(r"\bSo what:\s*", item, flags=re.IGNORECASE)
+    if not match:
+        return item.strip(), ""
+    main = item[: match.start()].strip()
+    so_what = item[match.end() :].strip()
+    return main, f"So what: {so_what}" if so_what else ""
+
+
+def _three_things_news_query(item: str) -> str:
+    lowered = item.lower()
+    if any(term in lowered for term in ("usd/jpy", "yen", "boj", "japan", "jgb")):
+        return "USD JPY Japan intervention yield spread"
+    if any(term in lowered for term in ("em debt", "em duration", "em financing", "emerging market")) and any(
+        term in lowered for term in ("s&p", "equities", "risk-off", "risk aversion", "risk assets")
+    ):
+        return "emerging market debt US yields dollar"
+    if any(term in lowered for term in ("us 10y", "treasury", "higher us yields", "yields rose", "yield differential")):
+        return "US 10Y yields gold EM debt"
+    if any(term in lowered for term in ("dxy", "dollar strength", "broad dollar", "usd funding")):
+        return "US dollar index DXY EM debt gold"
+    if any(term in lowered for term in ("em debt", "em duration", "em financing", "emerging market")):
+        return "emerging market debt US yields dollar"
+    if any(term in lowered for term in ("s&p", "equities", "risk-off", "risk assets")):
+        return "global equities risk off US yields dollar"
+    if "gold" in lowered:
+        return "gold US yields dollar"
+    if "oil" in lowered or "inflation" in lowered:
+        return "oil inflation rates market"
+    if any(term in lowered for term in ("dxy", "dollar")):
+        return "US dollar index DXY market news"
+    return "macro markets rates FX"
+
+
+def _three_thing_news_link(item: str) -> str:
+    return f"https://finance.yahoo.com/search?p={quote_plus(_three_things_news_query(item))}"
+
+
+def _render_three_things_markdown(items: list[str]) -> str:
+    blocks: list[str] = []
+    for idx, item in enumerate(items, 1):
+        main, so_what = _split_so_what(item)
+        parts = [f"{idx}. {main}"]
+        if so_what:
+            parts.append(so_what)
+        parts.append(f"Read more: [Yahoo Finance]({_three_thing_news_link(item)})")
+        blocks.append("\n\n".join(parts))
+    return "\n\n".join(blocks)
+
+
 def render_markdown(data: BriefData, run_date: date | None = None) -> str:
     run_date = run_date or date.today()
     market_table = _table(
@@ -40,7 +91,7 @@ def render_markdown(data: BriefData, run_date: date | None = None) -> str:
         ["Session", "Time", "Event", "Consensus", "Why it matters"],
         [[e.session, e.time, e.event, e.consensus, e.why_it_matters] for e in data.calendar],
     )
-    three = "\n".join(f"{idx}. {item}" for idx, item in enumerate(data.three_things, 1))
+    three = _render_three_things_markdown(data.three_things)
     themes = "\n\n".join(
         (
             f"### {item.title}\n"
