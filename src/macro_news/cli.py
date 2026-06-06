@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from datetime import date
 
 from .config import Settings
@@ -32,7 +33,11 @@ def main(argv: list[str] | None = None) -> int:
             if missing:
                 parser.error("Missing required email environment variables for --send: " + ", ".join(missing))
 
-        result = run_brief(settings, send=args.send, run_date=run_date)
+        try:
+            result = run_brief(settings, send=args.send, run_date=run_date)
+        except RuntimeError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
         print(f"Run id: {result.run_id}")
         print(f"Delivery status: {result.delivery_status}")
         print(f"Markdown: {result.output_paths['latest_markdown']}")
@@ -43,4 +48,3 @@ def main(argv: list[str] | None = None) -> int:
 
     parser.error(f"Unknown command: {args.command}")
     return 2
-

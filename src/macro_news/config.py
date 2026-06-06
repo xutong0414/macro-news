@@ -5,6 +5,20 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+def normalize_timezone(value: str) -> str:
+    normalized = value.strip()
+    aliases = {
+        "hong kong": "Asia/Hong_Kong",
+        "hongkong": "Asia/Hong_Kong",
+        "asia/hong kong": "Asia/Hong_Kong",
+        "asia/hongkong": "Asia/Hong_Kong",
+    }
+    lowered = normalized.lower()
+    if lowered in aliases:
+        return aliases[lowered]
+    return normalized
+
+
 def load_dotenv(path: Path = Path(".env")) -> None:
     """Small .env loader so dry runs work before optional dependencies are installed."""
     if not path.exists():
@@ -53,7 +67,7 @@ class Settings:
             smtp_password=os.getenv("SMTP_PASSWORD") or None,
             brief_from_email=os.getenv("BRIEF_FROM_EMAIL") or None,
             brief_to_email=os.getenv("BRIEF_TO_EMAIL") or None,
-            timezone=os.getenv("BRIEF_TIMEZONE", "Asia/Shanghai"),
+            timezone=normalize_timezone(os.getenv("BRIEF_TIMEZONE", "Asia/Shanghai")),
             run_mode=os.getenv("BRIEF_RUN_MODE", "sample"),
             output_dir=Path(os.getenv("OUTPUT_DIR", "outputs")),
             log_dir=Path(os.getenv("LOG_DIR", "logs")),
@@ -68,4 +82,3 @@ class Settings:
             "BRIEF_TO_EMAIL": self.brief_to_email,
         }
         return [key for key, value in required.items() if not value]
-

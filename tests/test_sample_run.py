@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from macro_news.config import Settings
+from macro_news.config import Settings, normalize_timezone
 from macro_news.render import render_markdown
 from macro_news.runner import run_brief
 from macro_news.sample_data import build_sample_brief_data
@@ -8,6 +8,13 @@ from macro_news.sample_data import build_sample_brief_data
 
 def _word_count(text: str) -> int:
     return len(text.split())
+
+
+def test_timezone_aliases_normalize() -> None:
+    assert normalize_timezone("Hong Kong") == "Asia/Hong_Kong"
+    assert normalize_timezone("HongKong") == "Asia/Hong_Kong"
+    assert normalize_timezone("Asia/Hong Kong") == "Asia/Hong_Kong"
+    assert normalize_timezone("Asia/Shanghai") == "Asia/Shanghai"
 
 
 def test_sample_brief_contains_required_sections() -> None:

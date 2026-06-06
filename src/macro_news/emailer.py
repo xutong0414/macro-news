@@ -28,8 +28,14 @@ def send_email(settings: Settings, subject: str, text_body: str, html_body: str,
             filename=chart_path.name,
         )
 
-    with smtplib.SMTP(settings.smtp_host or "", settings.smtp_port) as smtp:
-        smtp.starttls()
-        smtp.login(settings.smtp_user or "", settings.smtp_password or "")
-        smtp.send_message(message)
-
+    try:
+        with smtplib.SMTP(settings.smtp_host or "", settings.smtp_port) as smtp:
+            smtp.starttls()
+            smtp.login(settings.smtp_user or "", settings.smtp_password or "")
+            smtp.send_message(message)
+    except smtplib.SMTPAuthenticationError as exc:
+        raise RuntimeError(
+            "SMTP authentication failed. For Gmail, use a 16-character app password "
+            "created under Google Account > Security > 2-Step Verification > App passwords; "
+            "do not use your normal Google login password."
+        ) from exc
