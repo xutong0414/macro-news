@@ -21,7 +21,7 @@ logs/*
 
 # Local artifacts
 .DS_Store
+.worklog/
 
 # Keep the assignment PDF local unless explicitly approved for release.
 Case_Study__Daily_Macro_Brief_Agent.pdf
-

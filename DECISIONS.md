@@ -34,3 +34,16 @@ Decision: start with sample data mode.
 
 Reason: this proves output structure, word limits, chart rendering, logs, and delivery shape before real API integration.
 
+## 2026-06-06 - Learning And Interaction Notes
+
+Decision: keep durable assignment-facing state in tracked control docs, and keep temporary learning/session notes in ignored `.worklog/`.
+
+Reason: the user wants explanations and continuity during the learning process, but wants interaction-derived material removed before the final assignment handoff.
+
+Working rule:
+
+- `PLAN.md` records the public resume point and next tasks.
+- `DECISIONS.md` records durable choices and alternatives.
+- `.worklog/session_notes.md` records private session breadcrumbs.
+- `.worklog/learning_notes.md` records plain-language concepts explained during development.
+- `.worklog/` is ignored by git and should be deleted before final submission.
