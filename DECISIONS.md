@@ -142,6 +142,6 @@ Reason: manual workflow success does not prove that GitHub's scheduler will trig
 
 Initial test time: 2026-06-06 15:30 Hong Kong time, equal to 2026-06-06 07:30 UTC.
 
-Update: the exact-minute test did not trigger. The revised workflow runs every five minutes during a short test window and checks prior successful scheduled runs so it sends at most once.
+Update: the exact-minute test and guarded scheduled-send test did not trigger during the short test window. Replace the scheduled email test with a scheduler-only smoke test that prints timestamps and uses no secrets or email.
 
 Follow-up: remove the temporary workflow or replace it with the permanent weekday schedule after confirmation.

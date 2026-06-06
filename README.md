@@ -184,12 +184,12 @@ The third workflow sends one real live brief only when manually confirmed:
 - Sends one live-source email brief.
 - Uploads generated outputs/logs as workflow artifacts.
 
-The temporary schedule-test workflow verifies GitHub's scheduler:
+The temporary scheduler smoke-test workflow verifies GitHub's scheduler without touching secrets or email:
 
-- `.github/workflows/daily-brief-scheduled-send-test.yml`
+- `.github/workflows/github-scheduler-smoke-test.yml`
 - Tries every five minutes during a temporary test window.
-- Sends at most one live-source email brief.
-- Includes date/time and prior-success guards and should be removed or replaced after confirmation.
+- Prints UTC and Hong Kong timestamps only.
+- Should be removed after scheduler confirmation.
 
 The next workflow step is a scheduled email-send workflow after the send time is confirmed.
 

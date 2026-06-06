@@ -1,0 +1,24 @@
+name: GitHub Scheduler Smoke Test
+
+on:
+  schedule:
+    # Temporary scheduler-only smoke test:
+    # Every 5 minutes from 2026-06-06 17:00-18:55 Hong Kong time.
+    # GitHub schedules use UTC, so this is 2026-06-06 09:00-10:55 UTC.
+    - cron: "*/5 9-10 6 6 *"
+
+permissions: {}
+
+jobs:
+  print-time:
+    name: Print Scheduler Timestamp
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Print scheduler context
+        run: |
+          echo "event_name=${GITHUB_EVENT_NAME}"
+          echo "workflow=${GITHUB_WORKFLOW}"
+          echo "run_id=${GITHUB_RUN_ID}"
+          echo "utc_time=$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "hong_kong_time=$(TZ=Asia/Hong_Kong date '+%Y-%m-%d %H:%M:%S %Z %z')"
