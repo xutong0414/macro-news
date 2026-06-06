@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import html
 import os
+import re
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -13,6 +14,20 @@ def _table(headers: list[str], rows: list[list[str]]) -> str:
     divider = "| " + " | ".join(["---"] * len(headers)) + " |"
     body = ["| " + " | ".join(row) + " |" for row in rows]
     return "\n".join([header, divider, *body])
+
+
+def _inline_markdown_to_html(text: str) -> str:
+    link_pattern = re.compile(r"\[([^\]]+)\]\((https?://[^)]+)\)")
+    parts: list[str] = []
+    cursor = 0
+    for match in link_pattern.finditer(text):
+        parts.append(html.escape(text[cursor : match.start()]))
+        label = html.escape(match.group(1))
+        url = html.escape(match.group(2), quote=True)
+        parts.append(f'<a href="{url}">{label}</a>')
+        cursor = match.end()
+    parts.append(html.escape(text[cursor:]))
+    return "".join(parts)
 
 
 def render_markdown(data: BriefData, run_date: date | None = None) -> str:
@@ -36,6 +51,12 @@ def render_markdown(data: BriefData, run_date: date | None = None) -> str:
         for item in data.theme_radar
     )
     assumptions = "\n".join(f"- {item}" for item in data.assumptions)
+    source_notes = "\n".join(f"- {item}" for item in data.source_notes)
+    source_status_section = f"""
+## Source Status
+
+{source_notes}
+""" if source_notes else ""
 
     return f"""# Daily Macro Brief - {run_date.isoformat()}
 
@@ -47,7 +68,7 @@ def render_markdown(data: BriefData, run_date: date | None = None) -> str:
 
 {three}
 
-## Today's Calendar
+## Today's Calendar / Next Session
 
 {calendar_table}
 
@@ -64,6 +85,7 @@ Caption: {data.chart_caption}
 ## Contrarian Corner
 
 {data.contrarian_corner}
+{source_status_section}
 
 ## Assumptions
 
@@ -118,19 +140,19 @@ def render_html(data: BriefData, run_date: date | None = None) -> str:
         if not line.strip():
             continue
         if line.startswith("# "):
-            html_lines.append(f"<h1>{html.escape(line[2:])}</h1>")
+            html_lines.append(f"<h1>{_inline_markdown_to_html(line[2:])}</h1>")
         elif line.startswith("## "):
-            html_lines.append(f"<h2>{html.escape(line[3:])}</h2>")
+            html_lines.append(f"<h2>{_inline_markdown_to_html(line[3:])}</h2>")
         elif line.startswith("### "):
-            html_lines.append(f"<h3>{html.escape(line[4:])}</h3>")
+            html_lines.append(f"<h3>{_inline_markdown_to_html(line[4:])}</h3>")
         elif line.startswith("!["):
             html_lines.append('<img src="chart.png" alt="One chart worth seeing">')
         elif line.startswith("Caption:"):
-            html_lines.append(f'<p class="caption">{html.escape(line)}</p>')
+            html_lines.append(f'<p class="caption">{_inline_markdown_to_html(line)}</p>')
         elif line.startswith("- "):
-            html_lines.append(f"<p>{html.escape(line)}</p>")
+            html_lines.append(f"<p>{_inline_markdown_to_html(line)}</p>")
         else:
-            html_lines.append(f"<p>{html.escape(line)}</p>")
+            html_lines.append(f"<p>{_inline_markdown_to_html(line)}</p>")
     flush_table()
     html_lines.extend(["</body>", "</html>"])
     return "\n".join(html_lines)
@@ -154,7 +176,7 @@ def write_chart(data: BriefData, chart_path: Path) -> None:
 
     fig, ax = plt.subplots(figsize=(7.2, 3.4))
     ax.plot(labels, values, marker="o", linewidth=2, color="#2563eb")
-    ax.set_title("USD/JPY Sample Path")
+    ax.set_title("USD/JPY Five-Day Path")
     ax.set_ylabel("Spot")
     ax.grid(True, alpha=0.25)
     fig.tight_layout()

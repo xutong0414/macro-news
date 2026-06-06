@@ -11,11 +11,11 @@ Status: Gemini synthesis, Gmail delivery, live market rows, live calendar rows, 
 | LLM synthesis | Gemini 2.5 Flash-Lite | Near zero for sample mode | Real cost starts when `GEMINI_API_KEY` is used. |
 | Optional LLM | DeepSeek V4 Flash | Near zero for expected token volume | Optional comparison provider later. |
 | Email delivery | Gmail SMTP | $0 | Uses user's Gmail account and app password. |
-| Scheduler | GitHub Actions | $0 expected | Public standard runners are free; private repos have included minutes. |
+| Scheduler | MacBook launchd / GitHub Actions | $0 expected | MacBook `launchd` is proven locally; GitHub manual runs are useful, but GitHub scheduled triggers failed short-window proof. |
 | Market data | Yahoo / Frankfurter / CoinGecko | $0 initially | Current live dashboard sources are free/public and use sample fallback rows. |
 | Calendar data | Forex Factory / Fair Economy | $0 initially | Free weekly feed with local cache and sample fallback; can rate-limit during repeated tests. |
 | Theme sources | Liberty Street / Bank Underground / FRED Blog | $0 initially | Curated RSS feeds with source-level fallback. |
-| Hosting | GitHub Actions | $0 expected | No server planned for v1. |
+| Hosting | Local MacBook for proof | $0 expected | Production should use an always-on Mac/workstation/VPS if precise scheduled delivery is required. |
 
 ## Token Accounting
 
@@ -35,3 +35,5 @@ Plain sample mode records zero actual LLM tokens.
 | 2026-06-06 | `20260606T050824Z` | Live market + calendar fallback + Gemini dry run | 1,681 | 623 | $0.0004173 | Not sent |
 | 2026-06-06 | `20260606T052801Z` | Live market + live calendar + live Theme Radar + Gemini dry run | 3,601 | 1,393 | $0.0009173 | Not sent |
 | 2026-06-06 | `20260606T053032Z` | Full live prototype + Gemini email smoke test | 1,773 | 677 | $0.0004481 | Sent |
+| 2026-06-06 | `20260606T103404Z` | MacBook launchd scheduled send proof | 1,770 | 706 | $0.0004594 | Sent |
+| 2026-06-06 | `20260606T122512Z` | Brief quality pass live dry run | 1,818 | 682 | $0.0004546 | Not sent |

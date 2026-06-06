@@ -10,7 +10,7 @@ from .config import Settings
 from .costing import TokenUsage, estimate_llm_cost_usd
 from .sample_data import BriefData, ThemeItem
 
-PROMPT_VERSION = "gemini_narrative_v2"
+PROMPT_VERSION = "gemini_narrative_v3"
 
 
 @dataclass(frozen=True)
@@ -72,7 +72,12 @@ def build_narrative_prompt(data: BriefData) -> str:
         "You are writing a Daily Macro Brief for a time-poor macro portfolio manager.\n"
         "Use only the facts below. Do not invent market numbers, source names, links, or positions.\n"
         "Do not add generic risk factors unless they appear in the facts.\n"
-        "Keep the tone concise, investment-oriented, and opinionated.\n\n"
+        "Keep the tone concise, investment-oriented, and opinionated.\n"
+        "Write like a PM-facing morning note: catalyst first, portfolio read-through second, no filler.\n\n"
+        "Portfolio semantics:\n"
+        "- A long USD/JPY position benefits when USD/JPY rises, but is hurt by intervention or yen-strength reversal risk.\n"
+        "- A gold overweight benefits when gold rises, but is pressured by higher real rates or dollar strength.\n"
+        "- EM debt exposure is usually pressured by higher US yields, stronger dollar funding stress, or weaker China demand.\n\n"
         "Return only valid JSON with this exact shape:\n"
         "{\n"
         '  "three_things": ["string", "string", "string"],\n'
@@ -84,9 +89,10 @@ def build_narrative_prompt(data: BriefData) -> str:
         "Constraints:\n"
         "- Each item in three_things must be 80 words or fewer and include a clear 'So what:' clause.\n"
         "- theme_radar must contain 1-3 items and reuse the provided title, source, and link values.\n"
-        "- Each theme_radar summary must be 70-90 words and explain the author's thesis and evidence.\n"
-        "- Each book_impact line must start with 'What this means for our book:'.\n"
-        "- contrarian_corner must be 50-100 words.\n\n"
+        "- Each theme_radar summary must be 60-100 words and explain the author's thesis and evidence without saying 'this is relevant'.\n"
+        "- Each book_impact line must start with 'What this means for our book:' and must be specific to that source.\n"
+        "- Do not repeat the same book_impact line across Theme Radar items.\n"
+        "- contrarian_corner must be 50-100 words and include one trigger that would challenge the consensus read.\n\n"
         f"Facts:\n{json.dumps(facts, indent=2)}"
     )
 
@@ -109,6 +115,7 @@ def parse_narrative_response(text: str, base_data: BriefData) -> BriefData:
         raise ValueError("Gemini response must include 1-3 theme_radar items")
 
     theme_radar: list[ThemeItem] = []
+    seen_book_impacts: set[str] = set()
     for idx, item in enumerate(theme_payload, 1):
         if not isinstance(item, dict):
             raise ValueError(f"theme_radar item {idx} must be an object")
@@ -121,6 +128,10 @@ def parse_narrative_response(text: str, base_data: BriefData) -> BriefData:
         if (title, source, link) not in allowed_theme_meta:
             raise ValueError(f"theme_radar item {idx} must reuse an existing title, source, and link")
         _require_word_range(f"theme_radar summary {idx}", summary, 60, 100)
+        impact_key = book_impact.lower()
+        if impact_key in seen_book_impacts:
+            raise ValueError("theme_radar book_impact lines must not repeat exactly")
+        seen_book_impacts.add(impact_key)
         theme_radar.append(
             ThemeItem(
                 title=title,
@@ -202,7 +213,8 @@ def synthesize_with_gemini(settings: Settings, data: BriefData) -> SynthesisResu
                 f"{prompt}\n\n"
                 "Validation repair instruction:\n"
                 f"The previous JSON failed validation because: {exc}.\n"
-                "Return the full JSON object again. Be especially careful that every theme_radar summary is 70-90 words."
+                "Return the full JSON object again. Be especially careful that every theme_radar summary is 60-100 words."
+                " Also ensure Theme Radar book_impact lines are source-specific and not repeated."
             )
 
     if generated_data is None:

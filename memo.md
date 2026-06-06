@@ -8,13 +8,15 @@ The system separates deterministic data collection from LLM writing. Market numb
 
 The current scaffold keeps tables, chart generation, validation, delivery, and token/cost logging in code. Gemini drafts only the narrative sections from structured facts.
 
-Live market dashboard rows are fetched asset by asset, with sample fallback if a free/public source is unavailable. The run log records which assets were live and which fell back, making the prototype auditable despite using free data sources.
+Live market dashboard rows are fetched asset by asset, with scaffold fallback if a free/public source is unavailable. The run log records which assets were live and which fell back, and the rendered brief includes a concise Source Status section so the evaluator can see fallback behavior without reading debug logs.
 
 Live calendar rows use a free weekly feed with forecast values treated as consensus estimates. Because public feeds can rate-limit during repeated tests, the prototype keeps a local ignored cache after successful pulls and falls back to sample calendar rows if no live or cached data is available.
 
 Theme Radar uses curated RSS feeds rather than broad web search. The agent parses source titles, links, and descriptions; scores candidates against the assumed book and house themes; then sends only selected source facts to Gemini for synthesis. This keeps the process auditable and reduces hallucination risk.
 
-The LLM output is validated by code for JSON shape and assignment word limits. If Gemini misses a limit, the runner retries once with the exact validation error.
+The LLM output is validated by code for JSON shape and assignment word limits. If Gemini misses a limit, the runner retries once with the exact validation error. The current prompt version adds portfolio semantics so the model treats long USD/JPY, gold overweight, and EM debt exposure consistently.
+
+Scheduling was tested in two ways. GitHub manual workflow execution and email delivery succeeded, but GitHub scheduled triggers did not create runs in short-window tests. A MacBook `launchd` one-shot schedule did run and send successfully, so the documented production scheduler path is local/server scheduling rather than relying on GitHub's own schedule trigger.
 
 ## Position And Theme Assumptions
 
@@ -36,6 +38,7 @@ Initial house themes:
 1. Add real position/risk exposure import so "so what" can be portfolio-aware.
 2. Add more source diversity and freshness checks for non-mainstream research inputs.
 3. Add human feedback loop so the PM can rate each brief and improve selection.
+4. Replace fragile free feeds with paid or redundant market/calendar providers if production reliability matters.
 
 ## One-Month Roadmap
 

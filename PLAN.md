@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-GitHub manual email-send workflow is confirmed. GitHub scheduled triggers failed short-window tests, but a MacBook `launchd` one-shot scheduled send succeeded on 2026-06-06 at 18:34 Hong Kong/Singapore time and the user confirmed receipt. Controlled local/server scheduling is now the proven scheduled-delivery path.
+Brief quality pass is complete after scheduler proof. The latest live dry run (`20260606T122512Z`) uses Gemini prompt v3, shows source-status notes, labels next-session calendar items clearly, removes contradictory live/sample assumptions, and renders the chart successfully.
 
 ## Whose Turn
 
-Agent turn: prepare the next implementation stage after scheduler proof.
+Agent turn: commit and push the brief quality pass.
 
-User turn: decide whether to install a permanent weekday MacBook `launchd` schedule now or continue improving the brief/data sources first.
+User turn: review the latest `outputs/latest/brief.md` or `outputs/latest/brief.html` and decide whether to continue data-source improvements or move to memo/finalization.
 
 ## Locked Setup Choices
 
@@ -31,23 +31,23 @@ User turn: decide whether to install a permanent weekday MacBook `launchd` sched
 - Calendar data role: fetch live economic-calendar rows where available; use ignored cache and sample fallback if the public feed fails or rate-limits.
 - Theme Radar role: fetch curated RSS sources, rank them against the assumed book/themes, and let Gemini synthesize only selected source facts.
 - LLM validation role: retry once when Gemini output fails strict JSON or word-limit validation.
+- Brief quality role: render source-status notes, keep live/scaffold fallback explicit, and use Gemini prompt v3 for sharper PM-facing narrative.
 
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.
-3. Continue improving the live brief quality before final memo writing.
-4. Improve calendar source reliability or add a second source if the free feed remains rate-limited.
-5. Improve live data source coverage for Germany 10Y and any assets with intermittent Yahoo failures.
-6. Improve Theme Radar source diversity if any RSS feed is slow or unavailable.
-7. Polish brief assumptions wording so live mode describes source-level fallback instead of implying every market number must be live.
-8. Generate final `memo.pdf` from `memo.md`.
+2. Review whether the latest brief is assignment-ready enough to start final memo writing.
+3. Improve live data source coverage for Germany 10Y and intermittent Yahoo timeouts.
+4. Add a second calendar provider if the free feed remains thin or rate-limited.
+5. Improve Theme Radar source diversity if any RSS feed is slow or unavailable.
+6. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.
+7. Generate final `memo.pdf` from `memo.md`.
 
 ## Blockers
 
 - GitHub scheduled events created zero runs in short-window tests; manual GitHub runs, email sending, and MacBook `launchd` scheduled sending with inbox receipt are confirmed.
 - A permanent MacBook schedule requires the Mac to be on and awake enough at the scheduled time.
-- Free public calendar feed can rate-limit during repeated development tests; local cache and sample fallback are implemented.
+- Free public calendar feed can rate-limit or be thin outside market mornings; local cache and sample fallback are implemented.
 - Some free RSS feeds can time out; source-level fallback is implemented.
 
 ## Acceptance Criteria For Setup

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
@@ -41,6 +41,7 @@ class BriefData:
     chart_series: list[tuple[str, float]]
     assumptions: list[str]
     data_sources: list[str]
+    source_notes: list[str] = field(default_factory=list)
 
 
 def build_sample_brief_data() -> BriefData:
@@ -104,8 +105,13 @@ def build_sample_brief_data() -> BriefData:
         ),
         assumptions=[
             "Assumed book is long USD/JPY, overweight gold, and exposed to an EM debt basket.",
-            "Sample data mode uses plausible values for scaffold validation only.",
-            "Live mode must replace all market numbers with real APIs or scraping.",
+            "No real portfolio file is connected yet; book impacts are based on the assumed positions above.",
+            "Free/public data feeds are used for v1; unavailable rows are flagged as scaffold fallback rather than silently filled.",
         ],
         data_sources=["sample_market_data", "sample_calendar", "sample_deep_content"],
+        source_notes=[
+            "Market: sample scaffold rows are used until live market mode is enabled.",
+            "Calendar: sample scaffold events are used until live calendar mode is enabled.",
+            "Theme Radar: sample source items are used until live RSS mode is enabled.",
+        ],
     )

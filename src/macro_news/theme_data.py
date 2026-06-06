@@ -57,6 +57,11 @@ THEME_SOURCES = [
 
 THEME_RULES = [
     ThemeRule(
+        label="credit conditions and financial plumbing",
+        keywords=("credit", "borrower", "loan", "lending", "rationing", "interest rate cap", "bank", "funding"),
+        book_impact="What this means for our book: tighter credit access is a warning for risk appetite and EM debt selection.",
+    ),
+    ThemeRule(
         label="term premium and duration pressure",
         keywords=("term premium", "treasury", "duration", "long-term yield", "fiscal", "deficit", "auction", "debt"),
         book_impact="What this means for our book: duration pressure can support USD/JPY but challenge the gold overweight.",
@@ -189,12 +194,13 @@ def _summary_from_candidate(candidate: ThemeCandidate) -> str:
     excerpt = _excerpt(candidate.text)
     keywords = ", ".join(candidate.matched_keywords[:3]) or candidate.matched_rule.label
     summary = (
-        f"The source focuses on {candidate.title}. The feed text says: {excerpt} "
-        f"The selector matched it to {candidate.matched_rule.label} because it discusses {keywords}. "
-        "That makes it useful for the morning risk discussion rather than a generic news item."
+        f"Thesis: {candidate.title} is relevant to {candidate.matched_rule.label}. "
+        f"Evidence: {excerpt} "
+        f"The selector picked it because the feed discusses {keywords}. "
+        "Portfolio link: it is a live source for judging whether the assumed FX, gold, or EM debt exposures need attention today."
     )
     if _word_count(summary) < 60:
-        summary += " The item should be read as a live source input for Gemini synthesis and portfolio-aware judgment."
+        summary += " It should be read as a source input for portfolio-aware judgment, not as a standalone trade recommendation."
     return _trim_words(summary, 100)
 
 
@@ -268,12 +274,14 @@ def select_theme_candidates(candidates: list[ThemeCandidate], max_items: int = 2
     selected: list[ThemeCandidate] = []
     seen_sources: set[str] = set()
     seen_links: set[str] = set()
+    seen_rules: set[str] = set()
     for candidate in ranked:
-        if candidate.link in seen_links or candidate.source in seen_sources:
+        if candidate.link in seen_links or candidate.source in seen_sources or candidate.matched_rule.label in seen_rules:
             continue
         selected.append(candidate)
         seen_sources.add(candidate.source)
         seen_links.add(candidate.link)
+        seen_rules.add(candidate.matched_rule.label)
         if len(selected) >= max_items:
             return selected
     for candidate in ranked:
@@ -317,8 +325,13 @@ def replace_theme_radar_with_live(
         candidates, errors, successful_sources = fetch_theme_candidates(client, sources=sources)
     selected = select_theme_candidates(candidates)
     if not selected:
+        fallback_note = "Theme Radar: live RSS sources returned no usable candidates; scaffold source items used."
+        fallback_data = replace(
+            data,
+            source_notes=[*[note for note in data.source_notes if not note.startswith("Theme Radar:")], fallback_note],
+        )
         return ThemeDataResult(
-            data=data,
+            data=fallback_data,
             selected_titles=[],
             candidate_count=len(candidates),
             fallback_used=True,
@@ -327,6 +340,8 @@ def replace_theme_radar_with_live(
         )
 
     selected_sources = list(dict.fromkeys([*successful_sources, *[f"theme_selected:{candidate.source}" for candidate in selected]]))
+    error_note = " One configured feed failed and is logged." if errors else ""
+    theme_note = f"Theme Radar: selected {len(selected)} items from curated live RSS sources.{error_note}"
     updated = replace(
         data,
         theme_radar=[candidate_to_theme_item(candidate) for candidate in selected],
@@ -335,6 +350,7 @@ def replace_theme_radar_with_live(
             "Theme Radar uses curated live RSS sources when available and sample fallback items when source collection fails.",
         ],
         data_sources=[*data.data_sources, *selected_sources],
+        source_notes=[*[note for note in data.source_notes if not note.startswith("Theme Radar:")], theme_note],
     )
     return ThemeDataResult(
         data=updated,

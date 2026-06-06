@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 from macro_news.config import Settings, normalize_timezone
 from macro_news.costing import TokenUsage
@@ -18,6 +19,10 @@ from macro_news.theme_data import ThemeSource, replace_theme_radar_with_live
 
 def _word_count(text: str) -> int:
     return len(text.split())
+
+
+def _calendar_reference_now() -> datetime:
+    return datetime(2026, 6, 6, 0, 0, tzinfo=ZoneInfo("Asia/Hong_Kong"))
 
 
 def test_timezone_aliases_normalize() -> None:
@@ -294,6 +299,7 @@ def test_live_calendar_data_replaces_calendar_rows(tmp_path) -> None:
         base,
         run_date=date(2026, 6, 6),
         timezone_name="Asia/Hong_Kong",
+        reference_now=_calendar_reference_now(),
         cache_path=tmp_path / "calendar.json",
         client_factory=FakeCalendarClient,
     )
@@ -331,6 +337,7 @@ def test_live_calendar_uses_cache_when_feed_refresh_fails(tmp_path) -> None:
         build_sample_brief_data(),
         run_date=date(2026, 6, 6),
         timezone_name="Asia/Hong_Kong",
+        reference_now=_calendar_reference_now(),
         cache_path=cache_path,
         client_factory=FailingCalendarClient,
     )
@@ -369,6 +376,7 @@ def test_dry_run_with_live_calendar_writes_usage_log(tmp_path, monkeypatch) -> N
             data,
             run_date=run_date,
             timezone_name=timezone_name,
+            reference_now=_calendar_reference_now(),
             cache_path=tmp_path / "calendar.json",
             client_factory=FakeCalendarClient,
         )

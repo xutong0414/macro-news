@@ -95,6 +95,7 @@ def run_brief(
         "prompt_version": prompt_version,
         "delivery_status": delivery_status,
         "data_sources": data.data_sources,
+        "source_notes": data.source_notes,
         "market_data": {
             "mode": "live_with_fallback" if live_market_data else "sample",
             "live_assets": market_data_result.live_assets,

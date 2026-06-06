@@ -20,6 +20,7 @@ class LiveQuote:
     change_style: str
     source: str
     so_what: str
+    series: tuple[tuple[str, float], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -125,12 +126,13 @@ def fetch_usdjpy(client: httpx.Client, run_date: date) -> LiveQuote:
     )
     response.raise_for_status()
     rates = response.json().get("rates", {})
-    values = [
-        _safe_float(item.get("JPY"))
+    dated_values = [
+        (_day, _safe_float(item.get("JPY")))
         for _day, item in sorted(rates.items())
         if isinstance(item, dict)
     ]
-    values = [item for item in values if item is not None]
+    dated_values = [(day, value) for day, value in dated_values if value is not None]
+    values = [value for _day, value in dated_values]
     if len(values) < 2:
         raise ValueError("not enough USD/JPY values")
     return LiveQuote(
@@ -142,6 +144,7 @@ def fetch_usdjpy(client: httpx.Client, run_date: date) -> LiveQuote:
         change_style="pct",
         source="frankfurter:USDJPY",
         so_what="Yen direction is the direct read-through for the assumed long USD/JPY.",
+        series=tuple((day[-5:], value) for day, value in dated_values[-5:]),
     )
 
 
@@ -186,6 +189,7 @@ def replace_market_rows_with_live(
     fallback_by_asset = {row.asset: row for row in data.market_rows}
     target_order = ["S&P 500", "Euro Stoxx 50", "US 10Y yield", "Germany 10Y yield", "DXY", "USD/JPY", "Gold", "WTI oil", "BTC"]
     live_rows: dict[str, MarketRow] = {}
+    live_chart_series: list[tuple[str, float]] | None = None
     live_assets: list[str] = []
     fallback_assets: list[str] = []
     errors: dict[str, str] = {}
@@ -209,6 +213,8 @@ def replace_market_rows_with_live(
             live_rows[asset] = quote_to_row(quote)
             live_assets.append(asset)
             sources.append(quote.source)
+            if quote.asset == "USD/JPY" and quote.series:
+                live_chart_series = list(quote.series)
 
     merged_rows: list[MarketRow] = []
     for asset in target_order:
@@ -223,15 +229,26 @@ def replace_market_rows_with_live(
         if row.asset not in target_order:
             merged_rows.append(row)
 
+    total_assets = len(merged_rows)
+    if fallback_assets:
+        market_note = (
+            f"Market: live public sources refreshed {len(live_assets)}/{total_assets} dashboard rows; "
+            f"scaffold fallback used for {', '.join(fallback_assets)}."
+        )
+    else:
+        market_note = f"Market: all {total_assets} dashboard rows refreshed from live public sources."
+
     assumptions = [
         *data.assumptions,
-        "Market dashboard uses live sources when available and sample fallback rows when a source fails.",
+        "Market dashboard uses public live sources where available and row-level scaffold fallback for unavailable assets.",
     ]
     updated = replace(
         data,
         market_rows=merged_rows,
+        chart_series=live_chart_series or data.chart_series,
         assumptions=assumptions,
         data_sources=[*data.data_sources, *sources],
+        source_notes=[*[note for note in data.source_notes if not note.startswith("Market:")], market_note],
     )
     return MarketDataResult(
         data=updated,

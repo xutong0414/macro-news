@@ -169,3 +169,20 @@ Outcome: a temporary MacBook `launchd` job ran at 2026-06-06 18:34 Hong Kong/Sin
 Repo visibility follow-up: the user switched the GitHub repository back to private after the public API inspection window.
 
 Tradeoff: local/server scheduling requires the machine or server to be on. GitHub Actions does not require a local machine, but its schedule trigger is less controllable and failed our short-window proof in this repo.
+
+## 2026-06-06 - Brief Quality Pass
+
+Decision: polish the generated brief before final memo writing instead of continuing scheduler work.
+
+Reason: delivery and MacBook scheduling are proven; the next evaluator-facing risk is brief credibility.
+
+Changes:
+
+- Add a `Source Status` section to distinguish live rows, scaffold fallback, calendar source status, and Theme Radar source status without exposing raw debug errors.
+- Remove contradictory live/sample assumptions and make fallback behavior explicit.
+- Label calendar rows as `Today`, `Earlier today`, `Tomorrow`, or dated next-session items.
+- Use the live USD/JPY series for the chart when the FX source succeeds.
+- Upgrade Gemini narrative prompt to v3 with portfolio semantics and duplicate book-impact validation.
+- Prefer Theme Radar source diversity by source and matched theme, including a credit-conditions rule.
+
+Outcome: live dry run `20260606T122512Z` passed with all six sections, chart output, source notes in the log, prompt version `gemini_narrative_v3`, and no contradictory live/sample assumption text.
