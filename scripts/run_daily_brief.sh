@@ -8,6 +8,9 @@ cd "$repo_root"
 
 python_bin="${PYTHON_BIN:-python3}"
 export PYTHONPATH="${repo_root}/src:${PYTHONPATH:-}"
+export MPLCONFIGDIR="${MPLCONFIGDIR:-${repo_root}/.cache/matplotlib}"
+
+mkdir -p "$MPLCONFIGDIR"
 
 "$python_bin" -m macro_news run \
   --send \

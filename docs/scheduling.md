@@ -5,7 +5,9 @@ This project has two separate automation questions:
 1. Can the brief run and send email?
 2. Who wakes the brief at the right time?
 
-The first question is already proven locally and through the manual GitHub Actions send workflow. The second question is still being tested. Short-window GitHub scheduled tests were recognized as active workflows, but did not create scheduled runs during the test windows.
+The first question is already proven locally and through the manual GitHub Actions send workflow. The second question is proven on the user's MacBook with `launchd`: a one-shot scheduled job ran at 2026-06-06 18:34 Hong Kong/Singapore time and reported delivery status `sent`.
+
+Short-window GitHub scheduled tests were recognized as active workflows, but did not create scheduled runs during the test windows.
 
 ## Recommended Direction
 
@@ -18,6 +20,8 @@ For dependable daily use, run the project from a scheduler that you control:
 - Cloud scheduler: a scheduler service that triggers a small server endpoint or a GitHub `workflow_dispatch`
 
 GitHub Actions can still be useful, but scheduled workflows are not a precise alarm clock. They use UTC, can be delayed, and in our short-window proof attempts did not fire.
+
+The confirmed local scheduled path is macOS `launchd`.
 
 ## Timing Rule
 
@@ -51,14 +55,15 @@ Manual setup:
 
 1. Copy the example to `~/Library/LaunchAgents/com.macro-news.daily-brief.plist`.
 2. Replace `/ABSOLUTE/PATH/TO/macro_news` with this repo's absolute path.
-3. Confirm the scheduled Mac has a valid `.env`.
-4. Load the job:
+3. Replace `/ABSOLUTE/PATH/TO/python3` with the output of `command -v python3`.
+4. Confirm the scheduled Mac has a valid `.env`.
+5. Load the job:
 
 ```bash
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.macro-news.daily-brief.plist
 ```
 
-5. Check the job:
+6. Check the job:
 
 ```bash
 launchctl print gui/$(id -u)/com.macro-news.daily-brief

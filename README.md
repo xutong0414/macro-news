@@ -6,7 +6,7 @@ The target reader is a macro PM who wants: what changed overnight, why it matter
 
 ## Current Status
 
-Stage: local agent loop with Gemini synthesis, Gmail delivery, live market rows, live economic-calendar rows, live Theme Radar source collection with fallback, and GitHub manual-send automation. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is now routed through the documented local/server scheduler path.
+Stage: local agent loop with Gemini synthesis, Gmail delivery, live market rows, live economic-calendar rows, live Theme Radar source collection with fallback, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
 
 Locked defaults:
 
@@ -198,7 +198,7 @@ The next workflow step is to keep the proven manual GitHub send workflow and use
 
 See `docs/scheduling.md` for the scheduler plan.
 
-Key idea: the brief command is proven, but a separate scheduler must wake it. Manual GitHub send is confirmed; GitHub scheduled events failed our short-window proof. For dependable daily delivery, use an always-on Mac with `launchd`, a Linux workstation/VPS with `cron` or `systemd`, or a cloud scheduler.
+Key idea: the brief command is proven, but a separate scheduler must wake it. Manual GitHub send is confirmed; GitHub scheduled events failed our short-window proof; a MacBook `launchd` one-shot scheduled send succeeded. For dependable daily delivery, use an always-on Mac with `launchd`, a Linux workstation/VPS with `cron` or `systemd`, or a cloud scheduler.
 
 The reusable scheduler command is:
 

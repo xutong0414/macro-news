@@ -15,6 +15,14 @@
   <key>WorkingDirectory</key>
   <string>/ABSOLUTE/PATH/TO/macro_news</string>
 
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PYTHON_BIN</key>
+    <string>/ABSOLUTE/PATH/TO/python3</string>
+    <key>PATH</key>
+    <string>/opt/anaconda3/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
   <key>StartCalendarInterval</key>
   <array>
     <dict>
