@@ -6,16 +6,16 @@ Local agent loop with Gemini synthesis, Gmail delivery, live market rows, live e
 
 ## Whose Turn
 
-Agent turn: Theme Radar source layer is implemented, smoke-tested, emailed, and committed.
+Agent turn: GitHub remote is configured and `main` is pushed.
 
-User turn: confirm the full live-generated email looks acceptable, then decide when to create the GitHub remote.
+User turn: review the GitHub repo and decide when to add GitHub Actions scheduling/secrets.
 
 ## Locked Setup Choices
 
 - Delivery: Gmail SMTP first.
 - LLM: Gemini 2.5 Flash-Lite default.
 - DeepSeek: optional provider later.
-- GitHub: create/push after the local scaffold and dry run work.
+- GitHub: remote created and `main` pushed.
 - First run mode: sample data only.
 - Private process notes: keep in ignored `.worklog/`, then delete before final handoff.
 - LLM role: draft narrative sections only; code owns facts, tables, chart, validation, and logging.
@@ -27,8 +27,8 @@ User turn: confirm the full live-generated email looks acceptable, then decide w
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. Add GitHub remote and push when the user is ready.
-3. Add GitHub Actions schedule after live/local send works.
+2. Add GitHub Actions schedule after live/local send works.
+3. Add GitHub Secrets for Gemini and Gmail SMTP when scheduling is ready.
 4. Improve calendar source reliability or add a second source if the free feed remains rate-limited.
 5. Improve live data source coverage for Germany 10Y and any assets with intermittent Yahoo failures.
 6. Improve Theme Radar source diversity if any RSS feed is slow or unavailable.
@@ -36,7 +36,6 @@ User turn: confirm the full live-generated email looks acceptable, then decide w
 
 ## Blockers
 
-- GitHub remote is not created yet.
 - Free public calendar feed can rate-limit during repeated development tests; local cache and sample fallback are implemented.
 - Some free RSS feeds can time out; source-level fallback is implemented.
 
