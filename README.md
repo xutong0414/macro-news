@@ -6,7 +6,7 @@ The target reader is a macro PM who wants: what changed overnight, why it matter
 
 ## Current Status
 
-Stage: sample data brief with Gemini narrative synthesis and Gmail delivery smoke-tested.
+Stage: local agent loop with Gemini synthesis, Gmail delivery, live market rows, and live economic-calendar rows with fallback.
 
 Locked defaults:
 
@@ -37,16 +37,28 @@ Run with live market dashboard data and sample fallbacks:
 PYTHONPATH=src python -m macro_news run --dry-run --live-market-data
 ```
 
-Run with live market dashboard data plus Gemini narrative synthesis:
+Run with live economic calendar data and sample fallback:
 
 ```bash
-PYTHONPATH=src python -m macro_news run --dry-run --live-market-data --use-llm
+PYTHONPATH=src python -m macro_news run --dry-run --live-calendar
+```
+
+Run with live market dashboard data, live calendar data, and Gemini narrative synthesis:
+
+```bash
+PYTHONPATH=src python -m macro_news run --dry-run --live-market-data --live-calendar --use-llm
 ```
 
 Send a sample brief by email:
 
 ```bash
 PYTHONPATH=src python -m macro_news run --send --use-llm
+```
+
+Send the fuller prototype brief by email:
+
+```bash
+PYTHONPATH=src python -m macro_news run --send --live-market-data --live-calendar --use-llm
 ```
 
 Expected local outputs:
@@ -88,6 +100,11 @@ Market data mode:
 - `MARKET_DATA_MODE=sample` keeps the dashboard fully deterministic.
 - `MARKET_DATA_MODE=live` fetches live dashboard rows where available and falls back to sample rows asset by asset.
 
+Calendar data mode:
+
+- `CALENDAR_MODE=sample` keeps the calendar deterministic.
+- `CALENDAR_MODE=live` fetches the weekly economic calendar where available, uses a local ignored cache after successful pulls, and falls back to sample rows if the public feed is unavailable or rate-limited.
+
 Do not commit `.env`.
 
 ## Assignment Modules
@@ -110,7 +127,13 @@ The market dashboard currently uses:
 - CoinGecko for BTC.
 - Sample fallback rows when a source fails or is not yet connected.
 
-The next missing live piece is the economic calendar with consensus estimates.
+The calendar currently uses:
+
+- Forex Factory/Fair Economy weekly JSON feed for event names, impact, forecast/consensus, and previous values.
+- Local ignored cache under `.cache/calendar/` after successful pulls.
+- Sample fallback rows when the feed fails or is rate-limited.
+
+The next missing live piece is non-mainstream source collection for Theme Radar.
 
 ## Repo Control Files
 

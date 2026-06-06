@@ -4,7 +4,7 @@ This file tracks expected and actual daily run cost.
 
 ## Current Estimate
 
-Status: sample Gemini synthesis and Gmail delivery smoke test completed. Live market/calendar APIs are not connected yet.
+Status: Gemini synthesis, Gmail delivery, live market rows, and live calendar rows have been smoke-tested. Free market/calendar sources are used with fallback.
 
 | Category | Provider | Expected cost | Notes |
 | --- | --- | ---: | --- |
@@ -13,7 +13,7 @@ Status: sample Gemini synthesis and Gmail delivery smoke test completed. Live ma
 | Email delivery | Gmail SMTP | $0 | Uses user's Gmail account and app password. |
 | Scheduler | GitHub Actions | $0 expected | Public standard runners are free; private repos have included minutes. |
 | Market data | Yahoo / Frankfurter / CoinGecko | $0 initially | Current live dashboard sources are free/public and use sample fallback rows. |
-| Calendar data | TBD | $0 initially | Need source with consensus estimates. |
+| Calendar data | Forex Factory / Fair Economy | $0 initially | Free weekly feed with local cache and sample fallback; can rate-limit during repeated tests. |
 | Hosting | GitHub Actions | $0 expected | No server planned for v1. |
 
 ## Token Accounting
@@ -30,3 +30,5 @@ Plain sample mode records zero actual LLM tokens.
 | 2026-06-06 | `20260606T044351Z` | Gemini + email smoke test | 1,631 | 625 | $0.0004131 | Sent |
 | 2026-06-06 | `20260606T045635Z` | Live market data + Gemini dry run | 1,667 | 693 | $0.0004439 | Not sent |
 | 2026-06-06 | `20260606T045801Z` | Live market data + Gemini + email smoke test | 1,678 | 655 | $0.0004298 | Sent |
+| 2026-06-06 | `20260606T050702Z` | Live market + live calendar + Gemini dry run | 1,727 | 659 | $0.0004363 | Not sent |
+| 2026-06-06 | `20260606T050824Z` | Live market + calendar fallback + Gemini dry run | 1,681 | 623 | $0.0004173 | Not sent |

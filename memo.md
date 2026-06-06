@@ -10,6 +10,8 @@ The current scaffold keeps tables, chart generation, validation, delivery, and t
 
 Live market dashboard rows are fetched asset by asset, with sample fallback if a free/public source is unavailable. The run log records which assets were live and which fell back, making the prototype auditable despite using free data sources.
 
+Live calendar rows use a free weekly feed with forecast values treated as consensus estimates. Because public feeds can rate-limit during repeated tests, the prototype keeps a local ignored cache after successful pulls and falls back to sample calendar rows if no live or cached data is available.
+
 ## Position And Theme Assumptions
 
 Initial assumed book:

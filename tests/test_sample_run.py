@@ -10,6 +10,7 @@ from macro_news.llm import SynthesisResult, parse_narrative_response
 from macro_news.market_data import replace_market_rows_with_live
 from macro_news.render import render_markdown
 import macro_news.runner as runner_module
+from macro_news.calendar_data import replace_calendar_with_live
 from macro_news.runner import run_brief
 from macro_news.sample_data import build_sample_brief_data
 
@@ -97,6 +98,7 @@ def test_dry_run_writes_outputs(tmp_path) -> None:
         timezone="Asia/Shanghai",
         run_mode="sample",
         market_data_mode="sample",
+        calendar_mode="sample",
         output_dir=tmp_path / "outputs",
         log_dir=tmp_path / "logs",
     )
@@ -126,6 +128,7 @@ def test_dry_run_with_llm_writes_usage_log(tmp_path, monkeypatch) -> None:
         timezone="Asia/Shanghai",
         run_mode="sample",
         market_data_mode="sample",
+        calendar_mode="sample",
         output_dir=tmp_path / "outputs",
         log_dir=tmp_path / "logs",
     )
@@ -220,3 +223,156 @@ def test_live_market_data_replaces_rows_and_logs_fallback() -> None:
     assert "DXY" in result.fallback_assets
     assert "DXY" in result.errors
     assert "yahoo_chart:^GSPC" in result.sources
+
+
+class FakeCalendarClient:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        return None
+
+    def get(self, url):
+        assert "ff_calendar_thisweek" in url
+        return FakeResponse(
+            [
+                {
+                    "title": "Core CPI Flash Estimate y/y",
+                    "country": "EUR",
+                    "date": "2026-06-06T04:00:00-04:00",
+                    "impact": "Medium",
+                    "forecast": "2.4%",
+                    "previous": "2.2%",
+                },
+                {
+                    "title": "Non-Farm Employment Change",
+                    "country": "USD",
+                    "date": "2026-06-06T08:30:00-04:00",
+                    "impact": "High",
+                    "forecast": "85K",
+                    "previous": "115K",
+                },
+                {
+                    "title": "RatingDog Manufacturing PMI",
+                    "country": "CNY",
+                    "date": "2026-06-06T21:45:00-04:00",
+                    "impact": "Medium",
+                    "forecast": "51.4",
+                    "previous": "52.2",
+                },
+                {
+                    "title": "Bank Holiday",
+                    "country": "NZD",
+                    "date": "2026-06-06T16:00:00-04:00",
+                    "impact": "Holiday",
+                    "forecast": "",
+                    "previous": "",
+                },
+            ]
+        )
+
+
+class FailingCalendarClient:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        return None
+
+    def get(self, url):
+        assert "ff_calendar_thisweek" in url
+        raise RuntimeError("simulated 429")
+
+
+def test_live_calendar_data_replaces_calendar_rows(tmp_path) -> None:
+    base = build_sample_brief_data()
+    result = replace_calendar_with_live(
+        base,
+        run_date=date(2026, 6, 6),
+        timezone_name="Asia/Hong_Kong",
+        cache_path=tmp_path / "calendar.json",
+        client_factory=FakeCalendarClient,
+    )
+
+    event_by_name = {event.event: event for event in result.data.calendar}
+
+    assert event_by_name["USD Non-Farm Employment Change"].session == "US"
+    assert event_by_name["USD Non-Farm Employment Change"].consensus == "85K"
+    assert event_by_name["EUR Core CPI Flash Estimate y/y"].session == "Europe"
+    assert event_by_name["CNY RatingDog Manufacturing PMI"].session == "Asia"
+    assert "NZD Bank Holiday" not in event_by_name
+    assert result.fallback_events == []
+    assert "faireconomy:ff_calendar_thisweek" in result.sources
+
+
+def test_live_calendar_uses_cache_when_feed_refresh_fails(tmp_path) -> None:
+    cache_path = tmp_path / "calendar.json"
+    cache_path.write_text(
+        json.dumps(
+            [
+                {
+                    "title": "ISM Services PMI",
+                    "country": "USD",
+                    "date": "2026-06-06T10:00:00-04:00",
+                    "impact": "High",
+                    "forecast": "53.7",
+                    "previous": "53.6",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = replace_calendar_with_live(
+        build_sample_brief_data(),
+        run_date=date(2026, 6, 6),
+        timezone_name="Asia/Hong_Kong",
+        cache_path=cache_path,
+        client_factory=FailingCalendarClient,
+    )
+
+    assert result.data.calendar[0].event == "USD ISM Services PMI"
+    assert result.data.calendar[0].consensus == "53.7"
+    assert result.fallback_events == []
+    assert "calendar_live_refresh" in result.errors
+    assert result.sources == ["faireconomy:ff_calendar_thisweek:cache"]
+
+
+def test_dry_run_with_live_calendar_writes_usage_log(tmp_path, monkeypatch) -> None:
+    settings = Settings(
+        llm_provider="gemini",
+        gemini_api_key=None,
+        gemini_model="gemini-2.5-flash-lite",
+        deepseek_api_key=None,
+        deepseek_model="deepseek-v4-flash",
+        smtp_host=None,
+        smtp_port=587,
+        smtp_user=None,
+        smtp_password=None,
+        brief_from_email=None,
+        brief_to_email=None,
+        timezone="Asia/Hong_Kong",
+        run_mode="sample",
+        market_data_mode="sample",
+        calendar_mode="sample",
+        output_dir=tmp_path / "outputs",
+        log_dir=tmp_path / "logs",
+    )
+
+    def fake_replace_calendar(data, *, run_date, timezone_name):
+        return replace_calendar_with_live(
+            data,
+            run_date=run_date,
+            timezone_name=timezone_name,
+            cache_path=tmp_path / "calendar.json",
+            client_factory=FakeCalendarClient,
+        )
+
+    monkeypatch.setattr(runner_module, "replace_calendar_with_live", fake_replace_calendar)
+
+    result = run_brief(settings, send=False, run_date=date(2026, 6, 6), live_calendar=True)
+    log_event = json.loads(result.log_path.read_text(encoding="utf-8"))
+
+    assert log_event["calendar_data"]["mode"] == "live_with_fallback"
+    assert "USD Non-Farm Employment Change" in log_event["calendar_data"]["live_events"]
+    assert log_event["calendar_data"]["fallback_events"] == []

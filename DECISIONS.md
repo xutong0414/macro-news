@@ -72,3 +72,17 @@ Current sources:
 - Frankfurter for USD/JPY.
 - CoinGecko for BTC.
 - Sample fallback for Germany 10Y and any failed live source.
+
+## 2026-06-06 - Live Calendar Data Scope
+
+Decision: add live economic-calendar rows with feed cache and sample fallback.
+
+Reason: the assignment requires a calendar with consensus estimates, but free public calendar feeds can rate-limit or become unavailable. The agent should still produce a complete brief and log whether rows came from live data, cached data, or sample fallback.
+
+Current source:
+
+- Forex Factory/Fair Economy weekly JSON feed for event title, currency, impact, forecast/consensus, and previous values.
+- Ignored local cache under `.cache/calendar/` after successful pulls.
+- Sample fallback if the feed fails and no cache is available.
+
+Tradeoff: this is good enough for a local assignment prototype, but a production version should add a second calendar provider or use a paid calendar API.

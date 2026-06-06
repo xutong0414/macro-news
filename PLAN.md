@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-Sample data brief with Gemini narrative synthesis and Gmail delivery smoke-tested.
+Local agent loop with Gemini synthesis, Gmail delivery, live market rows, and live economic-calendar rows with fallback.
 
 ## Whose Turn
 
-Agent turn: maintain `PLAN.md`, `DECISIONS.md`, and local `.worklog/` notes as implementation progresses.
+Agent turn: finish calendar documentation, run a final smoke test, and commit the calendar layer.
 
-User turn: confirm the live-data/Gemini sample output looks acceptable, then decide when to create the GitHub remote.
+User turn: review the next emailed/live-generated brief, then decide when to create the GitHub remote.
 
 ## Locked Setup Choices
 
@@ -20,12 +20,13 @@ User turn: confirm the live-data/Gemini sample output looks acceptable, then dec
 - Private process notes: keep in ignored `.worklog/`, then delete before final handoff.
 - LLM role: draft narrative sections only; code owns facts, tables, chart, validation, and logging.
 - Market data role: fetch live dashboard rows where available; fall back to sample rows per asset and log status.
+- Calendar data role: fetch live economic-calendar rows where available; use ignored cache and sample fallback if the public feed fails or rate-limits.
 
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. Add economic calendar source with consensus estimates.
-3. Add non-mainstream source collection for theme radar.
+2. Add non-mainstream source collection for theme radar.
+3. Improve calendar source reliability or add a second source if the free feed remains rate-limited.
 4. Improve live data source coverage for Germany 10Y and any assets with intermittent Yahoo failures.
 5. Add GitHub remote and push when the user is ready.
 6. Add GitHub Actions schedule after live/local send works.
@@ -34,6 +35,7 @@ User turn: confirm the live-data/Gemini sample output looks acceptable, then dec
 ## Blockers
 
 - GitHub remote is not created yet.
+- Free public calendar feed can rate-limit during repeated development tests; local cache and sample fallback are implemented.
 
 ## Acceptance Criteria For Setup
 

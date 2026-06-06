@@ -50,6 +50,7 @@ class Settings:
     timezone: str
     run_mode: str
     market_data_mode: str
+    calendar_mode: str
     output_dir: Path
     log_dir: Path
 
@@ -71,6 +72,7 @@ class Settings:
             timezone=normalize_timezone(os.getenv("BRIEF_TIMEZONE", "Asia/Shanghai")),
             run_mode=os.getenv("BRIEF_RUN_MODE", "sample"),
             market_data_mode=os.getenv("MARKET_DATA_MODE", "sample"),
+            calendar_mode=os.getenv("CALENDAR_MODE", "sample"),
             output_dir=Path(os.getenv("OUTPUT_DIR", "outputs")),
             log_dir=Path(os.getenv("LOG_DIR", "logs")),
         )

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
 
+from .calendar_data import CalendarDataResult, replace_calendar_with_live
 from .config import Settings
 from .costing import ZERO_TOKEN_USAGE
 from .emailer import send_email
@@ -29,11 +30,13 @@ def run_brief(
     run_date: date | None = None,
     use_llm: bool = False,
     live_market_data: bool = False,
+    live_calendar: bool = False,
 ) -> RunResult:
     run_date = run_date or date.today()
     run_id = utc_run_id()
     data = build_sample_brief_data()
     market_data_result = MarketDataResult(data=data, live_assets=[], fallback_assets=[], errors={}, sources=[])
+    calendar_data_result = CalendarDataResult(data=data, live_events=[], fallback_events=[], errors={}, sources=[])
     token_usage = ZERO_TOKEN_USAGE
     llm_status = "not_used"
     llm_model = "none"
@@ -43,6 +46,10 @@ def run_brief(
     if live_market_data:
         market_data_result = replace_market_rows_with_live(data, run_date=run_date)
         data = market_data_result.data
+
+    if live_calendar:
+        calendar_data_result = replace_calendar_with_live(data, run_date=run_date, timezone_name=settings.timezone)
+        data = calendar_data_result.data
 
     if use_llm:
         if settings.llm_provider != "gemini":
@@ -87,6 +94,13 @@ def run_brief(
             "fallback_assets": market_data_result.fallback_assets,
             "errors": market_data_result.errors,
             "sources": market_data_result.sources,
+        },
+        "calendar_data": {
+            "mode": "live_with_fallback" if live_calendar else "sample",
+            "live_events": calendar_data_result.live_events,
+            "fallback_events": calendar_data_result.fallback_events,
+            "errors": calendar_data_result.errors,
+            "sources": calendar_data_result.sources,
         },
         "token_usage": {
             "input_tokens": token_usage.input_tokens,
