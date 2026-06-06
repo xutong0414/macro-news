@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-GitHub manual email-send workflow is confirmed. GitHub recognizes the scheduler smoke-test workflow as active, but no scheduled run has appeared, so simplifying the smoke-test cron to every five minutes.
+GitHub manual email-send workflow is confirmed. GitHub recognized the scheduler smoke-test workflow as active, but no scheduled run appeared; the short-window scheduler test is inconclusive.
 
 ## Whose Turn
 
-Agent turn: simplify the scheduler-only smoke-test cron and inspect runs through the public GitHub API.
+Agent turn: remove the temporary scheduler smoke test and record the scheduler finding.
 
-User turn: check GitHub Actions for the smoke test over the next 15-30 minutes.
+User turn: switch the repository back to private if desired, then decide whether to rely on GitHub's weekday schedule or keep manual send for the assignment demo.
 
 ## Locked Setup Choices
 
@@ -19,8 +19,7 @@ User turn: check GitHub Actions for the smoke test over the next 15-30 minutes.
 - GitHub Actions first stage: sample dry-run workflow first, no secrets or email.
 - GitHub Actions second stage: manual live dry-run workflow with secrets, still no email.
 - GitHub Actions third stage: manual email-send workflow with a `SEND` confirmation input.
-- GitHub Actions fourth stage: scheduled email-send workflow after explicit timing confirmation.
-- Temporary scheduler smoke test: try every five minutes and only print timestamps.
+- GitHub Actions fourth stage: scheduled email-send workflow after explicit timing confirmation, but short-window GitHub scheduler test was inconclusive.
 - First run mode: sample data only.
 - Private process notes: keep in ignored `.worklog/`, then delete before final handoff.
 - LLM role: draft narrative sections only; code owns facts, tables, chart, validation, and logging.
@@ -32,9 +31,9 @@ User turn: check GitHub Actions for the smoke test over the next 15-30 minutes.
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. Confirm the scheduler smoke test triggers on GitHub.
-3. Remove the scheduler smoke test after confirmation or after the window passes.
-4. Confirm the automatic weekday send time, currently proposed as 07:30 Hong Kong time.
+2. Decide whether to add the permanent weekday schedule despite the inconclusive short-window test.
+3. Confirm the automatic weekday send time, currently proposed as 07:15 Hong Kong time to target 07:30 inbox arrival.
+4. Consider an external scheduler alternative if precise timing is required.
 5. Improve calendar source reliability or add a second source if the free feed remains rate-limited.
 6. Improve live data source coverage for Germany 10Y and any assets with intermittent Yahoo failures.
 7. Improve Theme Radar source diversity if any RSS feed is slow or unavailable.

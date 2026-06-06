@@ -142,6 +142,6 @@ Reason: manual workflow success does not prove that GitHub's scheduler will trig
 
 Initial test time: 2026-06-06 15:30 Hong Kong time, equal to 2026-06-06 07:30 UTC.
 
-Update: the exact-minute test and guarded scheduled-send test did not trigger during the short test window. Replace the scheduled email test with a scheduler-only smoke test that prints timestamps and uses no secrets or email. After GitHub recognized the smoke-test workflow as active but still showed no runs, simplify the cron to `*/5 * * * *`.
+Update: the exact-minute test and guarded scheduled-send test did not trigger during the short test window. Replace the scheduled email test with a scheduler-only smoke test that prints timestamps and uses no secrets or email. GitHub recognized the smoke-test workflow as active, but the public Actions API still showed zero runs after multiple five-minute ticks. Remove the temporary smoke test and treat the short-window scheduler test as inconclusive.
 
 Follow-up: remove the temporary workflow or replace it with the permanent weekday schedule after confirmation.
