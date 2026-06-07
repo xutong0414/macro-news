@@ -23,6 +23,7 @@ class CalendarEvent:
     why_it_matters: str
     event_date: str = ""
     status: str = ""
+    link: str = ""
 
 
 @dataclass(frozen=True)
@@ -115,7 +116,7 @@ def build_sample_brief_data() -> BriefData:
         assumptions=[
             "Assumed book is long USD/JPY, overweight gold, and exposed to an EM debt basket.",
             "No real portfolio file is connected yet; book impacts are based on the assumed positions above.",
-            "Free/public data feeds are used for v1; live mode leaves unavailable market/calendar values blank rather than silently filling scaffold data.",
+            "Live mode leaves unavailable market/calendar values blank rather than filling them with scaffold data.",
         ],
         data_sources=["sample_market_data", "sample_calendar", "sample_deep_content"],
         source_notes=[

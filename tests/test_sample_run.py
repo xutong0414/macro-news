@@ -72,7 +72,8 @@ def test_sample_brief_contains_required_sections() -> None:
     for section in required:
         assert section in brief
     assert "Dashboard notes:" in brief
-    assert "| Asset | Close | Prior | Change | As of | Status | Reading |" in brief
+    assert "| Asset | Close | Prior | Change | As of | Reading |" in brief
+    assert "| Asset | Close | Prior | Change | As of | Status | Reading |" not in brief
     assert "| Session | Event date | Time | Event | Consensus | Status | Why it matters |" in brief
     assert "| Asset | Close | Prior | Change | So what |" not in brief
     assert "### 1. USD/JPY Intervention Risk" in brief
@@ -81,6 +82,10 @@ def test_sample_brief_contains_required_sections() -> None:
     assert "![USD/JPY in Five Days](chart.png)" in brief
     assert "**Reading:** This chart supports the first thing that matters today (see above)." in brief
     assert "Source depth: Sample scaffold" in brief
+    assert "**For Our Book:** duration pressure supports USD/JPY" in brief
+    assert "## Feedback Questionnaire" in brief
+    assert "### Portfolio / Book" in brief
+    assert "### Data Handling" in brief
     assert "Caption:" not in brief
     assert "EUR/USD" in brief
     assert "Germany 10Y yield" not in brief
@@ -91,6 +96,7 @@ def test_sample_brief_html_renders_chart_reading_label() -> None:
 
     assert 'alt="USD/JPY in Five Days"' in html
     assert '<p class="reading"><strong>Reading:</strong> This chart supports the first thing that matters today (see above).' in html
+    assert '<strong>For Our Book:</strong>' in html
     assert "Caption:" not in html
 
 
@@ -517,6 +523,8 @@ def test_dry_run_writes_outputs(tmp_path) -> None:
     assert result.output_paths["latest_html"].exists()
     assert result.output_paths["latest_chart"].exists()
     assert result.log_path.exists()
+    log_event = json.loads(result.log_path.read_text(encoding="utf-8"))
+    assert log_event["run_mode"] == "sample"
 
 
 def test_dry_run_with_llm_writes_usage_log(tmp_path, monkeypatch) -> None:
@@ -674,6 +682,7 @@ def test_live_market_data_replaces_rows_and_logs_fallback(tmp_path) -> None:
     assert "Frankfurter FX rows use the latest published daily reference rate" in rendered
     assert "Source Status shows live, cached, or scaffold fallback rows" not in rendered
     assert "value cells are left blank" in rendered
+    assert "[Yahoo Finance](https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC)" in rendered
 
 
 class FailingMarketClient(FakeMarketClient):
@@ -708,6 +717,7 @@ def test_live_market_data_uses_cached_real_rows_before_scaffold(tmp_path) -> Non
     assert second_rows["S&P 500"].status == "†"
     assert "S&P 500" not in second.fallback_assets
     assert "DXY" in second.fallback_assets
+    assert "| S&P 500 † | 102.00 |" in render_markdown(second.data)
 
 
 class FakeCalendarClient:
@@ -786,6 +796,7 @@ def test_live_calendar_data_replaces_calendar_rows(tmp_path) -> None:
     assert event_by_name["USD Non-Farm Employment Change"].consensus == "85K"
     assert event_by_name["USD Non-Farm Employment Change"].event_date == "2026-06-06"
     assert event_by_name["USD Non-Farm Employment Change"].status == "Live"
+    assert event_by_name["USD Non-Farm Employment Change"].link == "https://www.forexfactory.com/en/calendar/"
     assert event_by_name["EUR Core CPI Flash Estimate y/y"].session == "Europe"
     assert event_by_name["EUR Core CPI Flash Estimate y/y"].status == "Live"
     assert event_by_name["CNY RatingDog Manufacturing PMI"].session == "Asia"
@@ -794,6 +805,7 @@ def test_live_calendar_data_replaces_calendar_rows(tmp_path) -> None:
     assert "NZD Bank Holiday" not in event_by_name
     assert result.fallback_events == []
     assert "faireconomy:ff_calendar_thisweek" in result.sources
+    assert "[USD Non-Farm Employment Change](https://www.forexfactory.com/en/calendar/)" in render_markdown(result.data)
 
 
 def test_live_calendar_uses_cache_when_feed_refresh_fails(tmp_path) -> None:
@@ -870,6 +882,7 @@ def test_dry_run_with_live_calendar_writes_usage_log(tmp_path, monkeypatch) -> N
     result = run_brief(settings, send=False, run_date=date(2026, 6, 6), live_calendar=True)
     log_event = json.loads(result.log_path.read_text(encoding="utf-8"))
 
+    assert log_event["run_mode"] == "live_calendar"
     assert log_event["calendar_data"]["mode"] == "live_with_fallback"
     assert "USD Non-Farm Employment Change" in log_event["calendar_data"]["live_events"]
     assert log_event["calendar_data"]["fallback_events"] == []

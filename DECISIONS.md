@@ -343,3 +343,20 @@ Changes:
 Tradeoff: the brief may show blank cells or cached/calendar caveats more visibly, but that is preferable to silently generating unsupported values.
 
 Outcome: timed live dry run `20260607T030050Z` passed with prompt version `gemini_narrative_v32`, 5 live market rows plus 5 cached real-source market rows after Yahoo SSL handshake timeouts, no scaffold fallback rows, Sunday/older source dates labeled with `*` or cached rows labeled with `†`, live Fair Economy calendar rows, two live Theme Radar selections with `RSS excerpt` source-depth labels, portfolio assumptions loaded from `inputs/portfolio/positions.csv`, runtime `126.03s`, 11,813 input tokens, 2,437 output tokens, 14,250 total tokens, and estimated Gemini cost $0.0021561.
+
+## 2026-06-07 - Brief Presentation And Feedback Revision
+
+Decision: make the brief more reader-facing by moving dashboard status into the asset label, making calendar events and source-status rows linkable, grouping assumptions, shortening Theme Radar book-impact labels, and rendering a feedback questionnaire.
+
+Reason: the user flagged that the dashboard status column consumed too much space, that calendar/source/contrarian links help prove the brief is sourced, and that flat assumption bullets mix portfolio assumptions with data-handling rules.
+
+Rules:
+
+- Dashboard status is not a separate column. Non-live status markers attach to the asset label: `*` for older source date and `†` for cached real-source row; no marker means refreshed for the run date or query time.
+- Calendar keeps its `Status` column because event timing/status is decision-relevant; each event name should link to the calendar source.
+- Source Status should include reader-facing links to the source families, not only plain-text source names.
+- Assumptions render under categories such as `Portfolio / Book`, `Data Handling`, and `Source Coverage`.
+- Theme Radar book-impact lines render as bold `For Our Book:` to reduce template-like wording.
+- The email/brief includes a compact feedback questionnaire whose rows can be copied into `inputs/feedback/daily_feedback.example.csv`.
+
+Outcome: sent run `20260607T045752Z` delivered successfully with dashboard status markers inside asset labels, no separate dashboard status column, clickable calendar event names, linked Source Status notes, Contrarian Corner further-reading links, grouped assumptions, bold `For Our Book:` Theme Radar impact lines, and the feedback questionnaire rendered in the email. Runtime was `58.02s`, token use was 11,923 input / 2,513 output / 14,436 total, and estimated Gemini cost was $0.0021975.

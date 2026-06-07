@@ -505,8 +505,14 @@ def replace_market_rows_with_live(
             merged_rows.append(row)
 
     total_assets = len(merged_rows)
+    source_links = (
+        "[Yahoo Finance](https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC), "
+        "[Japan MOF](https://www.mof.go.jp/jgbs/reference/interest_rate/jgbcm.csv), "
+        "[Frankfurter](https://frankfurter.dev/), and "
+        "[CoinGecko](https://www.coingecko.com/en/api)"
+    )
     if fallback_assets or cached_assets:
-        status_parts = [f"live public sources refreshed {len(live_assets)}/{total_assets} dashboard rows"]
+        status_parts = [f"{source_links}; live public sources refreshed {len(live_assets)}/{total_assets} dashboard rows"]
         if cached_assets:
             status_parts.append(f"cached real-source rows used for {', '.join(cached_assets)}")
         if fallback_assets:
@@ -515,7 +521,7 @@ def replace_market_rows_with_live(
             status_parts.append("no scaffold fallback rows used")
         market_note = f"Market: {'; '.join(status_parts)}."
     else:
-        market_note = f"Market: all {total_assets} dashboard rows refreshed from live public sources."
+        market_note = f"Market: {source_links}; all {total_assets} dashboard rows refreshed from live public sources."
 
     assumptions = [
         *data.assumptions,
@@ -535,7 +541,7 @@ def replace_market_rows_with_live(
             "BTC uses query-time price vs rolling 24-hour change."
         ),
         "Additional information about timing: around 07:00-08:00 HKT, US/EU cash markets are closed from prior sessions, while FX and BTC are continuous and Asia may already be open.",
-        "Status basis: Live means refreshed from a public source for the run date or query time; * means the live source's latest valid date is older than the run date, usually because of weekend, holiday, or publication lag; † means cached real-source data was used after a live refresh failed. If no live or cached real row exists, value cells are left blank rather than filled with scaffold/sample numbers.",
+        "Status marker basis: asset labels show * when the live source's latest valid date is older than the run date, usually because of weekend, holiday, or publication lag; asset labels show † when cached real-source data was used after a live refresh failed. Rows without a marker refreshed for the run date or query time. If no live or cached real row exists, value cells are left blank rather than filled with scaffold/sample numbers.",
         (
             "Sources: [Yahoo Finance chart endpoint](https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC) for equities/US rates/DXY/gold/oil, "
             "[Japan MOF JGB yield CSV](https://www.mof.go.jp/jgbs/reference/interest_rate/jgbcm.csv) for Japan 10Y, "

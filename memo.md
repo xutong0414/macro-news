@@ -8,7 +8,7 @@ The system separates deterministic data collection from LLM writing. Market numb
 
 The current scaffold keeps tables, chart generation, validation, delivery, and token/cost logging in code. Gemini drafts only the narrative sections from structured facts.
 
-Live market dashboard rows are fetched asset by asset, with cached real-source rows used for temporary outages. The dashboard includes Japan 10Y for Japan-rate risk to USD/JPY and EUR/USD and USD/JPY for FX coverage, while Germany 10Y is excluded until a clean live source is added. The brief includes notes on extraction time, close/prior basis, additional timing information for Hong Kong morning use, linked data sources, Frankfurter's daily reference-rate convention, and BTC's rolling 24-hour change convention. The dashboard uses a "Reading" column plus `As of` and `Status` fields. In live mode, if neither live nor cached real data is available for a row, value cells are left blank rather than filled with scaffold numbers.
+Live market dashboard rows are fetched asset by asset, with cached real-source rows used for temporary outages. The dashboard includes Japan 10Y for Japan-rate risk to USD/JPY and EUR/USD and USD/JPY for FX coverage, while Germany 10Y is excluded until a clean live source is added. The brief includes notes on extraction time, close/prior basis, additional timing information for Hong Kong morning use, linked data sources, Frankfurter's daily reference-rate convention, and BTC's rolling 24-hour change convention. The dashboard uses a "Reading" column plus `As of` labels, with stale or cached status shown as compact markers on the asset name. In live mode, if neither live nor cached real data is available for a row, value cells are left blank rather than filled with scaffold numbers.
 
 The 3 Things section is rendered with compact item sub-titles, the market reasoning first, the `So what:` portfolio implication as a smaller support line, and a deterministic Yahoo Finance topic-search link for readers who want related news. The LLM does not invent these links; code derives them from the selected item's theme.
 
@@ -20,13 +20,13 @@ Theme Radar uses curated RSS feeds rather than broad web search. The agent parse
 
 Portfolio assumptions are read from `inputs/portfolio/positions.csv`. Each row is an effective-date update, and the latest prior row for each asset carries forward until changed or closed. This keeps the PDF assumptions explicit while making later portfolio updates simple.
 
-Human feedback is prepared through `inputs/feedback/daily_feedback.example.csv`. The intended loop is a 1-5 rating, an action such as `keep` or `deprioritize`, and a short comment. This is local preference memory for future ranking/prompt rules, not model fine-tuning.
+Human feedback is prepared through `inputs/feedback/daily_feedback.example.csv` and rendered as a compact questionnaire in the email. The intended loop is a 1-5 rating, an action such as `keep` or `deprioritize`, and a short comment. This is local preference memory for future ranking/prompt rules, not model fine-tuning.
 
 The LLM output is validated by code for JSON shape, assignment word limits, source reuse, portfolio-logic errors, market-number consistency, and a small set of generic wording failures. If Gemini misses a limit or style guardrail, the runner retries with the exact validation error. The current prompt version adds portfolio semantics so the model treats long USD/JPY, gold overweight, and EM debt exposure consistently, while the validator prevents unsupported market-number transfers, uncalculated spread-direction claims, opening-session claims, and real-rate language when no real-yield data is fetched. Theme Radar source-mechanics text is stripped before rendering so the brief reads like an investment note rather than a debug log.
 
 Scheduling was tested in two ways. GitHub manual workflow execution and email delivery succeeded, but GitHub scheduled triggers did not create runs in short-window tests. A MacBook `launchd` one-shot schedule did run and send successfully, so the documented production scheduler path is local/server scheduling rather than relying on GitHub's own schedule trigger.
 
-The latest Sunday-morning quality run completed in 27.44 seconds and used 7,605 Gemini tokens, with estimated LLM cost around $0.0012. During validation tuning, provider/source failures and repair attempts sometimes took around 30-80 seconds, so a production schedule should start the job at least 10-15 minutes before the target inbox time.
+The latest Sunday live email proof completed in 58.02 seconds and used 14,436 Gemini tokens, with estimated LLM cost around $0.0022. During validation tuning, provider/source failures and repair attempts sometimes took around 30-120 seconds, so a production schedule should start the job at least 10-15 minutes before the target inbox time.
 
 ## Position And Theme Assumptions
 
@@ -43,7 +43,7 @@ Initial house themes:
 - China demand weakness.
 - Policy divergence across major central banks.
 
-## V2 Features
+## Possible Extensions
 
 1. Load feedback history into ranking and prompt construction so the PM can improve selection over time.
 2. Add more source diversity and freshness checks for non-mainstream research inputs.

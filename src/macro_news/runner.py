@@ -25,6 +25,25 @@ class RunResult:
     log_path: Path
 
 
+def _effective_run_mode(
+    settings: Settings,
+    *,
+    live_market_data: bool,
+    live_calendar: bool,
+    live_theme_radar: bool,
+) -> str:
+    live_layers = []
+    if live_market_data:
+        live_layers.append("market")
+    if live_calendar:
+        live_layers.append("calendar")
+    if live_theme_radar:
+        live_layers.append("theme")
+    if live_layers:
+        return "live_" + "_".join(live_layers)
+    return settings.run_mode
+
+
 def run_brief(
     settings: Settings,
     *,
@@ -90,7 +109,12 @@ def run_brief(
         "run_id": run_id,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "run_date": run_date.isoformat(),
-        "run_mode": settings.run_mode,
+        "run_mode": _effective_run_mode(
+            settings,
+            live_market_data=live_market_data,
+            live_calendar=live_calendar,
+            live_theme_radar=live_theme_radar,
+        ),
         "llm_provider": settings.llm_provider,
         "llm_model": llm_model,
         "llm_status": llm_status,

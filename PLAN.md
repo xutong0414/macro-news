@@ -2,17 +2,17 @@
 
 ## Current Stage
 
-Freshness/status input pass is implemented and verified. The project now renders row-level `As of`/`Status` fields for the dashboard, event-date/status fields for the calendar, source-depth labels for Theme Radar, and portfolio assumptions from `inputs/portfolio/positions.csv`.
+Freshness/status input pass and presentation/link revision are implemented and verified. The project now renders dashboard `As of` fields with compact status markers in the asset label, event-date/status fields for the calendar, clickable calendar/source/contrarian links, source-depth labels for Theme Radar, grouped assumptions, a feedback questionnaire, and portfolio assumptions from `inputs/portfolio/positions.csv`.
 
-The latest verified dry run (`20260607T030050Z`) rendered the dashboard with a `Reading` column, row-level freshness labels, 5 live market rows plus 5 cached real-source rows after Yahoo SSL handshakes timed out, event-date/status calendar labels from the live Fair Economy weekly feed, live Theme Radar selections with source-depth labels, prompt version `gemini_narrative_v32`, and no generated scaffold rows in live market/calendar/theme fallback paths.
+The latest verified send (`20260607T045752Z`) rendered the dashboard with a `Reading` column, compact status markers on asset names, 9 live market rows plus 1 cached real-source row after a Yahoo SSL handshake timed out, event-date/status calendar labels with clickable event links from the live Fair Economy weekly feed, live Theme Radar selections with source-depth labels, grouped assumptions, a rendered feedback questionnaire, prompt version `gemini_narrative_v32`, and no generated scaffold rows in live market/calendar/theme fallback paths.
 
-Measured runtime for that successful run was `126.03s` wall-clock, with 11,813 input tokens, 2,437 output tokens, 14,250 total tokens, and estimated Gemini cost of $0.0021561.
+Measured runtime for that successful send was `58.02s` wall-clock, with 11,923 input tokens, 2,513 output tokens, 14,436 total tokens, and estimated Gemini cost of $0.0021975.
 
 ## Whose Turn
 
-Agent turn: commit and push the verified row-level freshness/status, portfolio-input, feedback-template, source-depth, and no-generated-data guardrail modifications.
+Agent turn: no active implementation pending after this checkpoint.
 
-User turn: after verification, review the latest `outputs/latest/brief.html` for the new no-color status labels and input assumptions.
+User turn: review the latest email or `outputs/latest/brief.html`, especially the dashboard markers, source links, grouped assumptions, and feedback questionnaire.
 
 ## Locked Setup Choices
 
@@ -41,11 +41,13 @@ User turn: after verification, review the latest `outputs/latest/brief.html` for
 - Dashboard note role: document dashboard scope, extraction time, close/prior basis, additional timing information, Frankfurter FX reference-rate convention, BTC rolling 24-hour convention, and linked data-source basis in the brief itself.
 - Three Things link role: render compact item sub-titles, smaller `So what:` support lines, and deterministic Yahoo Finance topic-search links; the LLM does not invent those links.
 - Chart role: use USD/JPY because it is the assumed FX position and the most direct visual support for the intervention-risk item; render the note as bold `Reading:` rather than `Caption:`.
+- Dashboard status role: keep the dashboard compact by placing non-live markers (`*` and `†`) on the asset label instead of adding a separate status column.
+- Feedback role: render a compact questionnaire so email replies can be transferred into `inputs/feedback/daily_feedback.example.csv`.
 
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. Review latest `outputs/latest/brief.html` for no-color status labels and blank-if-unavailable rules.
+2. User review latest `outputs/latest/brief.html` and the delivered email for the new links, grouping, and questionnaire.
 3. Add a second calendar provider if the free weekly feed remains thin or stale outside weekday windows.
 4. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.
 5. Generate final `memo.pdf` from `memo.md`.

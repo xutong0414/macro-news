@@ -12,6 +12,7 @@ import httpx
 from .sample_data import BriefData, CalendarEvent
 
 FAIRECONOMY_WEEKLY_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+FOREX_FACTORY_CALENDAR_URL = "https://www.forexfactory.com/en/calendar/"
 FAIRECONOMY_SOURCE = "faireconomy:ff_calendar_thisweek"
 CALENDAR_CACHE_PATH = Path(".cache") / "calendar" / "ff_calendar_thisweek.json"
 
@@ -162,6 +163,7 @@ def _raw_event_to_calendar_event(
         why_it_matters=_why_it_matters(title, currency, impact),
         event_date=local_time.date().isoformat(),
         status=_calendar_status(local_time, run_date, cached=cached),
+        link=FOREX_FACTORY_CALENDAR_URL,
     )
 
 
@@ -319,9 +321,9 @@ def replace_calendar_with_live(
 
     sources.append(fetch_result.source)
     if fetch_result.refresh_error:
-        calendar_note = "Calendar: cached Fair Economy weekly feed used after live refresh failed; selector still targets Asia/Europe/US coverage when available."
+        calendar_note = "Calendar: cached [Fair Economy / Forex Factory weekly feed](https://www.forexfactory.com/en/calendar/) used after live refresh failed; selector still targets Asia/Europe/US coverage when available."
     else:
-        calendar_note = "Calendar: live Fair Economy weekly feed used; selector targets Asia/Europe/US coverage and labels same-day, next-session, or nearest source-week events."
+        calendar_note = "Calendar: live [Fair Economy / Forex Factory weekly feed](https://www.forexfactory.com/en/calendar/) used; selector targets Asia/Europe/US coverage and labels same-day, next-session, or nearest source-week events."
     updated = replace(
         data,
         calendar=calendar,

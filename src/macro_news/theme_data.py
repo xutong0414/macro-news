@@ -328,7 +328,12 @@ def replace_theme_radar_with_live(
         candidates, errors, successful_sources = fetch_theme_candidates(client, sources=sources)
     selected = select_theme_candidates(candidates)
     if not selected:
-        blank_note = "Theme Radar: no verified live RSS candidates available; section left blank rather than using scaffold source items."
+        blank_note = (
+            "Theme Radar: no verified live RSS candidates available from "
+            "[Liberty Street Economics RSS](https://libertystreeteconomics.newyorkfed.org/feed/), "
+            "[Bank Underground RSS](https://bankunderground.co.uk/feed/), or "
+            "[FRED Blog RSS](https://fredblog.stlouisfed.org/feed/); section left blank rather than using scaffold source items."
+        )
         blank_data = replace(
             data,
             theme_radar=[],
@@ -344,8 +349,16 @@ def replace_theme_radar_with_live(
         )
 
     selected_sources = list(dict.fromkeys([*successful_sources, *[f"theme_selected:{candidate.source}" for candidate in selected]]))
-    error_note = " One configured feed failed and is logged." if errors else ""
-    theme_note = f"Theme Radar: selected {len(selected)} items from curated live RSS sources.{error_note}"
+    failed_note = ""
+    if errors:
+        failed_note = " One configured feed, [FRED Blog RSS](https://fredblog.stlouisfed.org/feed/), failed and is logged."
+    theme_note = (
+        "Theme Radar: selected "
+        f"{len(selected)} items from curated live RSS sources: "
+        "[Liberty Street Economics RSS](https://libertystreeteconomics.newyorkfed.org/feed/) and "
+        "[Bank Underground RSS](https://bankunderground.co.uk/feed/)."
+        f"{failed_note}"
+    )
     updated = replace(
         data,
         theme_radar=[candidate_to_theme_item(candidate) for candidate in selected],

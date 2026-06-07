@@ -6,7 +6,7 @@ The target reader is a macro PM who wants: what changed overnight, why it matter
 
 ## Current Status
 
-Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows including Japan 10Y, EUR/USD, and USD/JPY, row-level `As of`/`Status` labels, dashboard timing/source notes with clickable source links, cached real-source fallback, no generated scaffold values in live market/calendar/theme fallback paths, a USD/JPY chart reading linked to the first thing that matters, live/cached economic-calendar rows with event-date/status labels, live Theme Radar source collection with source-depth labels, factual guardrails for market-number consistency and unsupported narrative claims, portfolio assumptions loaded from `inputs/portfolio/positions.csv`, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
+Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows including Japan 10Y, EUR/USD, and USD/JPY, dashboard `As of` labels with compact status markers on asset names, dashboard timing/source notes with clickable source links, cached real-source fallback, no generated scaffold values in live market/calendar/theme fallback paths, a USD/JPY chart reading linked to the first thing that matters, live/cached economic-calendar rows with event-date/status labels and clickable event-source links, live Theme Radar source collection with source-depth labels, factual guardrails for market-number consistency and unsupported narrative claims, grouped assumptions, feedback questionnaire output, portfolio assumptions loaded from `inputs/portfolio/positions.csv`, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
 
 Locked defaults:
 
@@ -147,7 +147,7 @@ The market dashboard currently uses:
 - [CoinGecko](https://www.coingecko.com/en/api) for BTC.
 - Dashboard notes explaining extraction time, close/prior basis, additional timing information for Hong Kong morning use, Frankfurter's latest-versus-immediately-previous published daily reference-rate convention, and BTC rolling 24-hour change convention.
 - Dashboard row read-throughs use the `Reading` label and describe the day's implication rather than repeating the instrument definition.
-- The dashboard includes `As of` and `Status` columns. `Live` means refreshed from a public source for the run date or query time; `*` means the live source's latest valid date is older than the run date, usually because of weekend, holiday, or publication lag; `†` means cached real-source data was used after a live refresh failed.
+- The dashboard includes an `As of` column and compact no-color status markers in the asset label. No marker means refreshed for the run date or query time; `*` means the live source's latest valid date is older than the run date, usually because of weekend, holiday, or publication lag; `†` means cached real-source data was used after a live refresh failed.
 - Cached real-source rows when a temporary source outage occurs.
 - Blank value cells rather than scaffold/sample market numbers when no live or cached real row exists.
 
@@ -157,6 +157,7 @@ The calendar currently uses:
 - Session-aware selection that targets Asia, Europe, and US coverage when the feed contains usable events.
 - Local ignored cache under `.cache/calendar/` after successful pulls.
 - Event-date and status labels using the same `Live`, `*`, and `†` no-color convention.
+- Clickable event names pointing to the calendar source.
 - Blank calendar output rather than scaffold/sample calendar rows when no live or cached real calendar rows exist.
 
 Theme Radar currently uses:
@@ -173,6 +174,8 @@ Theme Radar currently uses:
 Tracked assignment assumptions live in `inputs/portfolio/positions.csv`. The format is documented in `inputs/portfolio/README.md`, with `positions.example.csv` as a template.
 
 Human feedback is documented in `inputs/feedback/README.md`, with `daily_feedback.example.csv` as the questionnaire template. The current rule is to record feedback locally first; later versions can load high-rated and low-rated patterns into source ranking and prompt construction. This is local preference memory, not model fine-tuning.
+
+The rendered brief includes a compact feedback questionnaire with section, rating, action, and comment fields. The intended workflow is to paste useful replies into the feedback CSV and later let the agent load those rows as local preference memory.
 
 ## GitHub Actions
 

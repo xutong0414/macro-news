@@ -10,6 +10,13 @@ from urllib.parse import quote_plus
 from .sample_data import BriefData
 
 
+CONTRARIAN_READING_LINKS = [
+    ("Yahoo Finance", "https://finance.yahoo.com/search?p=USD+JPY+Japan+intervention"),
+    ("Japan MOF intervention data", "https://www.mof.go.jp/english/policy/international_policy/reference/feio/quarter/index.html"),
+    ("BOJ intervention operations outline", "https://www.boj.or.jp/en/intl_finance/outline/expkainyu.htm"),
+]
+
+
 def _table(headers: list[str], rows: list[list[str]]) -> str:
     header = "| " + " | ".join(headers) + " |"
     divider = "| " + " | ".join(["---"] * len(headers)) + " |"
@@ -95,6 +102,76 @@ def _three_thing_title(item: str) -> str:
     return "Macro Signal To Watch"
 
 
+def _status_asset_name(asset: str, status: str) -> str:
+    if status in {"*", "†"}:
+        return f"{asset} {status}"
+    return asset
+
+
+def _event_markdown(event: str, link: str) -> str:
+    return f"[{event}]({link})" if link else event
+
+
+def _theme_book_impact(text: str) -> str:
+    prefix = "What this means for our book:"
+    stripped = text.strip()
+    if stripped.lower().startswith(prefix.lower()):
+        stripped = stripped[len(prefix) :].strip()
+    return f"**For Our Book:** {stripped}"
+
+
+def _contrarian_further_reading() -> str:
+    links = ", ".join(f"[{label}]({url})" for label, url in CONTRARIAN_READING_LINKS)
+    return f"**Further reading:** {links}"
+
+
+def _categorized_assumptions(items: list[str]) -> str:
+    portfolio: list[str] = []
+    data_handling: list[str] = []
+    source_coverage: list[str] = []
+    other: list[str] = []
+
+    for item in items:
+        lowered = item.lower()
+        if any(key in lowered for key in ("portfolio file", "position carry-forward", "assignment pdf assumption", "assumed book", "portfolio file is connected")):
+            portfolio.append(item)
+        elif any(key in lowered for key in ("market dashboard", "calendar", "theme radar", "live mode", "scaffold", "blank")):
+            data_handling.append(item)
+        elif any(key in lowered for key in ("source", "feed", "public")):
+            source_coverage.append(item)
+        else:
+            other.append(item)
+
+    sections = [
+        ("Portfolio / Book", portfolio),
+        ("Data Handling", data_handling),
+        ("Source Coverage", source_coverage),
+        ("Other", other),
+    ]
+    blocks: list[str] = []
+    for heading, values in sections:
+        if values:
+            blocks.append(f"### {heading}\n\n" + "\n".join(f"- {value}" for value in values))
+    return "\n\n".join(blocks)
+
+
+def _feedback_questionnaire(run_date: date) -> str:
+    return f"""## Feedback Questionnaire
+
+Reply using this compact format so the feedback can be added to `inputs/feedback/daily_feedback.example.csv`.
+
+| Section | Rating 1-5 | Action | Comment |
+| --- | --- | --- | --- |
+| Dashboard |  | keep / deprioritize / drop / rewrite |  |
+| Three Things |  | keep / deprioritize / drop / rewrite |  |
+| Calendar |  | keep / deprioritize / drop / rewrite |  |
+| Chart |  | keep / deprioritize / drop / rewrite |  |
+| Theme Radar |  | keep / deprioritize / drop / rewrite |  |
+| Contrarian Corner |  | keep / deprioritize / drop / rewrite |  |
+
+Feedback date: {run_date.isoformat()}"""
+
+
 def _render_three_things_markdown(items: list[str]) -> str:
     blocks: list[str] = []
     for idx, item in enumerate(items, 1):
@@ -117,12 +194,12 @@ def _chart_reading(data: BriefData) -> str:
 def render_markdown(data: BriefData, run_date: date | None = None) -> str:
     run_date = run_date or date.today()
     market_table = _table(
-        ["Asset", "Close", "Prior", "Change", "As of", "Status", "Reading"],
-        [[r.asset, r.close, r.prior, r.change, r.as_of, r.status, r.so_what] for r in data.market_rows],
+        ["Asset", "Close", "Prior", "Change", "As of", "Reading"],
+        [[_status_asset_name(r.asset, r.status), r.close, r.prior, r.change, r.as_of, r.so_what] for r in data.market_rows],
     )
     calendar_table = _table(
         ["Session", "Event date", "Time", "Event", "Consensus", "Status", "Why it matters"],
-        [[e.session, e.event_date, e.time, e.event, e.consensus, e.status, e.why_it_matters] for e in data.calendar],
+        [[e.session, e.event_date, e.time, _event_markdown(e.event, e.link), e.consensus, e.status, e.why_it_matters] for e in data.calendar],
     )
     three = _render_three_things_markdown(data.three_things)
     themes = "\n\n".join(
@@ -130,11 +207,11 @@ def render_markdown(data: BriefData, run_date: date | None = None) -> str:
             f"### {item.title}\n"
             f"Source: [{item.source}]({item.link}) | Source depth: {item.source_depth}\n\n"
             f"{item.summary}\n\n"
-            f"{item.book_impact}"
+            f"{_theme_book_impact(item.book_impact)}"
         )
         for item in data.theme_radar
     )
-    assumptions = "\n".join(f"- {item}" for item in data.assumptions)
+    assumptions = _categorized_assumptions(data.assumptions)
     dashboard_notes = "\n".join(f"- {item}" for item in data.dashboard_notes)
     dashboard_notes_section = f"""
 Dashboard notes:
@@ -176,11 +253,15 @@ Dashboard notes:
 ## Contrarian Corner
 
 {data.contrarian_corner}
+
+{_contrarian_further_reading()}
 {source_status_section}
 
 ## Assumptions
 
 {assumptions}
+
+{_feedback_questionnaire(run_date)}
 """
 
 
@@ -218,7 +299,7 @@ def render_html(data: BriefData, run_date: date | None = None) -> str:
             if idx == 1 and all(set(cell) <= {"-"} for cell in cells):
                 continue
             tag = "th" if idx == 0 else "td"
-            html_lines.append("<tr>" + "".join(f"<{tag}>{html.escape(cell)}</{tag}>" for cell in cells) + "</tr>")
+            html_lines.append("<tr>" + "".join(f"<{tag}>{_inline_markdown_to_html(cell)}</{tag}>" for cell in cells) + "</tr>")
         html_lines.append("</table>")
         in_table = False
         table_rows = []
@@ -249,6 +330,10 @@ def render_html(data: BriefData, run_date: date | None = None) -> str:
             html_lines.append(f'<p class="note-line">{_bold_label_to_html(line)}</p>')
         elif line.startswith("**Read more:"):
             html_lines.append(f'<p class="read-more">{_bold_label_to_html(line)}</p>')
+        elif line.startswith("**Further reading:"):
+            html_lines.append(f'<p class="read-more">{_bold_label_to_html(line)}</p>')
+        elif line.startswith("**For Our Book:"):
+            html_lines.append(f'<p class="note-line">{_bold_label_to_html(line)}</p>')
         elif line.startswith("- "):
             html_lines.append(f"<p>{_inline_markdown_to_html(line)}</p>")
         else:
