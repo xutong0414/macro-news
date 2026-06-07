@@ -81,6 +81,16 @@ Start at 07:15 Hong Kong time from a UTC machine:
 
 The last example uses Sunday-Thursday UTC because 23:15 UTC maps to 07:15 Hong Kong time on the following Monday-Friday.
 
+Temporary local schedule test:
+
+If the machine timezone is Hong Kong time, testing starts at 12:30, and the goal is to prove a scheduled email around 12:36, use:
+
+```cron
+36 12 * * * cd /ABSOLUTE/PATH/TO/macro_news && /bin/bash scripts/run_daily_brief.sh >> logs/scheduler.out.log 2>> logs/scheduler.err.log
+```
+
+Remove or comment this test line immediately after one successful email. Cron repeats it daily until it is removed.
+
 ## macOS launchd
 
 Use `scheduling/com.macro-news.daily-brief.plist.example` as the template.
@@ -109,7 +119,11 @@ The Mac must be on and awake enough for `launchd` to run the job. For a laptop, 
 
 ## GitHub Actions Schedule
 
-GitHub schedules use UTC. A weekday 08:30 Hong Kong schedule would be:
+GitHub schedules use UTC.
+
+Production weekday morning send:
+
+A weekday 08:30 Hong Kong schedule would be:
 
 ```yaml
 on:
@@ -125,9 +139,19 @@ on:
     - cron: "15 0 * * 1-5"
 ```
 
-Use GitHub schedules only after accepting that they may be delayed or may not trigger reliably in short test windows. Manual `workflow_dispatch` remains the proven GitHub path.
+Temporary GitHub schedule test:
 
-The send workflow includes a disabled schedule template in `.github/workflows/daily-brief-manual-send.yml`. The `schedule:` lines are commented out so a clone of the repo does not start sending email automatically. To enable GitHub scheduled sending, uncomment only that block after repository secrets are configured and one manual send has succeeded.
+If testing starts at 12:30 Hong Kong time and the goal is to prove a scheduled run around 12:36 Hong Kong time, convert 12:36 HKT to 04:36 UTC:
+
+```yaml
+on:
+  schedule:
+    - cron: "36 4 * * *"
+```
+
+This test schedule is not one-time. It repeats daily until commented or removed. Use GitHub schedules only after accepting that they may be delayed or may not trigger reliably in short test windows. Manual `workflow_dispatch` remains the proven GitHub path.
+
+The send workflow includes disabled production and test schedule templates in `.github/workflows/daily-brief-manual-send.yml`. The `schedule:` lines are commented out so a clone of the repo does not start sending email automatically. To enable GitHub scheduled sending, uncomment only one block after repository secrets are configured and one manual send has succeeded.
 
 ## Cloud Scheduler Option
 

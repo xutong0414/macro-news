@@ -170,7 +170,7 @@ Workflows:
 
 Reason: this keeps evaluation and debugging controlled.
 
-Rule: the manual-send workflow may carry a commented GitHub `schedule:` template, but scheduled email sending stays disabled by default. A maintainer should uncomment that block only after secrets are configured and a manual send has succeeded.
+Rule: the manual-send workflow may carry commented GitHub `schedule:` templates for production and temporary testing, but scheduled email sending stays disabled by default. A maintainer should uncomment only one schedule block after secrets are configured and a manual send has succeeded, then comment any temporary test schedule again after the test.
 
 ## Memo And Submission Docs
 

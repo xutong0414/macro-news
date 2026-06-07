@@ -160,6 +160,16 @@ Start at 07:15 Hong Kong time from a UTC machine:
 
 The last example uses Sunday-Thursday UTC because 23:15 UTC maps to 07:15 Hong Kong time on the following Monday-Friday.
 
+Temporary local schedule test:
+
+If the machine timezone is Hong Kong time, testing starts at 12:30, and you want to prove a scheduled email around 12:36, use:
+
+```cron
+36 12 * * * cd /ABSOLUTE/PATH/TO/macro_news && /bin/bash scripts/run_daily_brief.sh >> logs/scheduler.out.log 2>> logs/scheduler.err.log
+```
+
+Remove or comment this test line immediately after one successful email. Cron repeats it daily until it is removed.
+
 ### macOS launchd
 
 Use:
@@ -172,7 +182,11 @@ Copy it to `~/Library/LaunchAgents/`, replace the placeholder paths, and load it
 
 ### GitHub Actions Schedule
 
-GitHub cron uses UTC. A weekday 08:15 Hong Kong schedule is:
+GitHub cron uses UTC. There are two common patterns.
+
+Production weekday morning send:
+
+A weekday 08:15 Hong Kong schedule is:
 
 ```yaml
 on:
@@ -180,13 +194,25 @@ on:
     - cron: "15 0 * * 1-5"
 ```
 
-The real email-send workflow already contains this schedule as commented lines in:
+Temporary GitHub schedule test:
+
+If testing starts at 12:30 Hong Kong time and you want a run around 12:36 Hong Kong time, convert 12:36 HKT to 04:36 UTC:
+
+```yaml
+on:
+  schedule:
+    - cron: "36 4 * * *"
+```
+
+This test schedule is not one-time. It repeats daily until you comment or remove it, and GitHub may still delay or skip the scheduled trigger.
+
+The real email-send workflow already contains both schedules as commented templates in:
 
 ```text
 .github/workflows/daily-brief-manual-send.yml
 ```
 
-It is commented out on purpose. The file is in place as a template, but automatic email sending is disabled until a maintainer explicitly uncomments the `schedule:` block. Uncomment it only if you accept that GitHub scheduled triggers may be delayed or skipped. The reliable GitHub path in this repo is the manual send workflow.
+They are commented out on purpose. The file is in place as a template, but automatic email sending is disabled until a maintainer explicitly uncomments one `schedule:` block. Use only one scheduled-send block at a time, and comment it again after a temporary test. The reliable GitHub path in this repo is the manual send workflow.
 
 ## Brief Contents
 
