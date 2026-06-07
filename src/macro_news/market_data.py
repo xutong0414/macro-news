@@ -295,8 +295,9 @@ def fetch_fx_reference(
     source: str,
     so_what: str,
     include_series: bool = False,
+    history_days: int = 7,
 ) -> LiveQuote:
-    start = run_date - timedelta(days=7)
+    start = run_date - timedelta(days=history_days)
     response = client.get(
         f"https://api.frankfurter.app/{start.isoformat()}..{run_date.isoformat()}",
         params={"from": base_currency, "to": quote_currency},
@@ -322,7 +323,7 @@ def fetch_fx_reference(
         source=source,
         so_what=so_what,
         as_of=dated_values[-1][0],
-        series=tuple((day[-5:], value) for day, value in dated_values[-5:]) if include_series else (),
+        series=tuple((day, value) for day, value in dated_values) if include_series else (),
     )
 
 
@@ -361,6 +362,7 @@ def fetch_usdjpy(client: httpx.Client, run_date: date) -> LiveQuote:
         source="frankfurter:USDJPY",
         so_what="Yen direction is the direct read-through for the assumed long USD/JPY.",
         include_series=True,
+        history_days=92,
     )
 
 

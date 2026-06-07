@@ -79,11 +79,14 @@ def test_sample_brief_contains_required_sections() -> None:
     assert "### 1. USD/JPY Intervention Risk" in brief
     assert "momentum.\n\n**So what:** keep the FX view" in brief
     assert "**Read more:** [Yahoo Finance](https://finance.yahoo.com/search?p=USD+JPY+Japan+intervention+yield+spread)" in brief
-    assert "![USD/JPY in Five Days](chart.png)" in brief
-    assert "**Reading:** This chart supports the first thing that matters today (see above)." in brief
+    assert "![USD/JPY: 3-Month Trend](chart.png)" in brief
+    assert "the latest five observations are highlighted" in brief
     assert "Source depth: Sample scaffold" in brief
     assert "**For Our Book:** duration pressure supports USD/JPY" in brief
     assert "## Feedback Questionnaire" in brief
+    assert "Usefulness 1-5" in brief
+    assert "Feedback date:" not in brief
+    assert "keep / deprioritize / drop / rewrite" not in brief
     assert "### Portfolio / Book" in brief
     assert "### Data Handling" in brief
     assert "Caption:" not in brief
@@ -94,8 +97,8 @@ def test_sample_brief_contains_required_sections() -> None:
 def test_sample_brief_html_renders_chart_reading_label() -> None:
     html = render_html(build_sample_brief_data())
 
-    assert 'alt="USD/JPY in Five Days"' in html
-    assert '<p class="reading"><strong>Reading:</strong> This chart supports the first thing that matters today (see above).' in html
+    assert 'alt="USD/JPY: 3-Month Trend"' in html
+    assert '<p class="reading"><strong>Reading:</strong> This chart supports the first thing that matters today (see above); the latest five observations are highlighted.' in html
     assert '<strong>For Our Book:</strong>' in html
     assert "Caption:" not in html
 
@@ -523,6 +526,8 @@ def test_dry_run_writes_outputs(tmp_path) -> None:
     assert result.output_paths["latest_html"].exists()
     assert result.output_paths["latest_chart"].exists()
     assert result.log_path.exists()
+    markdown = result.output_paths["latest_markdown"].read_text(encoding="utf-8")
+    assert "Data/query as of:" in markdown
     log_event = json.loads(result.log_path.read_text(encoding="utf-8"))
     assert log_event["run_mode"] == "sample"
 
@@ -624,7 +629,21 @@ class FakeMarketClient:
         if "frankfurter" in url:
             if params.get("from") == "EUR":
                 return FakeResponse({"rates": {"2026-06-04": {"USD": 1.08}, "2026-06-05": {"USD": 1.09}}})
-            return FakeResponse({"rates": {"2026-06-04": {"JPY": 158.0}, "2026-06-05": {"JPY": 159.0}}})
+            return FakeResponse(
+                {
+                    "rates": {
+                        "2026-03-06": {"JPY": 150.0},
+                        "2026-03-20": {"JPY": 151.5},
+                        "2026-04-03": {"JPY": 152.0},
+                        "2026-04-17": {"JPY": 153.4},
+                        "2026-05-01": {"JPY": 154.2},
+                        "2026-05-15": {"JPY": 155.0},
+                        "2026-05-29": {"JPY": 157.4},
+                        "2026-06-04": {"JPY": 158.0},
+                        "2026-06-05": {"JPY": 159.0},
+                    }
+                }
+            )
         if "mof.go.jp" in url:
             csv_text = (
                 "base date,1Y,2Y,3Y,4Y,5Y,6Y,7Y,8Y,9Y,10Y,15Y,20Y,25Y,30Y,40Y\n"
@@ -662,6 +681,8 @@ def test_live_market_data_replaces_rows_and_logs_fallback(tmp_path) -> None:
     assert row_by_asset["EUR/USD"].close == "1.0900"
     assert row_by_asset["EUR/USD"].change == "+0.9%"
     assert row_by_asset["USD/JPY"].close == "159.00"
+    assert len(result.data.chart_series) > 5
+    assert result.data.chart_series[-1] == ("2026-06-05", 159.0)
     assert row_by_asset["BTC"].change == "+2.0%"
     assert row_by_asset["DXY"].close == ""
     assert row_by_asset["DXY"].prior == ""
@@ -806,6 +827,8 @@ def test_live_calendar_data_replaces_calendar_rows(tmp_path) -> None:
     assert result.fallback_events == []
     assert "faireconomy:ff_calendar_thisweek" in result.sources
     assert "[USD Non-Farm Employment Change](https://www.forexfactory.com/en/calendar/)" in render_markdown(result.data)
+    assert "Calendar status notes:" in render_markdown(result.data)
+    assert "`*` = next-session or nearest source-week item" in render_markdown(result.data)
 
 
 def test_live_calendar_uses_cache_when_feed_refresh_fails(tmp_path) -> None:

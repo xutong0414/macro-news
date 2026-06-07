@@ -125,6 +125,22 @@ def _contrarian_further_reading() -> str:
     return f"**Further reading:** {links}"
 
 
+def _report_time_line(data: BriefData) -> str:
+    return f"\nData/query as of: {data.report_time}\n" if data.report_time else ""
+
+
+def _calendar_status_notes(data: BriefData) -> str:
+    statuses = {event.status for event in data.calendar if event.status}
+    if not statuses:
+        return ""
+    notes = [
+        "`Live` = event is dated today in the calendar source.",
+        "`*` = next-session or nearest source-week item, usually because today is a weekend/holiday or same-day options are thin.",
+        "`†` = cached real calendar row after live refresh failed.",
+    ]
+    return "\nCalendar status notes:\n\n" + "\n".join(f"- {note}" for note in notes)
+
+
 def _categorized_assumptions(items: list[str]) -> str:
     portfolio: list[str] = []
     data_handling: list[str] = []
@@ -155,21 +171,26 @@ def _categorized_assumptions(items: list[str]) -> str:
     return "\n\n".join(blocks)
 
 
-def _feedback_questionnaire(run_date: date) -> str:
+def _feedback_rows(data: BriefData) -> list[tuple[str, str]]:
+    rows: list[tuple[str, str]] = []
+    rows.extend(("Dashboard", row.asset) for row in data.market_rows)
+    rows.extend((f"Three Things #{idx}", _three_thing_title(item)) for idx, item in enumerate(data.three_things, 1))
+    rows.extend(("Calendar", event.event) for event in data.calendar)
+    rows.append(("Chart", "USD/JPY: 3-Month Trend"))
+    rows.extend(("Theme Radar", item.title) for item in data.theme_radar)
+    rows.append(("Contrarian Corner", "Main argument and trigger"))
+    return rows
+
+
+def _feedback_questionnaire(data: BriefData) -> str:
+    rows = "\n".join(f"| {section} | {item} |  |  |" for section, item in _feedback_rows(data))
     return f"""## Feedback Questionnaire
 
-Reply using this compact format so the feedback can be added to `inputs/feedback/daily_feedback.example.csv`.
+Please paste this compact format into Excel/CSV and share your feedback with Tong Xu for further refinement. Usefulness scale: 1 = not useful, 5 = very useful.
 
-| Section | Rating 1-5 | Action | Comment |
+| Section | Item | Usefulness 1-5 | Comment |
 | --- | --- | --- | --- |
-| Dashboard |  | keep / deprioritize / drop / rewrite |  |
-| Three Things |  | keep / deprioritize / drop / rewrite |  |
-| Calendar |  | keep / deprioritize / drop / rewrite |  |
-| Chart |  | keep / deprioritize / drop / rewrite |  |
-| Theme Radar |  | keep / deprioritize / drop / rewrite |  |
-| Contrarian Corner |  | keep / deprioritize / drop / rewrite |  |
-
-Feedback date: {run_date.isoformat()}"""
+{rows}"""
 
 
 def _render_three_things_markdown(items: list[str]) -> str:
@@ -187,7 +208,7 @@ def _render_three_things_markdown(items: list[str]) -> str:
 
 def _chart_reading(data: BriefData) -> str:
     caption = data.chart_caption.strip()
-    prefix = "This chart supports the first thing that matters today (see above)."
+    prefix = "This chart supports the first thing that matters today (see above); the latest five observations are highlighted."
     return f"{prefix} {caption}" if caption else prefix
 
 
@@ -218,6 +239,7 @@ Dashboard notes:
 
 {dashboard_notes}
 """ if dashboard_notes else ""
+    calendar_status_notes = _calendar_status_notes(data)
     source_notes = "\n".join(f"- {item}" for item in data.source_notes)
     source_status_section = f"""
 ## Source Status
@@ -226,6 +248,7 @@ Dashboard notes:
 """ if source_notes else ""
 
     return f"""# Daily Macro Brief - {run_date.isoformat()}
+{_report_time_line(data)}
 
 ## Overnight Market Dashboard
 
@@ -239,10 +262,11 @@ Dashboard notes:
 ## Today's Calendar / Next Session
 
 {calendar_table}
+{calendar_status_notes}
 
 ## One Chart Worth Seeing
 
-![USD/JPY in Five Days](chart.png)
+![USD/JPY: 3-Month Trend](chart.png)
 
 **Reading:** {_chart_reading(data)}
 
@@ -255,13 +279,13 @@ Dashboard notes:
 {data.contrarian_corner}
 
 {_contrarian_further_reading()}
+
+{_feedback_questionnaire(data)}
 {source_status_section}
 
 ## Assumptions
 
 {assumptions}
-
-{_feedback_questionnaire(run_date)}
 """
 
 
@@ -319,7 +343,7 @@ def render_html(data: BriefData, run_date: date | None = None) -> str:
         elif line.startswith("### "):
             html_lines.append(f"<h3>{_inline_markdown_to_html(line[4:])}</h3>")
         elif line.startswith("!["):
-            html_lines.append('<img src="chart.png" alt="USD/JPY in Five Days">')
+            html_lines.append('<img src="chart.png" alt="USD/JPY: 3-Month Trend">')
         elif line.startswith("**Reading:"):
             html_lines.append(f'<p class="reading">{_bold_label_to_html(line)}</p>')
         elif line.startswith("Reading:"):
@@ -358,12 +382,28 @@ def write_chart(data: BriefData, chart_path: Path) -> None:
 
     labels = [point[0] for point in data.chart_series]
     values = [point[1] for point in data.chart_series]
+    parsed_dates: list[datetime] = []
+    for label in labels:
+        try:
+            parsed_dates.append(datetime.fromisoformat(label))
+        except ValueError:
+            parsed_dates = []
+            break
+    x_values = parsed_dates if len(parsed_dates) == len(labels) else list(range(len(labels)))
+    recent_start = max(len(values) - 5, 0)
 
     fig, ax = plt.subplots(figsize=(7.2, 3.4))
-    ax.plot(labels, values, marker="o", linewidth=2, color="#2563eb")
-    ax.set_title("USD/JPY in Five Days")
+    ax.plot(x_values, values, linewidth=1.8, color="#9ca3af", label="Full history")
+    ax.plot(x_values[recent_start:], values[recent_start:], marker="o", linewidth=2.4, color="#2563eb", label="Latest 5 observations")
+    ax.set_title("USD/JPY: 3-Month Trend")
     ax.set_ylabel("Spot")
     ax.grid(True, alpha=0.25)
+    ax.legend(frameon=False, loc="best", fontsize=8)
+    if parsed_dates:
+        fig.autofmt_xdate(rotation=30, ha="right")
+    else:
+        ax.set_xticks(x_values)
+        ax.set_xticklabels(labels, rotation=30, ha="right")
     fig.tight_layout()
     chart_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(chart_path, dpi=160)

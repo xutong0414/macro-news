@@ -25,12 +25,12 @@ Plain sample mode records zero actual LLM tokens.
 
 ## Runtime Accounting
 
-Latest successful timed live send: `20260607T045752Z`, measured with `/usr/bin/time -p` on Sunday at 12:57 HKT.
+Latest successful timed live send: `20260607T052959Z`, measured with `/usr/bin/time -p` on Sunday at 13:29 HKT.
 
-- Runtime: `real 58.02s`, `user 0.90s`, `sys 3.13s`.
-- Token use: 11,923 input, 2,513 output, 14,436 total.
-- Estimated LLM cost: $0.0021975.
-- Source result: 9/10 market dashboard rows refreshed from live public sources; one cached real-source row was used for S&P 500 after a Yahoo SSL handshake timeout; no scaffold fallback rows were used. Calendar used the live Fair Economy weekly feed. Theme Radar selected two live RSS items with one feed timeout.
+- Runtime: `real 36.10s`, `user 1.00s`, `sys 3.08s`.
+- Token use: 7,585 input, 1,685 output, 9,270 total.
+- Estimated LLM cost: $0.0014325.
+- Source result: all 10 market dashboard rows refreshed from live public sources; no scaffold fallback rows were used. Calendar used the live Fair Economy weekly feed. Theme Radar selected two live RSS items with one feed timeout.
 
 Operational note: use at least a 10-15 minute scheduler buffer before the desired inbox time. Successful runs can be under one minute, but quality-control testing saw source timeouts and validation retries up to about two minutes before a clean output.
 
@@ -64,3 +64,4 @@ Operational note: use at least a 10-15 minute scheduler buffer before the desire
 | 2026-06-07 | `20260607T023726Z` | Freshness labels, portfolio input, feedback template, source-depth disclosure v27 live dry run, 34.40s real | 3,517 | 808 | $0.0006749 | Not sent |
 | 2026-06-07 | `20260607T030050Z` | Final freshness/status no-generated-data guardrail v32 live dry run, 126.03s real | 11,813 | 2,437 | $0.0021561 | Not sent |
 | 2026-06-07 | `20260607T045752Z` | Presentation/link/feedback revision send, 58.02s real | 11,923 | 2,513 | $0.0021975 | Sent |
+| 2026-06-07 | `20260607T052959Z` | Timestamp/calendar-footnote/chart-context revision send, 36.10s real | 7,585 | 1,685 | $0.0014325 | Sent |

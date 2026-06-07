@@ -1,4 +1,4 @@
-date,section,item,rating,action,comment
-2026-06-07,Dashboard,US 10Y yield,5,keep,Useful and directly relevant
-2026-06-07,Theme Radar,Housing inflation expectations,2,deprioritize,Too generic for today's book
-2026-06-07,Contrarian Corner,USD/JPY intervention,4,keep,Good but make trigger more concrete
+date,section,item,usefulness,comment
+2026-06-07,Dashboard,US 10Y yield,5,Useful and directly relevant
+2026-06-07,Theme Radar,Housing inflation expectations,2,Too generic for today's book
+2026-06-07,Contrarian Corner,USD/JPY intervention,4,Good but make trigger more concrete

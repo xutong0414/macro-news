@@ -360,3 +360,21 @@ Rules:
 - The email/brief includes a compact feedback questionnaire whose rows can be copied into `inputs/feedback/daily_feedback.example.csv`.
 
 Outcome: sent run `20260607T045752Z` delivered successfully with dashboard status markers inside asset labels, no separate dashboard status column, clickable calendar event names, linked Source Status notes, Contrarian Corner further-reading links, grouped assumptions, bold `For Our Book:` Theme Radar impact lines, and the feedback questionnaire rendered in the email. Runtime was `58.02s`, token use was 11,923 input / 2,513 output / 14,436 total, and estimated Gemini cost was $0.0021975.
+
+## 2026-06-07 - Timestamp, Calendar Footnotes, Feedback Form, And Chart Context
+
+Decision: make the report timestamp, calendar status symbols, feedback form, and USD/JPY chart more self-explanatory.
+
+Reason: the reader should not need to guess when the brief was updated, why a calendar row has `*`, how to give feedback, or whether the chart is only a toy five-day example.
+
+Rules:
+
+- Render a top `Data/query as of` line immediately under the title. Use a single as-of/update timestamp rather than separate start/end times because reader-facing market notes commonly use an as-of convention.
+- If calendar statuses appear, render a short footnote below the calendar table explaining `Live`, `*`, and `†`.
+- Put the feedback questionnaire before `Source Status` because feedback is reader action, while Source Status and Assumptions are audit/appendix material.
+- Feedback rows should be item-level where practical and use `Usefulness 1-5` plus `Comment`; avoid a vague `Action` column.
+- For line charts, prefer more than one month of history when the source supports it. Highlight the latest five observations instead of plotting only five points.
+
+Implementation note: the live USD/JPY chart now requests roughly three months of Frankfurter reference-rate history and highlights the latest five observations.
+
+Outcome: sent run `20260607T052959Z` delivered successfully with the top `Data/query as of` timestamp, calendar status footnotes, item-level feedback questionnaire before Source Status, a 3-month USD/JPY chart with the latest five observations highlighted, and no scaffold fallback rows. Runtime was `36.10s`, token use was 7,585 input / 1,685 output / 9,270 total, and estimated Gemini cost was $0.0014325.

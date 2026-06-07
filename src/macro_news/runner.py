@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from .calendar_data import CalendarDataResult, replace_calendar_with_live
 from .config import Settings
@@ -89,6 +90,12 @@ def run_brief(
         llm_model = synthesis.model
         estimated_llm_cost_usd = synthesis.estimated_cost_usd
         prompt_version = synthesis.prompt_version
+
+    try:
+        report_zone = ZoneInfo(settings.timezone)
+    except Exception:  # noqa: BLE001 - config normalization handles common aliases.
+        report_zone = ZoneInfo("Asia/Hong_Kong")
+    data = replace(data, report_time=datetime.now(report_zone).strftime("%Y-%m-%d %H:%M %Z"))
 
     output_paths = write_outputs(data, settings.output_dir, run_date)
 

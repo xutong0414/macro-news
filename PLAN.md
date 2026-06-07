@@ -2,11 +2,11 @@
 
 ## Current Stage
 
-Freshness/status input pass and presentation/link revision are implemented and verified. The project now renders dashboard `As of` fields with compact status markers in the asset label, event-date/status fields for the calendar, clickable calendar/source/contrarian links, source-depth labels for Theme Radar, grouped assumptions, a feedback questionnaire, and portfolio assumptions from `inputs/portfolio/positions.csv`.
+Freshness/status input pass and presentation/link revision are implemented and verified. The project now renders a top `Data/query as of` timestamp, dashboard `As of` fields with compact status markers in the asset label, event-date/status fields for the calendar, calendar status footnotes, clickable calendar/source/contrarian links, source-depth labels for Theme Radar, grouped assumptions, an item-level feedback questionnaire before Source Status, and portfolio assumptions from `inputs/portfolio/positions.csv`.
 
-The latest verified send (`20260607T045752Z`) rendered the dashboard with a `Reading` column, compact status markers on asset names, 9 live market rows plus 1 cached real-source row after a Yahoo SSL handshake timed out, event-date/status calendar labels with clickable event links from the live Fair Economy weekly feed, live Theme Radar selections with source-depth labels, grouped assumptions, a rendered feedback questionnaire, prompt version `gemini_narrative_v32`, and no generated scaffold rows in live market/calendar/theme fallback paths.
+The latest verified send (`20260607T052959Z`) rendered the dashboard with a `Reading` column, compact status markers on asset names, all 10 market rows refreshed from live public sources, event-date/status calendar labels with clickable event links and status footnotes from the live Fair Economy weekly feed, a 3-month USD/JPY chart with the latest five observations highlighted, live Theme Radar selections with source-depth labels, grouped assumptions, an item-level feedback questionnaire before Source Status, prompt version `gemini_narrative_v32`, and no generated scaffold rows in live market/calendar/theme fallback paths.
 
-Measured runtime for that successful send was `58.02s` wall-clock, with 11,923 input tokens, 2,513 output tokens, 14,436 total tokens, and estimated Gemini cost of $0.0021975.
+Measured runtime for that successful send was `36.10s` wall-clock, with 7,585 input tokens, 1,685 output tokens, 9,270 total tokens, and estimated Gemini cost of $0.0014325.
 
 ## Whose Turn
 
@@ -42,12 +42,14 @@ User turn: review the latest email or `outputs/latest/brief.html`, especially th
 - Three Things link role: render compact item sub-titles, smaller `So what:` support lines, and deterministic Yahoo Finance topic-search links; the LLM does not invent those links.
 - Chart role: use USD/JPY because it is the assumed FX position and the most direct visual support for the intervention-risk item; render the note as bold `Reading:` rather than `Caption:`.
 - Dashboard status role: keep the dashboard compact by placing non-live markers (`*` and `†`) on the asset label instead of adding a separate status column.
-- Feedback role: render a compact questionnaire so email replies can be transferred into `inputs/feedback/daily_feedback.example.csv`.
+- Calendar status role: when status labels appear, render a footnote explaining `Live`, `*`, and `†` below the calendar table.
+- Chart history role: line charts should prefer more than one month of history when available, with the latest five observations highlighted; current USD/JPY chart uses roughly three months.
+- Feedback role: render an item-level usefulness/comment questionnaire before Source Status so email replies can be transferred into `inputs/feedback/daily_feedback.example.csv`.
 
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. User review latest `outputs/latest/brief.html` and the delivered email for the new links, grouping, and questionnaire.
+2. User review latest `outputs/latest/brief.html` and the delivered email for the timestamp, calendar footnotes, chart, links, grouping, and questionnaire.
 3. Add a second calendar provider if the free weekly feed remains thin or stale outside weekday windows.
 4. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.
 5. Generate final `memo.pdf` from `memo.md`.

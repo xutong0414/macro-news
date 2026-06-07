@@ -6,7 +6,7 @@ The target reader is a macro PM who wants: what changed overnight, why it matter
 
 ## Current Status
 
-Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows including Japan 10Y, EUR/USD, and USD/JPY, dashboard `As of` labels with compact status markers on asset names, dashboard timing/source notes with clickable source links, cached real-source fallback, no generated scaffold values in live market/calendar/theme fallback paths, a USD/JPY chart reading linked to the first thing that matters, live/cached economic-calendar rows with event-date/status labels and clickable event-source links, live Theme Radar source collection with source-depth labels, factual guardrails for market-number consistency and unsupported narrative claims, grouped assumptions, feedback questionnaire output, portfolio assumptions loaded from `inputs/portfolio/positions.csv`, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
+Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows including Japan 10Y, EUR/USD, and USD/JPY, a top `Data/query as of` timestamp, dashboard `As of` labels with compact status markers on asset names, dashboard timing/source notes with clickable source links, cached real-source fallback, no generated scaffold values in live market/calendar/theme fallback paths, a longer USD/JPY chart with the latest five observations highlighted, live/cached economic-calendar rows with event-date/status labels, calendar status footnotes, and clickable event-source links, live Theme Radar source collection with source-depth labels, factual guardrails for market-number consistency and unsupported narrative claims, grouped assumptions, feedback questionnaire output, portfolio assumptions loaded from `inputs/portfolio/positions.csv`, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
 
 Locked defaults:
 
@@ -131,7 +131,7 @@ The final brief must include:
 1. Overnight market dashboard as a table.
 2. The 3 things that matter today, each with a clear "so what" paragraph and a reader-facing news link.
 3. Today's calendar across Asia, EU, and US sessions with consensus.
-4. One chart worth seeing with a caption under 30 words.
+4. One chart worth seeing with a concise reading line.
 5. Theme radar summaries tied to assumed positions/themes.
 6. Contrarian corner.
 
@@ -157,8 +157,11 @@ The calendar currently uses:
 - Session-aware selection that targets Asia, Europe, and US coverage when the feed contains usable events.
 - Local ignored cache under `.cache/calendar/` after successful pulls.
 - Event-date and status labels using the same `Live`, `*`, and `†` no-color convention.
+- Footnotes below the calendar table explain `Live`, `*`, and `†` when status labels appear.
 - Clickable event names pointing to the calendar source.
 - Blank calendar output rather than scaffold/sample calendar rows when no live or cached real calendar rows exist.
+
+The chart currently uses USD/JPY because that is the assumed FX position and a direct risk for the book. For line charts, the rule is to prefer more than one month of context when the source supports it; the current USD/JPY chart uses roughly three months of history and highlights the latest five observations.
 
 Theme Radar currently uses:
 
@@ -175,7 +178,7 @@ Tracked assignment assumptions live in `inputs/portfolio/positions.csv`. The for
 
 Human feedback is documented in `inputs/feedback/README.md`, with `daily_feedback.example.csv` as the questionnaire template. The current rule is to record feedback locally first; later versions can load high-rated and low-rated patterns into source ranking and prompt construction. This is local preference memory, not model fine-tuning.
 
-The rendered brief includes a compact feedback questionnaire with section, rating, action, and comment fields. The intended workflow is to paste useful replies into the feedback CSV and later let the agent load those rows as local preference memory.
+The rendered brief includes a compact feedback questionnaire with section, item, usefulness, and comment fields. The intended workflow is to paste useful replies into a CSV/Excel sheet and later let the agent load those rows as local preference memory.
 
 ## GitHub Actions
 

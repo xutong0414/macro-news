@@ -49,6 +49,7 @@ class BriefData:
     data_sources: list[str]
     source_notes: list[str] = field(default_factory=list)
     dashboard_notes: list[str] = field(default_factory=list)
+    report_time: str = ""
 
 
 def build_sample_brief_data() -> BriefData:
@@ -78,11 +79,19 @@ def build_sample_brief_data() -> BriefData:
         ],
         chart_caption="Spot is extended enough that intervention risk is now the point of the chart.",
         chart_series=[
-            ("Mon", 154.8),
-            ("Tue", 155.1),
-            ("Wed", 155.7),
-            ("Thu", 156.1),
-            ("Fri", 157.2),
+            ("2026-03-06", 149.3),
+            ("2026-03-13", 150.2),
+            ("2026-03-20", 151.0),
+            ("2026-03-27", 150.7),
+            ("2026-04-03", 151.8),
+            ("2026-04-10", 152.4),
+            ("2026-04-17", 153.1),
+            ("2026-04-24", 153.7),
+            ("2026-05-01", 154.2),
+            ("2026-05-08", 154.8),
+            ("2026-05-15", 155.1),
+            ("2026-05-22", 156.1),
+            ("2026-05-29", 157.2),
         ],
         theme_radar=[
             ThemeItem(
