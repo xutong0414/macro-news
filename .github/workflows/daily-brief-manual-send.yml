@@ -7,6 +7,12 @@ on:
         description: "Type SEND to confirm one real email delivery."
         required: true
         default: "DRY_RUN_ONLY"
+  # Optional scheduled send template.
+  # Leave commented unless you explicitly want GitHub to send automatically.
+  # GitHub cron uses UTC. This example starts at 08:15 Hong Kong time,
+  # Monday-Friday, so the email can arrive around 08:30 HKT.
+  # schedule:
+  #   - cron: "15 0 * * 1-5"
 
 permissions:
   contents: read
@@ -36,6 +42,7 @@ jobs:
 
       - name: Validate send confirmation and required secrets
         env:
+          EVENT_NAME: ${{ github.event_name }}
           CONFIRM_SEND: ${{ inputs.confirm_send }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
@@ -49,8 +56,12 @@ jobs:
           python - <<'PY'
           import os
 
-          if os.getenv("CONFIRM_SEND") != "SEND":
+          event_name = os.getenv("EVENT_NAME")
+          confirm_send = os.getenv("CONFIRM_SEND")
+          if event_name == "workflow_dispatch" and confirm_send != "SEND":
               raise SystemExit("Manual send requires confirm_send=SEND.")
+          if event_name not in {"workflow_dispatch", "schedule"}:
+              raise SystemExit(f"Unsupported trigger for send workflow: {event_name}")
 
           required = [
               "GEMINI_API_KEY",

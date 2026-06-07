@@ -127,6 +127,8 @@ on:
 
 Use GitHub schedules only after accepting that they may be delayed or may not trigger reliably in short test windows. Manual `workflow_dispatch` remains the proven GitHub path.
 
+The send workflow includes a disabled schedule template in `.github/workflows/daily-brief-manual-send.yml`. The `schedule:` lines are commented out so a clone of the repo does not start sending email automatically. To enable GitHub scheduled sending, uncomment only that block after repository secrets are configured and one manual send has succeeded.
+
 ## Cloud Scheduler Option
 
 A cloud scheduler can wake the workflow without keeping a laptop on. Two common patterns:
