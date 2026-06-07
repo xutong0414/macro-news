@@ -84,25 +84,53 @@ Notes:
 
 ## 3. Run Locally
 
-Start with the safe sample dry run:
+Run these commands in Terminal from the project root. Keep the virtual environment active if you created one with `source .venv/bin/activate`.
+
+### Step 3.1: Sample Dry Run
+
+Run in Terminal:
 
 ```bash
 PYTHONPATH=src python -m macro_news run --dry-run
 ```
 
-Then test live sources and Gemini without sending email:
+Expected outcome:
+
+- No secrets are needed.
+- No email is sent.
+- The project creates or updates `outputs/latest/brief.md`, `outputs/latest/brief.html`, `outputs/latest/chart.png`, and a run log under `logs/`.
+- The content uses sample/scaffold data, so this step only proves that the framework runs.
+
+### Step 3.2: Live Dry Run
+
+Run in Terminal after `.env` has a valid Gemini API key:
 
 ```bash
 PYTHONPATH=src python -m macro_news run --dry-run --live-market-data --live-calendar --live-theme-radar --use-llm
 ```
 
-Finally, send one live email:
+Expected outcome:
+
+- Live market, calendar, and RSS sources are queried.
+- Gemini writes the narrative sections from structured inputs.
+- No email is sent.
+- Inspect `outputs/latest/brief.html` and `outputs/latest/brief.md`.
+
+### Step 3.3: Send One Email
+
+Run in Terminal after `.env` has both Gemini and Gmail SMTP values:
 
 ```bash
 PYTHONPATH=src python -m macro_news run --send --live-market-data --live-calendar --live-theme-radar --use-llm
 ```
 
-Expected local outputs:
+Expected outcome:
+
+- One email is sent to `BRIEF_TO_EMAIL`.
+- The same local output files and logs are updated.
+- If delivery fails, check the Gmail app password, sender email, recipient email, and `.env` spelling.
+
+Expected output files:
 
 - `outputs/latest/brief.md`
 - `outputs/latest/brief.html`
@@ -114,79 +142,112 @@ Generated outputs and logs are ignored by git.
 
 ## 4. Run On A Schedule
 
-The scheduled time is the time the agent starts working. The email is sent only after data fetching, Gemini synthesis, rendering, and SMTP delivery finish.
+Scheduling means another program wakes up this agent at a chosen time and runs the send command for you.
 
-If the desired inbox time is 08:30 Hong Kong time, schedule the job around 08:15 Hong Kong time. If the intended requirement is literally "start working at 08:30," schedule 08:30.
+Important idea:
 
-The reusable scheduled command is:
+- The schedule time is when the agent starts working.
+- The email is sent after data fetching, Gemini synthesis, rendering, and SMTP delivery finish.
+- If the target inbox time is 08:30 Hong Kong time, start around 08:15.
+- Closing VS Code does not matter for `cron`, `launchd`, or GitHub Actions.
+- For local schedulers, the computer must be powered on and awake enough to run the job.
+- For GitHub Actions, your local computer does not need to be on, but GitHub scheduled triggers can be delayed or skipped.
+
+The command that the scheduler should run is:
 
 ```bash
 /bin/bash /ABSOLUTE/PATH/TO/macro_news/scripts/run_daily_brief.sh
 ```
 
-### Cron Examples
+This is not something you type every morning. You put this command into a scheduler once.
 
-Cron has five time fields:
+### Linux Or Server Cron
+
+Use this if the project runs on Linux, a VPS, or another Unix-like server.
+
+Run in Terminal:
+
+```bash
+crontab -e
+```
+
+Then paste one schedule line into the editor.
+
+Cron has five timing fields:
 
 ```text
 minute hour day-of-month month day-of-week
 ```
 
-In cron, `1-5` means Monday-Friday.
+Production weekday morning example:
 
-Start at 08:30 Monday-Friday on a machine set to Hong Kong time:
-
-```cron
-30 8 * * 1-5 cd /ABSOLUTE/PATH/TO/macro_news && /bin/bash scripts/run_daily_brief.sh >> logs/scheduler.out.log 2>> logs/scheduler.err.log
-```
-
-Start at 08:15 Monday-Friday on a machine set to Hong Kong time, for an approximately 08:30 inbox target:
+To start at 08:15 Hong Kong time Monday-Friday on a machine using UTC, paste:
 
 ```cron
-15 8 * * 1-5 cd /ABSOLUTE/PATH/TO/macro_news && /bin/bash scripts/run_daily_brief.sh >> logs/scheduler.out.log 2>> logs/scheduler.err.log
+15 0 * * 1-5 cd /ABSOLUTE/PATH/TO/macro_news && /bin/bash scripts/run_daily_brief.sh >> logs/scheduler.out.log 2>> logs/scheduler.err.log
 ```
 
-Start at 08:30 Hong Kong time from a machine set to UTC:
+Why this works:
+
+- `15` means minute 15.
+- `0` means hour 00 in UTC.
+- Hong Kong is UTC+8, so 00:15 UTC is 08:15 HKT.
+- `* *` means any day of month and any month.
+- `1-5` means Monday-Friday.
+- The `cd ...` part moves into the project folder before running the script.
+- The `>> logs/...` parts save scheduler output and errors.
+
+Temporary cron test:
+
+If testing starts at 12:30 HKT and you want one proof run around 12:36 HKT, convert 12:36 HKT to 04:36 UTC, then paste:
 
 ```cron
-30 0 * * 1-5 cd /ABSOLUTE/PATH/TO/macro_news && /bin/bash scripts/run_daily_brief.sh >> logs/scheduler.out.log 2>> logs/scheduler.err.log
+36 4 * * * cd /ABSOLUTE/PATH/TO/macro_news && /bin/bash scripts/run_daily_brief.sh >> logs/scheduler.out.log 2>> logs/scheduler.err.log
 ```
 
-Start at 07:15 Hong Kong time from a UTC machine:
+Remove this test line after one successful email. It repeats daily until removed.
 
-```cron
-15 23 * * 0-4 cd /ABSOLUTE/PATH/TO/macro_news && /bin/bash scripts/run_daily_brief.sh >> logs/scheduler.out.log 2>> logs/scheduler.err.log
-```
+### macOS
 
-The last example uses Sunday-Thursday UTC because 23:15 UTC maps to 07:15 Hong Kong time on the following Monday-Friday.
+Use macOS `launchd`.
 
-Temporary local schedule test:
-
-If the machine timezone is Hong Kong time, testing starts at 12:30, and you want to prove a scheduled email around 12:36, use:
-
-```cron
-36 12 * * * cd /ABSOLUTE/PATH/TO/macro_news && /bin/bash scripts/run_daily_brief.sh >> logs/scheduler.out.log 2>> logs/scheduler.err.log
-```
-
-Remove or comment this test line immediately after one successful email. Cron repeats it daily until it is removed.
-
-### macOS launchd
-
-Use:
+Edit this file, not in Terminal:
 
 ```text
 scheduling/com.macro-news.daily-brief.plist.example
 ```
 
-Copy it to `~/Library/LaunchAgents/`, replace the placeholder paths, and load it with `launchctl`. See `docs/scheduling.md` for details.
+Replace the placeholder paths, copy it to `~/Library/LaunchAgents/`, and load it with `launchctl`. The exact Terminal commands are in `docs/scheduling.md`.
 
-### GitHub Actions Schedule
+VS Code does not need to stay open. The Mac does need to be on and awake enough for `launchd` to run.
 
-GitHub cron uses UTC. There are two common patterns.
+### Windows
+
+Windows uses Task Scheduler, which is different from macOS `launchd` and Linux `cron`.
+
+This repo does not include a Windows Task Scheduler template. The simplest Windows path is to run the project inside WSL and use the Linux `cron` approach above. Otherwise, create a Windows Task Scheduler job that runs the same scheduled command through a shell that can execute `.sh` scripts.
+
+### GitHub Actions
+
+Use this if you want GitHub to provide the computer power.
+
+Do not run the schedule examples in Terminal. Edit this workflow file:
+
+```text
+.github/workflows/daily-brief-manual-send.yml
+```
+
+Before enabling a schedule:
+
+1. Add GitHub repository secrets listed in `.env.example`.
+2. Run the manual send workflow once from the GitHub Actions page.
+3. Confirm the email arrives.
+
+The workflow file contains two commented schedule templates. Uncomment only one at a time.
 
 Production weekday morning send:
 
-A weekday 08:15 Hong Kong schedule is:
+This starts around 08:15 HKT Monday-Friday:
 
 ```yaml
 on:
@@ -196,7 +257,7 @@ on:
 
 Temporary GitHub schedule test:
 
-If testing starts at 12:30 Hong Kong time and you want a run around 12:36 Hong Kong time, convert 12:36 HKT to 04:36 UTC:
+If testing starts at 12:30 HKT and you want a proof run around 12:36 HKT, use:
 
 ```yaml
 on:
@@ -204,15 +265,7 @@ on:
     - cron: "36 4 * * *"
 ```
 
-This test schedule is not one-time. It repeats daily until you comment or remove it, and GitHub may still delay or skip the scheduled trigger.
-
-The real email-send workflow already contains both schedules as commented templates in:
-
-```text
-.github/workflows/daily-brief-manual-send.yml
-```
-
-They are commented out on purpose. The file is in place as a template, but automatic email sending is disabled until a maintainer explicitly uncomments one `schedule:` block. Use only one scheduled-send block at a time, and comment it again after a temporary test. The reliable GitHub path in this repo is the manual send workflow.
+This test is not one-time. Comment it again after the proof run. GitHub scheduled runs can still be delayed or skipped, so the dependable GitHub path is manual `workflow_dispatch`.
 
 ## Brief Contents
 
