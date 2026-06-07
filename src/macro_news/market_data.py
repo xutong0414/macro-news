@@ -527,7 +527,14 @@ def replace_market_rows_with_live(
 
     assumptions = [
         *data.assumptions,
-        "Market dashboard uses public live sources where available, cached real-source rows for temporary outages, and blank cells rather than scaffold values when neither is available.",
+        (
+            "Market dashboard uses public live sources where available "
+            "([Yahoo Finance](https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC), "
+            "[Japan MOF](https://www.mof.go.jp/jgbs/reference/interest_rate/jgbcm.csv), "
+            "[Frankfurter](https://frankfurter.dev/), "
+            "[CoinGecko](https://www.coingecko.com/en/api)), cached real-source rows for temporary outages, "
+            "and blank cells rather than scaffold values when neither is available."
+        ),
     ]
     try:
         zone = ZoneInfo(timezone_name)

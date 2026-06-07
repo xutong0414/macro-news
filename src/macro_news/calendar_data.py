@@ -329,7 +329,7 @@ def replace_calendar_with_live(
         calendar=calendar,
         assumptions=[
             *data.assumptions,
-            "Calendar uses the live Forex Factory/Fair Economy weekly feed when available, cached real rows after rate limits, and blank output rather than scaffold rows if no verified calendar data exists.",
+            "Calendar uses the live [Forex Factory/Fair Economy weekly feed](https://www.forexfactory.com/en/calendar/) when available, cached real rows after rate limits, and blank output rather than scaffold rows if no verified calendar data exists.",
             "Calendar live mode leaves the table blank instead of using scaffold events when neither live nor cached real calendar rows are available.",
         ],
         data_sources=[*data.data_sources, *sources],

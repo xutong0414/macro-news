@@ -134,9 +134,9 @@ def _calendar_status_notes(data: BriefData) -> str:
     if not statuses:
         return ""
     notes = [
-        "`Live` = event is dated today in the calendar source.",
-        "`*` = next-session or nearest source-week item, usually because today is a weekend/holiday or same-day options are thin.",
-        "`†` = cached real calendar row after live refresh failed.",
+        "Live = event is dated today in the calendar source.",
+        "* = next-session or nearest source-week item, usually because today is a weekend/holiday or same-day options are thin.",
+        "† = cached real calendar row after live refresh failed.",
     ]
     return "\nCalendar status notes:\n\n" + "\n".join(f"- {note}" for note in notes)
 
@@ -173,7 +173,7 @@ def _categorized_assumptions(items: list[str]) -> str:
 
 def _feedback_rows(data: BriefData) -> list[tuple[str, str]]:
     rows: list[tuple[str, str]] = []
-    rows.extend(("Dashboard", row.asset) for row in data.market_rows)
+    rows.append(("Dashboard", "Overnight market dashboard"))
     rows.extend((f"Three Things #{idx}", _three_thing_title(item)) for idx, item in enumerate(data.three_things, 1))
     rows.extend(("Calendar", event.event) for event in data.calendar)
     rows.append(("Chart", "USD/JPY: 3-Month Trend"))
@@ -300,11 +300,14 @@ def render_html(data: BriefData, run_date: date | None = None) -> str:
         '<meta name="viewport" content="width=device-width, initial-scale=1">',
         "<title>Daily Macro Brief</title>",
         "<style>",
-        "body{font-family:Arial,sans-serif;line-height:1.45;color:#111827;max-width:880px;margin:24px auto;padding:0 18px}",
+        "body{font-family:Arial,sans-serif;font-size:16px;line-height:1.45;color:#111827;max-width:880px;margin:24px auto;padding:0 18px}",
+        "p{font-size:16px;margin:0 0 14px}",
         "table{border-collapse:collapse;width:100%;font-size:14px}th,td{border:1px solid #d1d5db;padding:8px;text-align:left;vertical-align:top}",
         "th{background:#f3f4f6}h1,h2,h3{line-height:1.2}h3{font-size:18px;margin:22px 0 6px}img{max-width:100%;height:auto}",
-        ".reading,.note-line,.read-more{color:#4b5563;font-size:14px}.note-line,.read-more{margin:4px 0 0 18px}",
-        ".read-more{margin-bottom:18px}",
+        ".reading,.note-line{color:#111827;font-size:16px;margin:8px 0 12px 18px}",
+        ".read-more{color:#4b5563;font-size:14px;margin:4px 0 18px 18px}",
+        ".footnote-heading{color:#4b5563;font-size:13px;font-weight:bold;margin:12px 0 4px}",
+        ".footnote{color:#4b5563;font-size:13px;line-height:1.35;margin:3px 0 0 18px}",
         "</style>",
         "</head>",
         "<body>",
@@ -312,6 +315,7 @@ def render_html(data: BriefData, run_date: date | None = None) -> str:
 
     in_table = False
     table_rows: list[str] = []
+    footnote_block = False
 
     def flush_table() -> None:
         nonlocal in_table, table_rows
@@ -337,8 +341,10 @@ def render_html(data: BriefData, run_date: date | None = None) -> str:
         if not line.strip():
             continue
         if line.startswith("# "):
+            footnote_block = False
             html_lines.append(f"<h1>{_inline_markdown_to_html(line[2:])}</h1>")
         elif line.startswith("## "):
+            footnote_block = False
             html_lines.append(f"<h2>{_inline_markdown_to_html(line[3:])}</h2>")
         elif line.startswith("### "):
             html_lines.append(f"<h3>{_inline_markdown_to_html(line[4:])}</h3>")
@@ -358,6 +364,11 @@ def render_html(data: BriefData, run_date: date | None = None) -> str:
             html_lines.append(f'<p class="read-more">{_bold_label_to_html(line)}</p>')
         elif line.startswith("**For Our Book:"):
             html_lines.append(f'<p class="note-line">{_bold_label_to_html(line)}</p>')
+        elif line in {"Dashboard notes:", "Calendar status notes:"}:
+            footnote_block = True
+            html_lines.append(f'<p class="footnote-heading">{_inline_markdown_to_html(line)}</p>')
+        elif line.startswith("- ") and footnote_block:
+            html_lines.append(f'<p class="footnote">{_inline_markdown_to_html(line)}</p>')
         elif line.startswith("- "):
             html_lines.append(f"<p>{_inline_markdown_to_html(line)}</p>")
         else:

@@ -378,3 +378,18 @@ Rules:
 Implementation note: the live USD/JPY chart now requests roughly three months of Frankfurter reference-rate history and highlights the latest five observations.
 
 Outcome: sent run `20260607T052959Z` delivered successfully with the top `Data/query as of` timestamp, calendar status footnotes, item-level feedback questionnaire before Source Status, a 3-month USD/JPY chart with the latest five observations highlighted, and no scaffold fallback rows. Runtime was `36.10s`, token use was 7,585 input / 1,685 output / 9,270 total, and estimated Gemini cost was $0.0014325.
+
+## 2026-06-07 - Email Typography And Link Disclosure Revision
+
+Decision: revise the email HTML typography and source-link disclosure after Outlook inspection.
+
+Reason: Outlook made dashboard/calendar notes and body-level explanatory lines look too similar. The reader should see normal body emphasis for actual portfolio implications, smaller text for footnotes and `Read more`, and links whenever data/source logic names an external feed.
+
+Rules:
+
+- Render `So what`, `For Our Book`, and chart `Reading` at normal body size.
+- Keep `Read more`, dashboard notes, and calendar status notes small.
+- Keep dashboard feedback to one row, while other sections can use item-level rows.
+- In Data Handling and source logic, whenever an external data, web, or RSS source is named, include a reader-facing link whenever possible.
+
+Outcome: sent run `20260607T054634Z` delivered successfully with the revised HTML classes, one dashboard feedback row, linked Data Handling assumptions, plain-language calendar status footnotes, all 10 dashboard rows refreshed from live public sources, runtime `30.44s`, token use 3,785 input / 866 output / 4,651 total, and estimated Gemini cost $0.0007249.

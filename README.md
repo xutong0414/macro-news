@@ -6,7 +6,7 @@ The target reader is a macro PM who wants: what changed overnight, why it matter
 
 ## Current Status
 
-Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows including Japan 10Y, EUR/USD, and USD/JPY, a top `Data/query as of` timestamp, dashboard `As of` labels with compact status markers on asset names, dashboard timing/source notes with clickable source links, cached real-source fallback, no generated scaffold values in live market/calendar/theme fallback paths, a longer USD/JPY chart with the latest five observations highlighted, live/cached economic-calendar rows with event-date/status labels, calendar status footnotes, and clickable event-source links, live Theme Radar source collection with source-depth labels, factual guardrails for market-number consistency and unsupported narrative claims, grouped assumptions, feedback questionnaire output, portfolio assumptions loaded from `inputs/portfolio/positions.csv`, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
+Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows including Japan 10Y, EUR/USD, and USD/JPY, a top `Data/query as of` timestamp, dashboard `As of` labels with compact status markers on asset names, small dashboard/calendar footnotes, dashboard timing/source notes with clickable source links, cached real-source fallback, no generated scaffold values in live market/calendar/theme fallback paths, a longer USD/JPY chart with the latest five observations highlighted, live/cached economic-calendar rows with event-date/status labels, calendar status footnotes, and clickable event-source links, live Theme Radar source collection with source-depth labels, factual guardrails for market-number consistency and unsupported narrative claims, grouped assumptions with source links, feedback questionnaire output, portfolio assumptions loaded from `inputs/portfolio/positions.csv`, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
 
 Locked defaults:
 
@@ -135,7 +135,7 @@ The final brief must include:
 5. Theme radar summaries tied to assumed positions/themes.
 6. Contrarian corner.
 
-The 3 Things section keeps Gemini responsible for concise PM-facing narrative, while rendering code adds compact item sub-titles, styles `So what:` as a smaller support line, and adds deterministic Yahoo Finance topic-search links. The LLM does not invent news links.
+The 3 Things section keeps Gemini responsible for concise PM-facing narrative, while rendering code adds compact item sub-titles, keeps `So what:` at normal body size, and adds deterministic Yahoo Finance topic-search links in smaller `Read more` text. The LLM does not invent news links.
 
 ## Current Data Sources
 
@@ -178,7 +178,7 @@ Tracked assignment assumptions live in `inputs/portfolio/positions.csv`. The for
 
 Human feedback is documented in `inputs/feedback/README.md`, with `daily_feedback.example.csv` as the questionnaire template. The current rule is to record feedback locally first; later versions can load high-rated and low-rated patterns into source ranking and prompt construction. This is local preference memory, not model fine-tuning.
 
-The rendered brief includes a compact feedback questionnaire with section, item, usefulness, and comment fields. The intended workflow is to paste useful replies into a CSV/Excel sheet and later let the agent load those rows as local preference memory.
+The rendered brief includes a compact feedback questionnaire with section, item, usefulness, and comment fields. The dashboard stays as one feedback row; other sections can use item-level rows. The intended workflow is to paste useful replies into a CSV/Excel sheet and later let the agent load those rows as local preference memory.
 
 ## GitHub Actions
 

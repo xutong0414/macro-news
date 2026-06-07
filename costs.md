@@ -25,11 +25,11 @@ Plain sample mode records zero actual LLM tokens.
 
 ## Runtime Accounting
 
-Latest successful timed live send: `20260607T052959Z`, measured with `/usr/bin/time -p` on Sunday at 13:29 HKT.
+Latest successful timed live send: `20260607T054634Z`, measured with `/usr/bin/time -p` on Sunday at 13:46 HKT.
 
-- Runtime: `real 36.10s`, `user 1.00s`, `sys 3.08s`.
-- Token use: 7,585 input, 1,685 output, 9,270 total.
-- Estimated LLM cost: $0.0014325.
+- Runtime: `real 30.44s`, `user 0.93s`, `sys 3.02s`.
+- Token use: 3,785 input, 866 output, 4,651 total.
+- Estimated LLM cost: $0.0007249.
 - Source result: all 10 market dashboard rows refreshed from live public sources; no scaffold fallback rows were used. Calendar used the live Fair Economy weekly feed. Theme Radar selected two live RSS items with one feed timeout.
 
 Operational note: use at least a 10-15 minute scheduler buffer before the desired inbox time. Successful runs can be under one minute, but quality-control testing saw source timeouts and validation retries up to about two minutes before a clean output.
@@ -65,3 +65,5 @@ Operational note: use at least a 10-15 minute scheduler buffer before the desire
 | 2026-06-07 | `20260607T030050Z` | Final freshness/status no-generated-data guardrail v32 live dry run, 126.03s real | 11,813 | 2,437 | $0.0021561 | Not sent |
 | 2026-06-07 | `20260607T045752Z` | Presentation/link/feedback revision send, 58.02s real | 11,923 | 2,513 | $0.0021975 | Sent |
 | 2026-06-07 | `20260607T052959Z` | Timestamp/calendar-footnote/chart-context revision send, 36.10s real | 7,585 | 1,685 | $0.0014325 | Sent |
+| 2026-06-07 | `20260607T054242Z` | Email typography, feedback, and data-handling link revision send, 35.74s real | 7,912 | 1,560 | $0.0014152 | Sent |
+| 2026-06-07 | `20260607T054634Z` | Final email typography and plain-language footnote revision send, 30.44s real | 3,785 | 866 | $0.0007249 | Sent |

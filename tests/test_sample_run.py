@@ -85,6 +85,8 @@ def test_sample_brief_contains_required_sections() -> None:
     assert "**For Our Book:** duration pressure supports USD/JPY" in brief
     assert "## Feedback Questionnaire" in brief
     assert "Usefulness 1-5" in brief
+    assert "| Dashboard | Overnight market dashboard |" in brief
+    assert "| Dashboard | S&P 500 |" not in brief
     assert "Feedback date:" not in brief
     assert "keep / deprioritize / drop / rewrite" not in brief
     assert "### Portfolio / Book" in brief
@@ -100,6 +102,10 @@ def test_sample_brief_html_renders_chart_reading_label() -> None:
     assert 'alt="USD/JPY: 3-Month Trend"' in html
     assert '<p class="reading"><strong>Reading:</strong> This chart supports the first thing that matters today (see above); the latest five observations are highlighted.' in html
     assert '<strong>For Our Book:</strong>' in html
+    assert '<p class="note-line"><strong>So what:</strong>' in html
+    assert '<p class="read-more"><strong>Read more:</strong>' in html
+    assert '<p class="footnote-heading">Dashboard notes:</p>' in html
+    assert '<p class="footnote">- Dashboard scope:' in html
     assert "Caption:" not in html
 
 
@@ -704,6 +710,7 @@ def test_live_market_data_replaces_rows_and_logs_fallback(tmp_path) -> None:
     assert "Source Status shows live, cached, or scaffold fallback rows" not in rendered
     assert "value cells are left blank" in rendered
     assert "[Yahoo Finance](https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC)" in rendered
+    assert "[Frankfurter](https://frankfurter.dev/)" in rendered
 
 
 class FailingMarketClient(FakeMarketClient):
@@ -828,7 +835,8 @@ def test_live_calendar_data_replaces_calendar_rows(tmp_path) -> None:
     assert "faireconomy:ff_calendar_thisweek" in result.sources
     assert "[USD Non-Farm Employment Change](https://www.forexfactory.com/en/calendar/)" in render_markdown(result.data)
     assert "Calendar status notes:" in render_markdown(result.data)
-    assert "`*` = next-session or nearest source-week item" in render_markdown(result.data)
+    assert "* = next-session or nearest source-week item" in render_markdown(result.data)
+    assert "[Forex Factory/Fair Economy weekly feed](https://www.forexfactory.com/en/calendar/)" in render_markdown(result.data)
 
 
 def test_live_calendar_uses_cache_when_feed_refresh_fails(tmp_path) -> None:
@@ -1003,6 +1011,9 @@ def test_live_theme_radar_replaces_sample_sources() -> None:
     assert all(45 <= _word_count(item.summary) <= 100 for item in result.data.theme_radar)
     assert all(item.link.startswith("https://") for item in result.data.theme_radar)
     assert all(item.source_depth == "RSS excerpt" for item in result.data.theme_radar)
+    rendered = render_markdown(result.data)
+    assert "[Liberty Street Economics RSS](https://libertystreeteconomics.newyorkfed.org/feed/)" in rendered
+    assert "[Bank Underground RSS](https://bankunderground.co.uk/feed/)" in rendered
 
 
 def test_live_theme_radar_leaves_section_blank_when_sources_fail() -> None:

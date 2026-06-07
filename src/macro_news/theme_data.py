@@ -364,7 +364,12 @@ def replace_theme_radar_with_live(
         theme_radar=[candidate_to_theme_item(candidate) for candidate in selected],
         assumptions=[
             *data.assumptions,
-            "Theme Radar live mode uses curated RSS source text when available and leaves the section blank rather than using scaffold source items when no verified candidates exist.",
+            (
+                "Theme Radar live mode uses curated RSS source text when available "
+                "([Liberty Street Economics RSS](https://libertystreeteconomics.newyorkfed.org/feed/), "
+                "[Bank Underground RSS](https://bankunderground.co.uk/feed/), "
+                "[FRED Blog RSS](https://fredblog.stlouisfed.org/feed/)) and leaves the section blank rather than using scaffold source items when no verified candidates exist."
+            ),
         ],
         data_sources=[*data.data_sources, *selected_sources],
         source_notes=[*[note for note in data.source_notes if not note.startswith("Theme Radar:")], theme_note],
