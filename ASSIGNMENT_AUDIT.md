@@ -39,7 +39,7 @@ The PDF allows reasonable assumptions or sample data for unavailable firm-specif
 | GitHub repo, public or collaborator access | Local repo exists; push/access pending | GitHub remote exists, but the local branch has unpushed commits. Before submission, push and either keep repo public or invite the evaluator as collaborator. |
 | Code + README | Done | Source lives under `src/macro_news/`; setup and usage are documented in `README.md`. |
 | `costs.md` with daily run cost: tokens + hosting | Done | `costs.md` records token usage, estimated USD cost, runtime, email delivery, and hosting/scheduler notes. |
-| 1-page Memo PDF | Draft generated; hours input needed | `memo.md` has been compressed into a one-page memo source and `memo.pdf` has been generated. The actual-hours line still needs Tong Xu's honest final value before submission. |
+| 1-page Memo PDF | Done | `memo.md` has been compressed into a one-page memo source, the actual-hours line is filled, and `memo.pdf` has been generated as a one-page PDF. |
 
 ## Required Memo Contents
 
@@ -49,17 +49,15 @@ The PDF allows reasonable assumptions or sample data for unavailable firm-specif
 | Position/theme assumptions | Drafted | `inputs/portfolio/positions.csv` and `memo.md` cover long USD/JPY, overweight gold, EM debt exposure, and house themes. |
 | 3 v2 features not completed | Drafted | `memo.md` lists exactly 3 unfinished v2 features. |
 | 1-month full-time roadmap | Drafted | `memo.md` has a concise one-month roadmap paragraph. |
-| Actual hours spent | Needs user input | `memo.md` keeps this as a submission-time honest answer. |
+| Actual hours spent | Done | `memo.md` records roughly 3-4 hours for the initial framework plus more than 10 additional hours for checking, revision, and extension planning. |
 
 ## Remaining Submission Checklist
 
 1. Push unpushed local commits to GitHub after explicit approval.
 2. Decide repository access: public repo or invite evaluator/collaborators.
-3. Fill in actual hours spent in `memo.md`.
-4. Regenerate `memo.pdf` after the actual-hours value is filled.
-5. Review `memo.pdf`.
-6. Run one final live send or dry run if another output check is needed, and record the final run id in `PLAN.md` and `costs.md`.
-7. Confirm no secrets, caches, logs, or generated outputs are tracked by Git.
+3. Review `memo.pdf` one last time if desired.
+4. Run one final live send or dry run only if another output check is needed; the latest verified sent run is already recorded in `PLAN.md` and `costs.md`.
+5. Confirm no secrets, caches, logs, or generated outputs are tracked by Git.
 
 ## Current Risk Notes
 

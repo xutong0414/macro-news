@@ -27,6 +27,14 @@ Plain sample mode records zero actual LLM tokens.
 
 ## Runtime Accounting
 
+Latest pre-push live dry run: `20260607T132626Z`, run on Sunday at 21:26 HKT.
+
+- Approximate runtime: about 42s from run id timestamp to final log timestamp.
+- Token use: 8,466 input, 1,739 output, 10,205 total.
+- Estimated LLM cost: $0.0015422.
+- Source result: all 10 market dashboard rows refreshed from live public sources; no scaffold fallback rows were used. Calendar used the live Fair Economy weekly feed with six live-source rows. Theme Radar selected two live RSS items, with the FRED Blog RSS feed timing out.
+- Link check: 17 unique external URLs in the final rendered brief were checked with public GET requests; all returned OK status.
+
 Latest successful timed live send: `20260607T120308Z`, measured with `/usr/bin/time -p` on Sunday at 20:03 HKT.
 
 - Runtime: `real 34.33s`, `user 0.86s`, `sys 3.10s`.
@@ -76,3 +84,4 @@ Operational note: use at least a 10-15 minute scheduler buffer before the desire
 | 2026-06-07 | `20260607T114151Z` | Memo wrap-up live send, 55.00s real | 4,049 | 820 | $0.0007329 | Sent |
 | 2026-06-07 | `20260607T115826Z` | First briefing-link revision send, 39.21s real | 8,472 | 1,594 | $0.0014848 | Sent |
 | 2026-06-07 | `20260607T120308Z` | Final briefing-link validation send, 34.33s real | 4,061 | 907 | $0.0007689 | Sent |
+| 2026-06-07 | `20260607T132626Z` | Final pre-push live dry run and link audit, about 42s | 8,466 | 1,739 | $0.0015422 | Not sent |

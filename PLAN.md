@@ -4,15 +4,15 @@
 
 Freshness/status input pass, presentation/link revision, memo wrap-up, and briefing-link validation are implemented and verified. The project now renders a top `Updated as of` timestamp, dashboard `As of` fields with compact status markers in the asset label, event-date/status fields for the calendar, variable-length calendar rows, small dashboard/calendar footnotes, clickable calendar/chart/source/contrarian links, source-depth labels for Theme Radar, grouped assumptions with source links, an item-level feedback questionnaire before Source Status, portfolio assumptions from `inputs/portfolio/positions.csv`, and a concise `memo.md` plus generated `memo.pdf`.
 
-The latest verified send (`20260607T120308Z`) rendered body-sized `So what`, `For Our Book`, and chart `Reading` lines, small `Read more` and footnote text, one dashboard feedback row, linked data-handling assumptions, all 10 market rows refreshed from live public sources, variable-length calendar rows with date-targeted Forex Factory links, calendar status footnotes for `Live` and `*` with no cached `†` note, a 3-month USD/JPY chart with the latest five observations highlighted and a small Frankfurter source line, live Theme Radar selections with source-depth labels, prompt version `gemini_narrative_v32`, and no generated scaffold rows in live market/calendar/theme fallback paths.
+The latest pre-push live dry run (`20260607T132626Z`) rendered body-sized `So what`, `For Our Book`, and chart `Reading` lines, small `Read more` and footnote text, one dashboard feedback row, linked data-handling assumptions, all 10 market rows refreshed from live public sources, variable-length calendar rows with date-targeted Forex Factory links, calendar status footnotes for `Live` and `*` with no cached `†` note, a 3-month USD/JPY chart with the latest five observations highlighted and a small Frankfurter source line, live Theme Radar selections with source-depth labels, prompt version `gemini_narrative_v32`, clean live-run data-source labels, and no generated scaffold rows in live market/calendar/theme fallback paths.
 
-Measured runtime for that successful send was `34.33s` wall-clock, with 4,061 input tokens, 907 output tokens, 4,968 total tokens, and estimated Gemini cost of $0.0007689. A post-send link check found 17 unique external URLs in the final rendered brief, all returning OK status.
+Approximate runtime for that final dry run was about 42s from run id timestamp to final log timestamp, with 8,466 input tokens, 1,739 output tokens, 10,205 total tokens, and estimated Gemini cost of $0.0015422. A post-run link check found 17 unique external URLs in the final rendered brief, all returning OK status. The latest successful email send remains `20260607T120308Z`.
 
 ## Whose Turn
 
-Agent turn: memo wrap-up and the latest live email send are complete.
+Agent turn: final pre-push audit is in progress.
 
-User turn: review the latest email or `outputs/latest/brief.html`, and fill the actual-hours line in `memo.md` before final submission.
+User turn: after the audit report, approve the GitHub push and decide repository access for submission.
 
 ## Locked Setup Choices
 
@@ -52,11 +52,10 @@ User turn: review the latest email or `outputs/latest/brief.html`, and fill the 
 
 1. Keep control files current as the project changes.
 2. User review latest `outputs/latest/brief.html` and the delivered email for Outlook typography, footnote size, data-handling links, and questionnaire size.
-3. Fill actual hours spent in `memo.md` and regenerate `memo.pdf`.
-4. Review final `memo.pdf`.
-5. Push unpushed local commits to GitHub after explicit approval, then decide public repo vs collaborator invite for submission.
-6. Add a second calendar provider if the free weekly feed remains thin or stale outside weekday windows.
-7. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.
+3. Review final `memo.pdf` if desired.
+4. Push unpushed local commits to GitHub after explicit approval, then decide public repo vs collaborator invite for submission.
+5. Add a second calendar provider if the free weekly feed remains thin or stale outside weekday windows.
+6. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.
 
 ## Blockers
 

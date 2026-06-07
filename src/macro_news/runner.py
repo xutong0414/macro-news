@@ -45,6 +45,24 @@ def _effective_run_mode(
     return settings.run_mode
 
 
+def _effective_data_sources(
+    data_sources: list[str],
+    *,
+    live_market_data: bool,
+    live_calendar: bool,
+    live_theme_radar: bool,
+) -> list[str]:
+    """Hide scaffold seed labels once a live layer has replaced that section."""
+    replaced_sources = set()
+    if live_market_data:
+        replaced_sources.add("sample_market_data")
+    if live_calendar:
+        replaced_sources.add("sample_calendar")
+    if live_theme_radar:
+        replaced_sources.add("sample_deep_content")
+    return [source for source in data_sources if source not in replaced_sources]
+
+
 def run_brief(
     settings: Settings,
     *,
@@ -95,7 +113,16 @@ def run_brief(
         report_zone = ZoneInfo(settings.timezone)
     except Exception:  # noqa: BLE001 - config normalization handles common aliases.
         report_zone = ZoneInfo("Asia/Hong_Kong")
-    data = replace(data, report_time=datetime.now(report_zone).strftime("%Y-%m-%d %H:%M %Z"))
+    data = replace(
+        data,
+        data_sources=_effective_data_sources(
+            data.data_sources,
+            live_market_data=live_market_data,
+            live_calendar=live_calendar,
+            live_theme_radar=live_theme_radar,
+        ),
+        report_time=datetime.now(report_zone).strftime("%Y-%m-%d %H:%M %Z"),
+    )
 
     output_paths = write_outputs(data, settings.output_dir, run_date)
 

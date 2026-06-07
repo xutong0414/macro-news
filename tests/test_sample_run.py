@@ -33,6 +33,32 @@ def test_timezone_aliases_normalize() -> None:
     assert normalize_timezone("Asia/Shanghai") == "Asia/Shanghai"
 
 
+def test_live_run_filters_replaced_sample_source_labels() -> None:
+    sources = [
+        "sample_market_data",
+        "sample_calendar",
+        "sample_deep_content",
+        "yahoo_chart:^GSPC",
+        "faireconomy:ff_calendar_thisweek",
+        "theme_feed:bank_underground",
+        "gemini_synthesis",
+    ]
+
+    filtered = runner_module._effective_data_sources(
+        sources,
+        live_market_data=True,
+        live_calendar=True,
+        live_theme_radar=True,
+    )
+
+    assert filtered == [
+        "yahoo_chart:^GSPC",
+        "faireconomy:ff_calendar_thisweek",
+        "theme_feed:bank_underground",
+        "gemini_synthesis",
+    ]
+
+
 def test_portfolio_positions_carry_forward(tmp_path) -> None:
     path = tmp_path / "positions.csv"
     path.write_text(
