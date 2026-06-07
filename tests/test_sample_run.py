@@ -81,6 +81,7 @@ def test_sample_brief_contains_required_sections() -> None:
     assert "**Read more:** [Yahoo Finance](https://finance.yahoo.com/search?p=USD+JPY+Japan+intervention+yield+spread)" in brief
     assert "![USD/JPY: 3-Month Trend](chart.png)" in brief
     assert "the latest five observations are highlighted" in brief
+    assert "**Data source:** sample USD/JPY series" in brief
     assert "Source depth: Sample scaffold" in brief
     assert "**For Our Book:** duration pressure supports USD/JPY" in brief
     assert "## Feedback Questionnaire" in brief
@@ -101,6 +102,7 @@ def test_sample_brief_html_renders_chart_reading_label() -> None:
 
     assert 'alt="USD/JPY: 3-Month Trend"' in html
     assert '<p class="reading"><strong>Reading:</strong> This chart supports the first thing that matters today (see above); the latest five observations are highlighted.' in html
+    assert '<p class="read-more"><strong>Data source:</strong> sample USD/JPY series</p>' in html
     assert '<strong>For Our Book:</strong>' in html
     assert '<p class="note-line"><strong>So what:</strong>' in html
     assert '<p class="read-more"><strong>Read more:</strong>' in html
@@ -533,7 +535,7 @@ def test_dry_run_writes_outputs(tmp_path) -> None:
     assert result.output_paths["latest_chart"].exists()
     assert result.log_path.exists()
     markdown = result.output_paths["latest_markdown"].read_text(encoding="utf-8")
-    assert "Data/query as of:" in markdown
+    assert "Updated as of:" in markdown
     log_event = json.loads(result.log_path.read_text(encoding="utf-8"))
     assert log_event["run_mode"] == "sample"
 
@@ -854,6 +856,7 @@ def test_live_calendar_data_replaces_calendar_rows(tmp_path) -> None:
     assert "faireconomy:ff_calendar_thisweek" in result.sources
     assert "[USD Non-Farm Employment Change](https://www.forexfactory.com/en/calendar/)" in render_markdown(result.data)
     assert "Calendar status notes:" in render_markdown(result.data)
+    assert "Live = event is dated today in the calendar source." in render_markdown(result.data)
     assert "* = next-session or nearest source-week item" in render_markdown(result.data)
     assert "† = cached real calendar row after live refresh failed" not in render_markdown(result.data)
     assert "[Forex Factory/Fair Economy weekly feed](https://www.forexfactory.com/en/calendar/)" in render_markdown(result.data)

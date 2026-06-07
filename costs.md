@@ -2,6 +2,8 @@
 
 This file tracks expected and actual daily run cost.
 
+All dollar amounts in this file are USD unless explicitly stated otherwise.
+
 ## Current Estimate
 
 Status: Gemini synthesis, Gmail delivery, live market rows, live calendar rows, and live Theme Radar source collection have been smoke-tested. Free sources are used with cached real-source fallback where appropriate; live mode leaves unavailable unsupported content blank rather than using generated scaffold values.
@@ -25,12 +27,12 @@ Plain sample mode records zero actual LLM tokens.
 
 ## Runtime Accounting
 
-Latest successful timed live send: `20260607T090925Z`, measured with `/usr/bin/time -p` on Sunday at 17:09 HKT.
+Latest successful timed live send: `20260607T110644Z`, measured with `/usr/bin/time -p` on Sunday at 19:06 HKT.
 
-- Runtime: `real 31.77s`, `user 0.94s`, `sys 2.72s`.
-- Token use: 4,049 input, 918 output, 4,967 total.
-- Estimated LLM cost: $0.0007721.
-- Source result: all 10 market dashboard rows refreshed from live public sources; no scaffold fallback rows were used. Calendar used the live Fair Economy weekly feed with variable-length rows and no cached calendar marker. Theme Radar selected two live RSS items with one feed timeout.
+- Runtime: `real 38.84s`, `user 1.04s`, `sys 2.98s`.
+- Token use: 4,049 input, 750 output, 4,799 total.
+- Estimated LLM cost: $0.0007049.
+- Source result: all 10 market dashboard rows refreshed from live public sources; no scaffold fallback rows were used. Calendar used the live Fair Economy weekly feed with `Live` and `*` footnote ingredients and no cached calendar marker. Theme Radar selected two live RSS items with one feed timeout.
 
 Operational note: use at least a 10-15 minute scheduler buffer before the desired inbox time. Successful runs can be under one minute, but quality-control testing saw source timeouts and validation retries up to about two minutes before a clean output.
 
@@ -69,3 +71,4 @@ Operational note: use at least a 10-15 minute scheduler buffer before the desire
 | 2026-06-07 | `20260607T054634Z` | Final email typography and plain-language footnote revision send, 30.44s real | 3,785 | 866 | $0.0007249 | Sent |
 | 2026-06-07 | `20260607T090600Z` | Conditional calendar-footnote revision send, 85.39s real | 4,059 | 895 | $0.0007639 | Sent |
 | 2026-06-07 | `20260607T090925Z` | Variable calendar and same-time event de-duplication send, 31.77s real | 4,049 | 918 | $0.0007721 | Sent |
+| 2026-06-07 | `20260607T110644Z` | Timestamp wording, calendar note, and chart source revision send, 38.84s real | 4,049 | 750 | $0.0007049 | Sent |

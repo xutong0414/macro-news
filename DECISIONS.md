@@ -404,7 +404,21 @@ Rules:
 
 - Select verified calendar rows for session coverage and genuinely high-impact extras, without padding the table to a fixed count.
 - De-duplicate same-currency same-time event clusters so one release window does not crowd the table with near-identical rows.
-- If the table contains only `Live` and `*`, explain only `Live` and `*`.
+- Explain the regular `Live` and `*` calendar status labels in the footnote.
 - Show the `†` calendar footnote only when at least one calendar row actually has cached status.
 
 Outcome: sent run `20260607T090925Z` delivered successfully with six verified calendar rows, one CPI release-window row instead of several same-time CPI rows, only the `*` calendar footnote displayed, all 10 dashboard rows refreshed from live public sources, runtime `31.77s`, token use 4,049 input / 918 output / 4,967 total, and estimated Gemini cost $0.0007721.
+
+## 2026-06-07 - Timestamp And Chart Source Polish
+
+Decision: rename the top timestamp to `Updated as of`, add a small chart data-source line, and state the currency basis in `costs.md`.
+
+Reason: `Data/query as of` sounded ambiguous. The code sets this timestamp near the end of the run after live data, calendar/RSS, and Gemini synthesis are complete, before output writing and email delivery. The chart should also disclose its source like other sourced sections.
+
+Rules:
+
+- Use `Updated as of` for the reader-facing top timestamp.
+- Render a small chart `Data source` line below the chart reading.
+- State near the top of `costs.md` that dollar amounts are USD unless otherwise noted.
+
+Outcome: sent run `20260607T110644Z` delivered successfully with `Updated as of`, small Frankfurter chart-source line, calendar footnotes showing `Live` and `*` without cached `†`, all 10 dashboard rows refreshed from live public sources, runtime `38.84s`, token use 4,049 input / 750 output / 4,799 total, and estimated Gemini cost $0.0007049.

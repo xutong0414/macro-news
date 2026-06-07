@@ -6,7 +6,7 @@ The target reader is a macro PM who wants: what changed overnight, why it matter
 
 ## Current Status
 
-Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows including Japan 10Y, EUR/USD, and USD/JPY, a top `Data/query as of` timestamp, dashboard `As of` labels with compact status markers on asset names, small dashboard/calendar footnotes, dashboard timing/source notes with clickable source links, cached real-source fallback, no generated scaffold values in live market/calendar/theme fallback paths, a longer USD/JPY chart with the latest five observations highlighted, live/cached economic-calendar rows with event-date/status labels, calendar status footnotes, and clickable event-source links, live Theme Radar source collection with source-depth labels, factual guardrails for market-number consistency and unsupported narrative claims, grouped assumptions with source links, feedback questionnaire output, portfolio assumptions loaded from `inputs/portfolio/positions.csv`, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
+Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows including Japan 10Y, EUR/USD, and USD/JPY, a top `Updated as of` timestamp, dashboard `As of` labels with compact status markers on asset names, small dashboard/calendar footnotes, dashboard timing/source notes with clickable source links, cached real-source fallback, no generated scaffold values in live market/calendar/theme fallback paths, a longer USD/JPY chart with the latest five observations highlighted and a small source link, live/cached economic-calendar rows with event-date/status labels, calendar status footnotes, and clickable event-source links, live Theme Radar source collection with source-depth labels, factual guardrails for market-number consistency and unsupported narrative claims, grouped assumptions with source links, feedback questionnaire output, portfolio assumptions loaded from `inputs/portfolio/positions.csv`, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
 
 Locked defaults:
 
@@ -157,11 +157,11 @@ The calendar currently uses:
 - Session-aware selection that targets Asia, Europe, and US coverage when the feed contains usable events.
 - Local ignored cache under `.cache/calendar/` after successful pulls.
 - Event-date and status labels using the same `Live`, `*`, and `†` no-color convention.
-- Footnotes below the calendar table explain only the status labels that actually appear in that run.
+- Footnotes below the calendar table explain the regular `Live` and `*` status labels, and add `†` only when cached calendar rows actually appear.
 - Clickable event names pointing to the calendar source.
 - Blank calendar output rather than scaffold/sample calendar rows when no live or cached real calendar rows exist.
 
-The chart currently uses USD/JPY because that is the assumed FX position and a direct risk for the book. For line charts, the rule is to prefer more than one month of context when the source supports it; the current USD/JPY chart uses roughly three months of history and highlights the latest five observations.
+The chart currently uses USD/JPY because that is the assumed FX position and a direct risk for the book. For line charts, the rule is to prefer more than one month of context when the source supports it; the current USD/JPY chart uses roughly three months of history, highlights the latest five observations, and renders a small source link below the chart reading.
 
 Theme Radar currently uses:
 

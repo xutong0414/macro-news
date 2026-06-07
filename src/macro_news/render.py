@@ -126,7 +126,7 @@ def _contrarian_further_reading() -> str:
 
 
 def _report_time_line(data: BriefData) -> str:
-    return f"\nData/query as of: {data.report_time}\n" if data.report_time else ""
+    return f"\nUpdated as of: {data.report_time}\n" if data.report_time else ""
 
 
 def _calendar_status_notes(data: BriefData) -> str:
@@ -138,7 +138,9 @@ def _calendar_status_notes(data: BriefData) -> str:
         "*": "* = next-session or nearest source-week item, usually because today is a weekend/holiday or same-day options are thin.",
         "†": "† = cached real calendar row after live refresh failed.",
     }
-    notes = [note_by_status[status] for status in ("Live", "*", "†") if status in statuses]
+    notes = [note_by_status[status] for status in ("Live", "*")]
+    if "†" in statuses:
+        notes.append(note_by_status["†"])
     return "\nCalendar status notes:\n\n" + "\n".join(f"- {note}" for note in notes)
 
 
@@ -213,6 +215,12 @@ def _chart_reading(data: BriefData) -> str:
     return f"{prefix} {caption}" if caption else prefix
 
 
+def _chart_source_note(data: BriefData) -> str:
+    if any(source.startswith("frankfurter:USDJPY") for source in data.data_sources):
+        return "**Data source:** [Frankfurter USD/JPY daily reference rates](https://frankfurter.dev/)"
+    return "**Data source:** sample USD/JPY series"
+
+
 def render_markdown(data: BriefData, run_date: date | None = None) -> str:
     run_date = run_date or date.today()
     market_table = _table(
@@ -270,6 +278,8 @@ Dashboard notes:
 ![USD/JPY: 3-Month Trend](chart.png)
 
 **Reading:** {_chart_reading(data)}
+
+{_chart_source_note(data)}
 
 ## Theme Radar
 
@@ -362,6 +372,8 @@ def render_html(data: BriefData, run_date: date | None = None) -> str:
         elif line.startswith("**Read more:"):
             html_lines.append(f'<p class="read-more">{_bold_label_to_html(line)}</p>')
         elif line.startswith("**Further reading:"):
+            html_lines.append(f'<p class="read-more">{_bold_label_to_html(line)}</p>')
+        elif line.startswith("**Data source:"):
             html_lines.append(f'<p class="read-more">{_bold_label_to_html(line)}</p>')
         elif line.startswith("**For Our Book:"):
             html_lines.append(f'<p class="note-line">{_bold_label_to_html(line)}</p>')
