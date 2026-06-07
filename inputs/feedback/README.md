@@ -24,5 +24,5 @@ Planned incorporation rule:
 
 - High-rated repeated patterns increase ranking weight.
 - Low-rated patterns reduce ranking weight or trigger prompt warnings.
-- Comments that ask to avoid or rewrite a pattern become explicit avoid/rewrite rules after user confirmation.
+- Comments that ask to avoid or rewrite a pattern become explicit avoid/rewrite rules after reviewer confirmation.
 - Feedback remains local project memory; it is not model fine-tuning.

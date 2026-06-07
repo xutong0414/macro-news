@@ -1,73 +1,78 @@
-# Plan
+# Project Status
 
-## Current Stage
+This file records the current implementation state and the remaining submission steps.
 
-Freshness/status input pass, presentation/link revision, memo wrap-up, and briefing-link validation are implemented and verified. The project now renders a top `Updated as of` timestamp, dashboard `As of` fields with compact status markers in the asset label, event-date/status fields for the calendar, variable-length calendar rows, small dashboard/calendar footnotes, clickable calendar/chart/source/contrarian links, source-depth labels for Theme Radar, grouped assumptions with source links, an item-level feedback questionnaire before Source Status, portfolio assumptions from `inputs/portfolio/positions.csv`, and a concise `memo.md` plus generated `memo.pdf`.
+## Current State
 
-The latest pre-push live dry run (`20260607T132626Z`) rendered body-sized `So what`, `For Our Book`, and chart `Reading` lines, small `Read more` and footnote text, one dashboard feedback row, linked data-handling assumptions, all 10 market rows refreshed from live public sources, variable-length calendar rows with date-targeted Forex Factory links, calendar status footnotes for `Live` and `*` with no cached `†` note, a 3-month USD/JPY chart with the latest five observations highlighted and a small Frankfurter source line, live Theme Radar selections with source-depth labels, prompt version `gemini_narrative_v32`, clean live-run data-source labels, and no generated scaffold rows in live market/calendar/theme fallback paths.
+The repo contains a working Daily Macro Brief Agent prototype.
 
-Approximate runtime for that final dry run was about 42s from run id timestamp to final log timestamp, with 8,466 input tokens, 1,739 output tokens, 10,205 total tokens, and estimated Gemini cost of $0.0015422. A post-run link check found 17 unique external URLs in the final rendered brief, all returning OK status. The latest successful email send remains `20260607T120308Z`.
+Implemented:
 
-## Whose Turn
+- Local CLI commands for sample dry run, live dry run, and email send.
+- Gmail SMTP delivery.
+- Gemini 2.5 Flash-Lite narrative synthesis.
+- Live market dashboard with source links, freshness labels, and no generated market fallback values.
+- Live economic calendar with source links, consensus values when available, and status labels.
+- Live Theme Radar from curated RSS sources with source-depth labels.
+- USD/JPY chart with roughly three months of history and the latest five observations highlighted.
+- Portfolio assumptions loaded from `inputs/portfolio/positions.csv`.
+- Feedback questionnaire template under `inputs/feedback/`.
+- GitHub Actions workflows for sample dry run, live dry run, and manual confirmed send.
+- Local/server scheduler documentation for macOS `launchd`, Linux `cron`, and cloud scheduler options.
+- Final one-page memo source and PDF.
 
-Agent turn: final pre-push audit is in progress.
+## Latest Verification
 
-User turn: after the audit report, approve the GitHub push and decide repository access for submission.
+Latest pre-push live dry run:
 
-## Locked Setup Choices
+- Run id: `20260607T132626Z`
+- Mode: live market data, live calendar, live Theme Radar, Gemini narrative
+- Delivery: dry run, no email sent
+- Runtime: about 42 seconds
+- Token use: 8,466 input, 1,739 output, 10,205 total
+- Estimated LLM cost: $0.0015422
+- Source result: all 10 dashboard rows refreshed from live public sources; calendar used live Fair Economy / Forex Factory rows; Theme Radar selected two live RSS items
+- Link audit: 17 external links checked, all returned OK
 
-- Delivery: Gmail SMTP first.
-- LLM: Gemini 2.5 Flash-Lite default.
-- DeepSeek: optional provider later.
-- GitHub: remote created and `main` pushed.
-- GitHub Actions first stage: sample dry-run workflow first, no secrets or email.
-- GitHub Actions second stage: manual live dry-run workflow with secrets, still no email.
-- GitHub Actions third stage: manual email-send workflow with a `SEND` confirmation input.
-- GitHub Actions fourth stage: scheduled email-send workflow is not treated as reliable after short-window scheduler tests created zero scheduled runs.
-- Temporary scheduled proof: removed after the 2026-06-06 17:40-18:15 HKT window produced zero scheduled runs.
-- Scheduler fallback: document and support local/server scheduling with `scripts/run_daily_brief.sh`, macOS `launchd`, Linux `cron`, and cloud-scheduler options.
-- MacBook scheduler proof: `launchd` ran the send command once at 2026-06-06 18:34 HKT/SGT, reported delivery status `sent`, and the user confirmed inbox receipt; the temporary LaunchAgent was unloaded and removed.
-- GitHub visibility: repo returned to private after the public API inspection window.
-- First run mode: sample data only.
-- Private process notes: keep in ignored `.worklog/`, then delete before final handoff.
-- LLM role: draft narrative sections only; code owns facts, tables, chart, validation, and logging.
-- Market data role: fetch live dashboard rows where available; use cached real-source rows for temporary outages; leave live-mode value cells blank rather than using scaffold/sample rows when neither live nor cached data is available.
-- Calendar data role: fetch live economic-calendar rows where available; target Asia/Europe/US session coverage; use ignored cache after rate limits; leave live-mode calendar output blank rather than using scaffold rows when no verified calendar data exists.
-- Theme Radar role: fetch curated RSS sources, rank them against the assumed book/themes, label source depth (`RSS excerpt` or `RSS content field`), and let Gemini synthesize only selected source facts; in live mode, leave Theme Radar blank rather than using scaffold items when no verified candidates exist.
-- Portfolio input role: read `inputs/portfolio/positions.csv`; each row is an effective-date update, and the latest prior row carries forward until changed or closed.
-- Feedback input role: keep the human-rating questionnaire in `inputs/feedback/`; feedback is local preference memory for future ranking/prompt rules, not model fine-tuning.
-- LLM validation role: retry up to four attempts when Gemini output fails strict JSON, word-limit, market-number, or portfolio-logic validation; retry transient Gemini request failures instead of failing immediately.
-- Brief quality role: render source-status notes, keep live/cache/blank fallback explicit, use Gemini prompt v32, validate market-number consistency, reject unsupported market-positioning language in narrative sections, and strip or rewrite Theme Radar source-mechanics/style text before rendering.
-- Dashboard note role: document dashboard scope, extraction time, close/prior basis, additional timing information, Frankfurter FX reference-rate convention, BTC rolling 24-hour convention, and linked data-source basis in the brief itself.
-- Three Things link role: render compact item sub-titles, body-sized `So what:` support lines, and deterministic smaller Yahoo Finance quote/currency links; the LLM does not invent those links.
-- Chart role: use USD/JPY because it is the assumed FX position and the most direct visual support for the intervention-risk item; render the note as bold `Reading:` rather than `Caption:`.
-- Dashboard status role: keep the dashboard compact by placing non-live markers (`*` and `†`) on the asset label instead of adding a separate status column.
-- Calendar status role: render only verified calendar rows, do not force a fixed row count, de-duplicate same-currency same-time event clusters, explain the regular `Live` and `*` status labels, and add the `†` footnote only when cached calendar rows actually appear.
-- Chart history role: line charts should prefer more than one month of history when available, with the latest five observations highlighted; current USD/JPY chart uses roughly three months.
-- Email typography role: render `So what`, `For Our Book`, and chart `Reading` at normal body size; keep `Read more`, dashboard notes, and calendar status notes small.
-- Feedback role: render an item-level usefulness/comment questionnaire before Source Status, but keep the dashboard to one row rather than one row per dashboard asset.
-- Link disclosure role: when data handling or source logic mentions a data feed or web/RSS source, include a reader-facing link whenever possible.
+Latest successful email send:
 
-## Next Tasks
+- Run id: `20260607T120308Z`
+- Delivery: sent
+- Runtime: 34.33 seconds
+- Token use: 4,061 input, 907 output, 4,968 total
+- Estimated LLM cost: $0.0007689
 
-1. Keep control files current as the project changes.
-2. User review latest `outputs/latest/brief.html` and the delivered email for Outlook typography, footnote size, data-handling links, and questionnaire size.
-3. Review final `memo.pdf` if desired.
-4. Push unpushed local commits to GitHub after explicit approval, then decide public repo vs collaborator invite for submission.
-5. Add a second calendar provider if the free weekly feed remains thin or stale outside weekday windows.
-6. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.
+Latest local tests:
 
-## Blockers
+- `PYTHONPATH=src pytest -q`
+- Result: 29 passed
 
-- GitHub scheduled events created zero runs in short-window tests; manual GitHub runs, email sending, and MacBook `launchd` scheduled sending with inbox receipt are confirmed.
-- A permanent MacBook schedule requires the Mac to be on and awake enough at the scheduled time.
-- Free public calendar feed can rate-limit or be thin outside market mornings; local cache is implemented, and live mode leaves the calendar blank rather than using scaffold events when no verified rows exist.
-- Some free RSS feeds can time out; live mode logs feed-level errors and leaves Theme Radar blank if no verified source candidates remain.
+## Scheduling Position
 
-## Acceptance Criteria For Setup
+Manual GitHub Actions runs are proven.
 
-- Repo has clear control docs and no secrets.
-- `.env.example` fully documents required environment variables.
-- Local dry-run command generates a complete sample brief.
-- Sample brief includes all six assignment modules.
-- Git is initialized and the first scaffold commit exists.
+Short-window GitHub scheduled-trigger tests did not create scheduled runs, so the project does not rely on GitHub schedules for dependable production timing.
+
+Recommended dependable schedulers:
+
+- macOS `launchd` on an always-on Mac
+- Linux `cron` or `systemd` on a workstation or VPS
+- Cloud scheduler triggering a deployed job or a manual GitHub workflow
+
+For an email target time such as 08:30 Hong Kong time, schedule the job to start earlier, for example 08:15, unless the intended meaning is explicitly “start work at 08:30.”
+
+## Submission Checklist
+
+Before final submission:
+
+1. Push local commits to GitHub.
+2. Decide repository access: public repo or private repo with evaluator/collaborator access.
+3. Review `memo.pdf` once more if desired.
+4. Confirm no secrets, caches, logs, generated outputs, or local assignment PDF are tracked by Git.
+
+## Known Caveats
+
+- Free public market, calendar, and RSS sources can timeout, rate-limit, or lag on weekends and holidays.
+- Theme Radar currently uses RSS-level source text, not full article text.
+- A permanent schedule requires an always-on machine or external scheduler.
+- GitHub scheduled workflows are documented but not treated as the dependable scheduler for this prototype.

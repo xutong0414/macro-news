@@ -28,7 +28,7 @@ The PDF allows reasonable assumptions or sample data for unavailable firm-specif
 | Requirement | Current status | Evidence / notes |
 | --- | --- | --- |
 | Easy deployment and can run daily after simple setup | Mostly done | Local `.env`, `README.md`, `scripts/run_daily_brief.sh`, `docs/scheduling.md`, and `scheduling/*.plist.example` document setup. MacBook `launchd` proof succeeded. GitHub schedule tests were unreliable and are documented. |
-| Scheduled daily delivery | Proven outside GitHub schedule | Manual GitHub send works. MacBook `launchd` scheduled send worked and user confirmed inbox receipt. GitHub scheduled triggers produced zero runs in short-window tests. |
+| Scheduled daily delivery | Proven outside GitHub schedule | Manual GitHub send works. MacBook `launchd` scheduled send worked and inbox receipt was confirmed. GitHub scheduled triggers produced zero runs in short-window tests. |
 | Do not use LLM to generate market data | Done | Code fetches market rows and leaves blanks if no live/cached real row exists. LLM only writes narrative from structured facts. |
 | LLM for synthesis and writing only | Done | `llm.py` receives structured facts and output is validated for JSON shape, word limits, market-number consistency, and portfolio logic. |
 
@@ -53,7 +53,7 @@ The PDF allows reasonable assumptions or sample data for unavailable firm-specif
 
 ## Remaining Submission Checklist
 
-1. Push unpushed local commits to GitHub after explicit approval.
+1. Push unpushed local commits to GitHub after final submission approval.
 2. Decide repository access: public repo or invite evaluator/collaborators.
 3. Review `memo.pdf` one last time if desired.
 4. Run one final live send or dry run only if another output check is needed; the latest verified sent run is already recorded in `PLAN.md` and `costs.md`.

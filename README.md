@@ -158,6 +158,44 @@ Recommended production-style path:
 
 For a 07:30 Hong Kong inbox target, schedule the job around 07:15 Hong Kong time so there is buffer for data fetching, Gemini synthesis, rendering, and email delivery.
 
+### Weekday Schedule Examples
+
+Cron has five time fields:
+
+```text
+minute hour day-of-month month day-of-week
+```
+
+For this project, the important fields are usually minute, hour, and day-of-week. In cron, `1-5` means Monday-Friday.
+
+If the machine timezone is already set to Hong Kong time and the agent should **start working at 08:30 Monday-Friday**, use:
+
+```cron
+30 8 * * 1-5 cd /ABSOLUTE/PATH/TO/macro_news && /bin/bash scripts/run_daily_brief.sh >> logs/scheduler.out.log 2>> logs/scheduler.err.log
+```
+
+If the machine timezone is UTC and the target is **08:30 Hong Kong time Monday-Friday**, use 00:30 UTC Monday-Friday:
+
+```cron
+30 0 * * 1-5 cd /ABSOLUTE/PATH/TO/macro_news && /bin/bash scripts/run_daily_brief.sh >> logs/scheduler.out.log 2>> logs/scheduler.err.log
+```
+
+If the goal is for the email to **arrive around 08:30**, start earlier, for example 08:15 Hong Kong time:
+
+```cron
+15 8 * * 1-5 cd /ABSOLUTE/PATH/TO/macro_news && /bin/bash scripts/run_daily_brief.sh >> logs/scheduler.out.log 2>> logs/scheduler.err.log
+```
+
+For GitHub Actions schedules, cron is always UTC. The same 08:30 Hong Kong weekday start would be:
+
+```yaml
+on:
+  schedule:
+    - cron: "30 0 * * 1-5"
+```
+
+GitHub schedules can be delayed or skipped, so this repo treats GitHub manual runs as the reliable GitHub path and recommends `cron`, `launchd`, `systemd`, or a cloud scheduler for dependable daily sending.
+
 Supported scheduler options:
 
 - macOS `launchd` on an always-on Mac.
@@ -172,7 +210,7 @@ Note: manual GitHub Actions sends are proven, but short-window GitHub scheduled-
 
 The repo includes three workflows:
 
-- `daily-brief-dry-run.yml`: safe sample dry run, no secrets and no email.
+- `daily-brief-dry-run.yml`: safe sample dry run, no secrets and no email. This is the only enabled GitHub scheduled workflow, and it runs a sample dry run on weekdays.
 - `daily-brief-live-dry-run.yml`: manual live-source dry run with secrets, no email.
 - `daily-brief-manual-send.yml`: manual live email send, requiring `SEND` confirmation.
 
@@ -193,7 +231,7 @@ For GitHub live runs or sends, add repository secrets matching `.env.example`:
 - `memo.md`: memo source.
 - `costs.md`: token, runtime, delivery, source, and scheduler cost notes.
 - `ASSIGNMENT_AUDIT.md`: requirement checklist against the assignment PDF.
-- `PLAN.md`: current handoff state.
+- `PLAN.md`: current project status and submission checklist.
 - `DECISIONS.md`: decision log and implementation rationale.
 
 The assignment PDF is intentionally kept local and ignored by git.

@@ -12,7 +12,7 @@ Status: Gemini synthesis, Gmail delivery, live market rows, live calendar rows, 
 | --- | --- | ---: | --- |
 | LLM synthesis | Gemini 2.5 Flash-Lite | Near zero for sample mode | Real cost starts when `GEMINI_API_KEY` is used. |
 | Optional LLM | DeepSeek V4 Flash | Near zero for expected token volume | Optional comparison provider later. |
-| Email delivery | Gmail SMTP | $0 | Uses user's Gmail account and app password. |
+| Email delivery | Gmail SMTP | $0 | Uses the sender's Gmail account and app password. |
 | Scheduler | MacBook launchd / GitHub Actions | $0 expected | MacBook `launchd` is proven locally; GitHub manual runs are useful, but GitHub scheduled triggers failed short-window proof. |
 | Market data | Yahoo / Japan MOF / Frankfurter / CoinGecko | $0 initially | Current live dashboard sources are free/public, with cached real-source fallback and blank rows when no verified data exists. |
 | Calendar data | Forex Factory / Fair Economy | $0 initially | Free weekly feed with local cache; can rate-limit during repeated tests, and live mode leaves output blank if no verified rows exist. |
