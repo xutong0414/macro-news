@@ -115,6 +115,12 @@ def _event_identity(event: CalendarEvent) -> tuple[str, str, str]:
     return (event.session, event.time, event.event)
 
 
+def _event_cluster_key(raw_event: dict, timezone_name: str) -> tuple[str, str, str, str]:
+    local_time = _parse_event_datetime(raw_event.get("date")).astimezone(ZoneInfo(timezone_name))
+    currency = _clean_text(raw_event.get("country")).upper()
+    return (_session_for_event(raw_event), currency, local_time.date().isoformat(), local_time.strftime("%H:%M"))
+
+
 def _format_event_time(local_time: datetime, run_date: date, reference_now: datetime | None = None) -> str:
     days_from_run = (local_time.date() - run_date).days
     clock = local_time.strftime("%H:%M")
@@ -188,19 +194,24 @@ def _select_events(
     run_date: date,
     timezone_name: str,
     reference_now: datetime | None = None,
-    max_events: int = 4,
+    max_events: int = 6,
     cached: bool = False,
 ) -> list[CalendarEvent]:
     usable_events = [item for item in raw_events if _is_usable_event(item)]
     selected: list[CalendarEvent] = []
     seen: set[tuple[str, str, str]] = set()
+    seen_clusters: set[tuple[str, str, str, str]] = set()
 
     def add_event(raw_event: dict) -> bool:
+        cluster_key = _event_cluster_key(raw_event, timezone_name)
+        if cluster_key in seen_clusters:
+            return False
         event = _raw_event_to_calendar_event(raw_event, timezone_name, run_date, reference_now, cached=cached)
         if event is None or _event_identity(event) in seen:
             return False
         selected.append(event)
         seen.add(_event_identity(event))
+        seen_clusters.add(cluster_key)
         return len(selected) >= max_events
 
     for session in REQUIRED_SESSIONS:
@@ -209,6 +220,14 @@ def _select_events(
             if add_event(raw_event):
                 return selected
             break
+
+    high_impact_events = [item for item in usable_events if _clean_text(item.get("impact")) == "High"]
+    for raw_event in sorted(high_impact_events, key=lambda item: _event_sort_key(item, run_date, timezone_name, reference_now)):
+        if add_event(raw_event):
+            return selected
+
+    if selected:
+        return selected
 
     for raw_event in sorted(usable_events, key=lambda item: _event_sort_key(item, run_date, timezone_name, reference_now)):
         if add_event(raw_event):

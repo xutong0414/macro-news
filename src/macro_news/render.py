@@ -133,11 +133,12 @@ def _calendar_status_notes(data: BriefData) -> str:
     statuses = {event.status for event in data.calendar if event.status}
     if not statuses:
         return ""
-    notes = [
-        "Live = event is dated today in the calendar source.",
-        "* = next-session or nearest source-week item, usually because today is a weekend/holiday or same-day options are thin.",
-        "† = cached real calendar row after live refresh failed.",
-    ]
+    note_by_status = {
+        "Live": "Live = event is dated today in the calendar source.",
+        "*": "* = next-session or nearest source-week item, usually because today is a weekend/holiday or same-day options are thin.",
+        "†": "† = cached real calendar row after live refresh failed.",
+    }
+    notes = [note_by_status[status] for status in ("Live", "*", "†") if status in statuses]
     return "\nCalendar status notes:\n\n" + "\n".join(f"- {note}" for note in notes)
 
 

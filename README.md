@@ -109,7 +109,7 @@ Market data mode:
 Calendar data mode:
 
 - `CALENDAR_MODE=sample` keeps the calendar deterministic.
-- `CALENDAR_MODE=live` fetches the weekly economic calendar where available, targets Asia/Europe/US session coverage, uses a local ignored cache after successful pulls, and leaves the calendar blank instead of using scaffold/sample rows if no live or cached real calendar data exists.
+- `CALENDAR_MODE=live` fetches the weekly economic calendar where available, targets Asia/Europe/US session coverage without forcing a fixed row count, de-duplicates same-currency same-time event clusters, uses a local ignored cache after successful pulls, and leaves the calendar blank instead of using scaffold/sample rows if no live or cached real calendar data exists.
 
 Theme source mode:
 
@@ -157,7 +157,7 @@ The calendar currently uses:
 - Session-aware selection that targets Asia, Europe, and US coverage when the feed contains usable events.
 - Local ignored cache under `.cache/calendar/` after successful pulls.
 - Event-date and status labels using the same `Live`, `*`, and `†` no-color convention.
-- Footnotes below the calendar table explain `Live`, `*`, and `†` when status labels appear.
+- Footnotes below the calendar table explain only the status labels that actually appear in that run.
 - Clickable event names pointing to the calendar source.
 - Blank calendar output rather than scaffold/sample calendar rows when no live or cached real calendar rows exist.
 

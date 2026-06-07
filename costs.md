@@ -25,12 +25,12 @@ Plain sample mode records zero actual LLM tokens.
 
 ## Runtime Accounting
 
-Latest successful timed live send: `20260607T054634Z`, measured with `/usr/bin/time -p` on Sunday at 13:46 HKT.
+Latest successful timed live send: `20260607T090925Z`, measured with `/usr/bin/time -p` on Sunday at 17:09 HKT.
 
-- Runtime: `real 30.44s`, `user 0.93s`, `sys 3.02s`.
-- Token use: 3,785 input, 866 output, 4,651 total.
-- Estimated LLM cost: $0.0007249.
-- Source result: all 10 market dashboard rows refreshed from live public sources; no scaffold fallback rows were used. Calendar used the live Fair Economy weekly feed. Theme Radar selected two live RSS items with one feed timeout.
+- Runtime: `real 31.77s`, `user 0.94s`, `sys 2.72s`.
+- Token use: 4,049 input, 918 output, 4,967 total.
+- Estimated LLM cost: $0.0007721.
+- Source result: all 10 market dashboard rows refreshed from live public sources; no scaffold fallback rows were used. Calendar used the live Fair Economy weekly feed with variable-length rows and no cached calendar marker. Theme Radar selected two live RSS items with one feed timeout.
 
 Operational note: use at least a 10-15 minute scheduler buffer before the desired inbox time. Successful runs can be under one minute, but quality-control testing saw source timeouts and validation retries up to about two minutes before a clean output.
 
@@ -67,3 +67,5 @@ Operational note: use at least a 10-15 minute scheduler buffer before the desire
 | 2026-06-07 | `20260607T052959Z` | Timestamp/calendar-footnote/chart-context revision send, 36.10s real | 7,585 | 1,685 | $0.0014325 | Sent |
 | 2026-06-07 | `20260607T054242Z` | Email typography, feedback, and data-handling link revision send, 35.74s real | 7,912 | 1,560 | $0.0014152 | Sent |
 | 2026-06-07 | `20260607T054634Z` | Final email typography and plain-language footnote revision send, 30.44s real | 3,785 | 866 | $0.0007249 | Sent |
+| 2026-06-07 | `20260607T090600Z` | Conditional calendar-footnote revision send, 85.39s real | 4,059 | 895 | $0.0007639 | Sent |
+| 2026-06-07 | `20260607T090925Z` | Variable calendar and same-time event de-duplication send, 31.77s real | 4,049 | 918 | $0.0007721 | Sent |

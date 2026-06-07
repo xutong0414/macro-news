@@ -784,6 +784,22 @@ class FakeCalendarClient:
                     "previous": "52.2",
                 },
                 {
+                    "title": "Core CPI m/m",
+                    "country": "USD",
+                    "date": "2026-06-10T08:30:00-04:00",
+                    "impact": "High",
+                    "forecast": "0.5%",
+                    "previous": "0.4%",
+                },
+                {
+                    "title": "CPI y/y",
+                    "country": "USD",
+                    "date": "2026-06-10T08:30:00-04:00",
+                    "impact": "High",
+                    "forecast": "2.9%",
+                    "previous": "2.8%",
+                },
+                {
                     "title": "Bank Holiday",
                     "country": "NZD",
                     "date": "2026-06-06T16:00:00-04:00",
@@ -820,6 +836,7 @@ def test_live_calendar_data_replaces_calendar_rows(tmp_path) -> None:
 
     event_by_name = {event.event: event for event in result.data.calendar}
 
+    assert len(result.data.calendar) == 4
     assert event_by_name["USD Non-Farm Employment Change"].session == "US"
     assert event_by_name["USD Non-Farm Employment Change"].consensus == "85K"
     assert event_by_name["USD Non-Farm Employment Change"].event_date == "2026-06-06"
@@ -830,12 +847,15 @@ def test_live_calendar_data_replaces_calendar_rows(tmp_path) -> None:
     assert event_by_name["CNY RatingDog Manufacturing PMI"].session == "Asia"
     assert event_by_name["CNY RatingDog Manufacturing PMI"].event_date == "2026-06-07"
     assert event_by_name["CNY RatingDog Manufacturing PMI"].status == "*"
+    assert "USD Core CPI m/m" in event_by_name
+    assert "USD CPI y/y" not in event_by_name
     assert "NZD Bank Holiday" not in event_by_name
     assert result.fallback_events == []
     assert "faireconomy:ff_calendar_thisweek" in result.sources
     assert "[USD Non-Farm Employment Change](https://www.forexfactory.com/en/calendar/)" in render_markdown(result.data)
     assert "Calendar status notes:" in render_markdown(result.data)
     assert "* = next-session or nearest source-week item" in render_markdown(result.data)
+    assert "† = cached real calendar row after live refresh failed" not in render_markdown(result.data)
     assert "[Forex Factory/Fair Economy weekly feed](https://www.forexfactory.com/en/calendar/)" in render_markdown(result.data)
 
 
@@ -873,6 +893,7 @@ def test_live_calendar_uses_cache_when_feed_refresh_fails(tmp_path) -> None:
     assert result.fallback_events == []
     assert "calendar_live_refresh" in result.errors
     assert result.sources == ["faireconomy:ff_calendar_thisweek:cache"]
+    assert "† = cached real calendar row after live refresh failed" in render_markdown(result.data)
 
 
 def test_dry_run_with_live_calendar_writes_usage_log(tmp_path, monkeypatch) -> None:

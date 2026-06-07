@@ -2,11 +2,11 @@
 
 ## Current Stage
 
-Freshness/status input pass and presentation/link revision are implemented and verified. The project now renders a top `Data/query as of` timestamp, dashboard `As of` fields with compact status markers in the asset label, event-date/status fields for the calendar, small dashboard/calendar footnotes, clickable calendar/source/contrarian links, source-depth labels for Theme Radar, grouped assumptions with source links, an item-level feedback questionnaire before Source Status, and portfolio assumptions from `inputs/portfolio/positions.csv`.
+Freshness/status input pass and presentation/link revision are implemented and verified. The project now renders a top `Data/query as of` timestamp, dashboard `As of` fields with compact status markers in the asset label, event-date/status fields for the calendar, variable-length calendar rows, small conditional dashboard/calendar footnotes, clickable calendar/source/contrarian links, source-depth labels for Theme Radar, grouped assumptions with source links, an item-level feedback questionnaire before Source Status, and portfolio assumptions from `inputs/portfolio/positions.csv`.
 
-The latest verified send (`20260607T054634Z`) rendered body-sized `So what`, `For Our Book`, and chart `Reading` lines, small `Read more` and footnote text, one dashboard feedback row, linked data-handling assumptions, all 10 market rows refreshed from live public sources, event-date/status calendar labels with clickable event links and plain-language status footnotes from the live Fair Economy weekly feed, a 3-month USD/JPY chart with the latest five observations highlighted, live Theme Radar selections with source-depth labels, prompt version `gemini_narrative_v32`, and no generated scaffold rows in live market/calendar/theme fallback paths.
+The latest verified send (`20260607T090925Z`) rendered body-sized `So what`, `For Our Book`, and chart `Reading` lines, small `Read more` and footnote text, one dashboard feedback row, linked data-handling assumptions, all 10 market rows refreshed from live public sources, variable-length calendar rows with same-time event clusters de-duplicated, calendar status footnotes shown only for labels present in the table, a 3-month USD/JPY chart with the latest five observations highlighted, live Theme Radar selections with source-depth labels, prompt version `gemini_narrative_v32`, and no generated scaffold rows in live market/calendar/theme fallback paths.
 
-Measured runtime for that successful send was `30.44s` wall-clock, with 3,785 input tokens, 866 output tokens, 4,651 total tokens, and estimated Gemini cost of $0.0007249.
+Measured runtime for that successful send was `31.77s` wall-clock, with 4,049 input tokens, 918 output tokens, 4,967 total tokens, and estimated Gemini cost of $0.0007721.
 
 ## Whose Turn
 
@@ -42,7 +42,7 @@ User turn: review the latest email or `outputs/latest/brief.html`, especially th
 - Three Things link role: render compact item sub-titles, body-sized `So what:` support lines, and deterministic smaller Yahoo Finance topic-search links; the LLM does not invent those links.
 - Chart role: use USD/JPY because it is the assumed FX position and the most direct visual support for the intervention-risk item; render the note as bold `Reading:` rather than `Caption:`.
 - Dashboard status role: keep the dashboard compact by placing non-live markers (`*` and `†`) on the asset label instead of adding a separate status column.
-- Calendar status role: when status labels appear, render a footnote explaining `Live`, `*`, and `†` below the calendar table.
+- Calendar status role: render only verified calendar rows, do not force a fixed row count, de-duplicate same-currency same-time event clusters, and show footnotes only for status labels that actually appear in that run.
 - Chart history role: line charts should prefer more than one month of history when available, with the latest five observations highlighted; current USD/JPY chart uses roughly three months.
 - Email typography role: render `So what`, `For Our Book`, and chart `Reading` at normal body size; keep `Read more`, dashboard notes, and calendar status notes small.
 - Feedback role: render an item-level usefulness/comment questionnaire before Source Status, but keep the dashboard to one row rather than one row per dashboard asset.

@@ -393,3 +393,18 @@ Rules:
 - In Data Handling and source logic, whenever an external data, web, or RSS source is named, include a reader-facing link whenever possible.
 
 Outcome: sent run `20260607T054634Z` delivered successfully with the revised HTML classes, one dashboard feedback row, linked Data Handling assumptions, plain-language calendar status footnotes, all 10 dashboard rows refreshed from live public sources, runtime `30.44s`, token use 3,785 input / 866 output / 4,651 total, and estimated Gemini cost $0.0007249.
+
+## 2026-06-07 - Conditional Calendar Notes
+
+Decision: make Today's Calendar variable-length and render only the status footnotes that are actually used in the table.
+
+Reason: the calendar should not imply that three or four rows are required every day. A normal live run should also not explain the cached `†` marker when no cached calendar rows are present.
+
+Rules:
+
+- Select verified calendar rows for session coverage and genuinely high-impact extras, without padding the table to a fixed count.
+- De-duplicate same-currency same-time event clusters so one release window does not crowd the table with near-identical rows.
+- If the table contains only `Live` and `*`, explain only `Live` and `*`.
+- Show the `†` calendar footnote only when at least one calendar row actually has cached status.
+
+Outcome: sent run `20260607T090925Z` delivered successfully with six verified calendar rows, one CPI release-window row instead of several same-time CPI rows, only the `*` calendar footnote displayed, all 10 dashboard rows refreshed from live public sources, runtime `31.77s`, token use 4,049 input / 918 output / 4,967 total, and estimated Gemini cost $0.0007721.
