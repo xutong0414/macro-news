@@ -93,11 +93,11 @@ Remove or comment this test line immediately after one successful email. Cron re
 
 ## macOS launchd
 
-Use `scheduling/com.macro-news.daily-brief.plist.example` as the template.
+For macOS, use the helper scripts for the common cases below. The file `scheduling/com.macro-news.daily-brief.plist.example` is kept as a manual template.
 
 In `launchd`, `0` and `7` are Sunday, so the template's `Weekday` values `1-5` mean Monday-Friday.
 
-### Quick macOS Schedule Test
+### Quick macOS Schedule Test: Run In 5 Minutes
 
 After manual email sending works, use the helper script to schedule one test run a few minutes from now:
 
@@ -121,7 +121,32 @@ launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.macro-news.test-send.p
 
 This test job is not one-time by itself. If it is not unloaded, macOS will run it again at the same time on later days.
 
-### Production macOS Setup
+### Production macOS Setup: Weekday Morning HKT
+
+For a normal weekday morning schedule, use:
+
+```bash
+/bin/bash scripts/install_launchd_weekday_hk.sh 08:15
+```
+
+This installs a Monday-Friday schedule targeting 08:15 Hong Kong time. That is the recommended default if the desired inbox time is around 08:30 HKT, because the agent needs time to fetch data, draft, render, and send.
+
+If the requirement is exactly “start at 08:30 HKT,” use:
+
+```bash
+/bin/bash scripts/install_launchd_weekday_hk.sh 08:30
+```
+
+The helper script:
+
+- Creates `~/Library/LaunchAgents/com.macro-news.weekday-send.plist`.
+- Uses `.venv/bin/python` when available.
+- Loads the job with `launchctl`.
+- Prints commands for checking and unloading the schedule.
+
+Hong Kong time is UTC+8, so 08:15 HKT is 00:15 UTC. The helper converts HKT to the Mac's current local timezone when it writes the `launchd` file. If the scheduled Mac changes timezone or moves across daylight-saving boundaries, rerun the helper.
+
+### Manual Production macOS Setup
 
 Manual setup:
 

@@ -142,78 +142,19 @@ Generated outputs and logs are ignored by git.
 
 ## 4. Run On A Schedule
 
-Scheduling means another program wakes up this agent at a chosen time and runs the send command for you.
+Scheduling means macOS, Linux, GitHub, or another service runs the send command for you at a chosen time.
 
 Important idea:
 
 - The schedule time is when the agent starts working.
 - The email is sent after data fetching, Gemini synthesis, rendering, and SMTP delivery finish.
 - If the target inbox time is 08:30 Hong Kong time, start around 08:15.
-- Closing VS Code does not matter for `cron`, `launchd`, or GitHub Actions.
-- For local schedulers, the computer must be powered on and awake enough to run the job.
-- For GitHub Actions, your local computer does not need to be on, but GitHub scheduled triggers can be delayed or skipped.
+- Closing VS Code and Terminal does not matter after the schedule is installed.
+- For a local Mac schedule, the Mac must be powered on and awake enough to run.
 
-The command that the scheduler should run is:
+The recommended macOS path has two commands.
 
-```bash
-/bin/bash /ABSOLUTE/PATH/TO/macro_news/scripts/run_daily_brief.sh
-```
-
-This is not something you type every morning. You put this command into a scheduler once.
-
-### Linux Or Server Cron
-
-Use this if the project runs on Linux, a VPS, or another Unix-like server.
-
-Run in Terminal:
-
-```bash
-crontab -e
-```
-
-Then paste one schedule line into the editor.
-
-Cron has five timing fields:
-
-```text
-minute hour day-of-month month day-of-week
-```
-
-Production weekday morning example:
-
-To start at 08:15 Hong Kong time Monday-Friday on a machine using UTC, paste:
-
-```cron
-15 0 * * 1-5 cd /ABSOLUTE/PATH/TO/macro_news && /bin/bash scripts/run_daily_brief.sh >> logs/scheduler.out.log 2>> logs/scheduler.err.log
-```
-
-Why this works:
-
-- `15` means minute 15.
-- `0` means hour 00 in UTC.
-- Hong Kong is UTC+8, so 00:15 UTC is 08:15 HKT.
-- `* *` means any day of month and any month.
-- `1-5` means Monday-Friday.
-- The `cd ...` part moves into the project folder before running the script.
-- The `>> logs/...` parts save scheduler output and errors.
-
-Temporary cron test:
-
-If testing starts at 12:30 HKT and you want one test run around 12:36 HKT, convert 12:36 HKT to 04:36 UTC, then paste:
-
-```cron
-36 4 * * * cd /ABSOLUTE/PATH/TO/macro_news && /bin/bash scripts/run_daily_brief.sh >> logs/scheduler.out.log 2>> logs/scheduler.err.log
-```
-
-Remove this test line after one successful email. It repeats daily until removed.
-
-### macOS
-
-Use macOS `launchd`.
-
-Quick schedule test:
-
-After the manual send command works, run this in Terminal from the repo folder to schedule one test run about 5 minutes from now:
+### Test In 5 Minutes
 
 ```bash
 /bin/bash scripts/install_launchd_test_send.sh 5
@@ -221,71 +162,38 @@ After the manual send command works, run this in Terminal from the repo folder t
 
 Expected outcome:
 
-- The script creates and loads a temporary macOS schedule.
 - One email should arrive around 5 minutes later.
 - After the email arrives, run the `launchctl bootout ...` command printed by the script.
 
 This test schedule repeats daily if you do not unload it.
 
-Production weekday schedule:
+### Install Weekday Morning HKT Schedule
 
-Edit this file, not in Terminal:
+For a target inbox time around 08:30 HKT, start the agent at 08:15 HKT:
 
-```text
-scheduling/com.macro-news.daily-brief.plist.example
+```bash
+/bin/bash scripts/install_launchd_weekday_hk.sh 08:15
 ```
 
-Replace the placeholder paths, copy it to `~/Library/LaunchAgents/`, and load it with `launchctl`. The exact Terminal commands are in `docs/scheduling.md`.
+If the assignment expects the agent to start exactly at 08:30 HKT, use:
 
-VS Code does not need to stay open. The Mac does need to be on and awake enough for `launchd` to run.
-
-### Windows
-
-Windows uses Task Scheduler, which is different from macOS `launchd` and Linux `cron`.
-
-This repo does not include a Windows Task Scheduler template. The simplest Windows path is to run the project inside WSL and use the Linux `cron` approach above. Otherwise, create a Windows Task Scheduler job that runs the same scheduled command through a shell that can execute `.sh` scripts.
-
-### GitHub Actions
-
-Use this if you want GitHub to provide the computer power.
-
-Important: GitHub Actions is useful for manual cloud runs, but it is not a stable or fully trustworthy scheduler for a time-sensitive daily email. Scheduled runs can be delayed, skipped, or affected by GitHub runner availability. For dependable weekday morning delivery, use `launchd`, `cron`, `systemd`, a VPS, or a cloud scheduler you control.
-
-Do not run the schedule examples in Terminal. Edit this workflow file:
-
-```text
-.github/workflows/daily-brief-manual-send.yml
+```bash
+/bin/bash scripts/install_launchd_weekday_hk.sh 08:30
 ```
 
-Before enabling a schedule:
+The script prints how to check or unload the schedule.
 
-1. Add GitHub repository secrets listed in `.env.example`.
-2. Run the manual send workflow once from the GitHub Actions page.
-3. Confirm the email arrives.
+### Changing The Time
 
-The workflow file contains two commented schedule templates. Uncomment only one at a time.
+Change the final time argument:
 
-Production weekday morning send:
+- `08:15` means Monday-Friday at 08:15 Hong Kong time.
+- `08:30` means Monday-Friday at 08:30 Hong Kong time.
+- Hong Kong time is UTC+8, so 08:15 HKT is 00:15 UTC.
 
-This starts around 08:15 HKT Monday-Friday:
+The macOS helper writes a `launchd` file under `~/Library/LaunchAgents/`. If you move the repo, recreate the virtual environment, or change the Mac timezone, rerun the helper command.
 
-```yaml
-on:
-  schedule:
-    - cron: "15 0 * * 1-5"
-```
-
-Temporary GitHub schedule test:
-
-If testing starts at 12:30 HKT and you want a test run around 12:36 HKT, use:
-
-```yaml
-on:
-  schedule:
-    - cron: "36 4 * * *"
-```
-
-This test is not one-time. Comment it again after the test run. Treat GitHub schedule as a convenience check, not the primary production scheduler. The dependable GitHub path is manual `workflow_dispatch`.
+For Linux, Windows, GitHub Actions, and more detailed `launchd` notes, see `docs/scheduling.md`. GitHub Actions is useful for manual cloud runs, but it is not a dependable scheduler for time-sensitive morning email.
 
 ## Brief Contents
 
