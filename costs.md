@@ -27,12 +27,12 @@ Plain sample mode records zero actual LLM tokens.
 
 ## Runtime Accounting
 
-Latest successful timed live send: `20260607T110644Z`, measured with `/usr/bin/time -p` on Sunday at 19:06 HKT.
+Latest successful timed live send: `20260607T114151Z`, measured with `/usr/bin/time -p` on Sunday at 19:41 HKT.
 
-- Runtime: `real 38.84s`, `user 1.04s`, `sys 2.98s`.
-- Token use: 4,049 input, 750 output, 4,799 total.
-- Estimated LLM cost: $0.0007049.
-- Source result: all 10 market dashboard rows refreshed from live public sources; no scaffold fallback rows were used. Calendar used the live Fair Economy weekly feed with `Live` and `*` footnote ingredients and no cached calendar marker. Theme Radar selected two live RSS items with one feed timeout.
+- Runtime: `real 55.00s`, `user 8.91s`, `sys 1.63s`.
+- Token use: 4,049 input, 820 output, 4,869 total.
+- Estimated LLM cost: $0.0007329.
+- Source result: all 10 market dashboard rows refreshed from live public sources; no scaffold fallback rows were used. Calendar used the live Fair Economy weekly feed with six live-source rows. Theme Radar selected two live RSS items, with the FRED Blog RSS feed timing out.
 
 Operational note: use at least a 10-15 minute scheduler buffer before the desired inbox time. Successful runs can be under one minute, but quality-control testing saw source timeouts and validation retries up to about two minutes before a clean output.
 
@@ -72,3 +72,4 @@ Operational note: use at least a 10-15 minute scheduler buffer before the desire
 | 2026-06-07 | `20260607T090600Z` | Conditional calendar-footnote revision send, 85.39s real | 4,059 | 895 | $0.0007639 | Sent |
 | 2026-06-07 | `20260607T090925Z` | Variable calendar and same-time event de-duplication send, 31.77s real | 4,049 | 918 | $0.0007721 | Sent |
 | 2026-06-07 | `20260607T110644Z` | Timestamp wording, calendar note, and chart source revision send, 38.84s real | 4,049 | 750 | $0.0007049 | Sent |
+| 2026-06-07 | `20260607T114151Z` | Memo wrap-up live send, 55.00s real | 4,049 | 820 | $0.0007329 | Sent |

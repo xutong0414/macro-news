@@ -438,3 +438,17 @@ Decision: recheck the audit against the local case-study PDF without relying on 
 Reason: the user asked for the previous wrap-up to be redone after network-related errors and wanted to make sure no PDF requirement was missed.
 
 Outcome: the recheck confirms the same remaining items: push unpushed local commits after explicit approval, choose public repo versus collaborator access, compress `memo.md` into a true 1-page memo, fill actual hours spent, and export `memo.pdf`. The main caveats remain GitHub scheduled-trigger unreliability, RSS-level Theme Radar source depth, and free-source calendar/market fragility.
+
+## 2026-06-07 - Memo Wrap-Up And Latest Send
+
+Decision: replace the long memo draft with a concise one-page memo source and generate `memo.pdf`.
+
+Reason: the assignment requires a 1-page memo PDF, while the prior `memo.md` had grown into a detailed working note.
+
+Rules:
+
+- Keep the memo focused on the required PDF items: design tradeoffs, position/theme assumptions, exactly three v2 features, one-month roadmap, and actual hours.
+- Leave actual hours blank for Tong Xu to fill honestly before submission.
+- Regenerate `memo.pdf` after the actual-hours value is filled.
+
+Outcome: `memo.md` was compressed to 528 words and `memo.pdf` was generated locally with `pandoc`. A fresh live email send, run `20260607T114151Z`, completed with delivery status `sent`, runtime `55.00s`, 4,049 input tokens, 820 output tokens, 4,869 total tokens, and estimated Gemini cost `$0.0007329`.
