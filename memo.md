@@ -12,18 +12,18 @@ Scheduling was tested: *GitHub manual send* worked, *GitHub scheduled triggers* 
 
 ## Position and Theme Assumptions
 
-Because the PDF does not reveal the real book, the prototype stores explicit assumptions in the portfolio input file, *positions.csv*, under `inputs/portfolio/`. The assumed book is long *USD/JPY*, overweight *gold*, and exposed to an *EM debt basket*. The assumed themes are *higher-for-longer rates*, *fiscal pressure and term premium*, *China demand weakness*, and *policy divergence* across major central banks. Position rows are effective-date updates, so the latest prior row carries forward until changed or closed.
+Because the assignment PDF does not reveal the real book, the prototype stores explicit assumptions in the portfolio input file, *positions.csv*, under `inputs/portfolio/`. The assumed book is long *USD/JPY*, overweight *gold*, and exposed to an *EM debt basket*. The assumed themes are *higher-for-longer rates*, *fiscal pressure and higher term premium*, *China demand weakness*, and *policy divergence* across major central banks. Position rows are effective-date updates, so the latest prior row carries forward until changed or closed.
 
 ## Three V2 Features Not Completed
 
 1. Add paid *market data providers* so the agent is less dependent on free public data feeds.
-2. Expand *Theme Radar* from RSS-level text to full-text reading for research notes, speeches, and selected newsletters (additional subscription required). At that point, a more advanced LLM may be more useful.
+2. Expand **Theme Radar** from RSS-level text to full-text reading for research notes, speeches, and selected newsletters (additional subscription required). At that point, a more advanced LLM may be more useful.
 3. Use feedback history and richer book information to improve the relevance of the content and personalization of the brief over time.
 
 ## One-Month Full-Time Roadmap
 
-With one month full-time, I would turn this into a production briefing system: add stronger robustness checks, improve data-source quality, set up schedule alerting, add richer article ingestion, build feedback-driven improvement, and choose a cleaner deployment target such as a VPS or cloud scheduler. I would also add a daily evaluation report showing source freshness, failed fetches, token use, and runtime. As the system runs, I would continuously monitor whether the delivered brief meets all formatting and factual guardrails.
+With one month full-time, I would turn this into a production briefing system: add stronger robustness checks, improve data-source quality, set up schedule alerting, add richer article ingestion, conduct feedback-driven improvement, and choose a cleaner deployment target such as a VPS or cloud scheduler. I would also add a daily evaluation report showing source freshness, failed fetches, token use, and runtime. As the system runs, I would continuously monitor whether the delivered brief meets all formatting and factual guardrails.
 
 ## Actual Hours Spent
 
-Building the agent was relatively fast; I spent about 2-3 hours on the initial scaffold. I then spent another full day, more than 10 additional hours, checking that the content was real, updated, reader-friendly, well-structured, and easier to extend later.
+Building the agent was relatively fast; I spent about 3-4 hours on the initial framework that can fetch data, summarize, and send email. I then spent another full day, more than 10 additional hours, checking that the content was real, updated, reader-friendly, well-structured, and easier to extend later.
