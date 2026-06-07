@@ -238,5 +238,6 @@ The reusable scheduler command is:
 
 - `PLAN.md`: live control tower and handoff state.
 - `DECISIONS.md`: decision log.
+- `ASSIGNMENT_AUDIT.md`: PDF requirement checklist and remaining submission tasks.
 - `costs.md`: expected and measured run costs.
 - `memo.md`: working source for the final 1-page memo.

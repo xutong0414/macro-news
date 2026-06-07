@@ -52,9 +52,11 @@ User turn: review the latest email or `outputs/latest/brief.html`, especially th
 
 1. Keep control files current as the project changes.
 2. User review latest `outputs/latest/brief.html` and the delivered email for Outlook typography, footnote size, data-handling links, and questionnaire size.
-3. Add a second calendar provider if the free weekly feed remains thin or stale outside weekday windows.
-4. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.
-5. Generate final `memo.pdf` from `memo.md`.
+3. Compress `memo.md` into a true 1-page memo and fill actual hours spent.
+4. Generate final `memo.pdf`.
+5. Push the two local commits to GitHub after explicit approval, then decide public repo vs collaborator invite for submission.
+6. Add a second calendar provider if the free weekly feed remains thin or stale outside weekday windows.
+7. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.
 
 ## Blockers
 

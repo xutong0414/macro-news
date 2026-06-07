@@ -422,3 +422,11 @@ Rules:
 - State near the top of `costs.md` that dollar amounts are USD unless otherwise noted.
 
 Outcome: sent run `20260607T110644Z` delivered successfully with `Updated as of`, small Frankfurter chart-source line, calendar footnotes showing `Live` and `*` without cached `†`, all 10 dashboard rows refreshed from live public sources, runtime `38.84s`, token use 4,049 input / 750 output / 4,799 total, and estimated Gemini cost $0.0007049.
+
+## 2026-06-07 - Assignment Audit Wrap-Up
+
+Decision: add `ASSIGNMENT_AUDIT.md` as the checklist that maps the original PDF requirements to the repo state.
+
+Reason: before final memo writing, the project needs a clear view of what is complete, what is caveated, and what remains before submission.
+
+Outcome: the audit confirms the six brief modules, technical constraints, cost logging, source/fallback disclosure, scheduling evidence, and repo hygiene are covered. Remaining submission tasks are to push local commits after explicit approval, decide repo access, compress `memo.md` into a true 1-page memo, fill actual hours spent, and export `memo.pdf`.
