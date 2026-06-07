@@ -6,7 +6,7 @@ The target reader is a macro PM who wants: what changed overnight, why it matter
 
 ## Current Status
 
-Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows including Japan 10Y, EUR/USD, and USD/JPY, dashboard timing/source notes with clickable source links, cached real-source fallback, no scaffold market row in the latest verified output, a USD/JPY chart reading linked to the first thing that matters, live/cached economic-calendar rows with Asia/Europe/US session targeting, live Theme Radar source collection with fallback, factual guardrails for market-number consistency and unsupported narrative claims, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
+Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows including Japan 10Y, EUR/USD, and USD/JPY, row-level `As of`/`Status` labels, dashboard timing/source notes with clickable source links, cached real-source fallback, no generated scaffold values in live market/calendar/theme fallback paths, a USD/JPY chart reading linked to the first thing that matters, live/cached economic-calendar rows with event-date/status labels, live Theme Radar source collection with source-depth labels, factual guardrails for market-number consistency and unsupported narrative claims, portfolio assumptions loaded from `inputs/portfolio/positions.csv`, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
 
 Locked defaults:
 
@@ -31,19 +31,19 @@ Run a sample dry run with Gemini drafting the narrative sections:
 PYTHONPATH=src python -m macro_news run --dry-run --use-llm
 ```
 
-Run with live market dashboard data and sample fallbacks:
+Run with live market dashboard data and cached real-source fallback:
 
 ```bash
 PYTHONPATH=src python -m macro_news run --dry-run --live-market-data
 ```
 
-Run with live economic calendar data and sample fallback:
+Run with live economic calendar data and cached real-source fallback:
 
 ```bash
 PYTHONPATH=src python -m macro_news run --dry-run --live-calendar
 ```
 
-Run with live Theme Radar source collection and sample fallback:
+Run with live Theme Radar source collection:
 
 ```bash
 PYTHONPATH=src python -m macro_news run --dry-run --live-theme-radar
@@ -104,17 +104,23 @@ Required for Gemini synthesis:
 Market data mode:
 
 - `MARKET_DATA_MODE=sample` keeps the dashboard fully deterministic.
-- `MARKET_DATA_MODE=live` fetches live dashboard rows where available, uses cached real-source rows for temporary outages, and falls back to sample rows asset by asset only when neither live nor cached data is available.
+- `MARKET_DATA_MODE=live` fetches live dashboard rows where available and uses cached real-source rows for temporary outages. If neither live nor cached real data exists, the row's value cells are left blank instead of using scaffold/sample numbers.
 
 Calendar data mode:
 
 - `CALENDAR_MODE=sample` keeps the calendar deterministic.
-- `CALENDAR_MODE=live` fetches the weekly economic calendar where available, targets Asia/Europe/US session coverage, uses a local ignored cache after successful pulls, and falls back to sample rows if the public feed is unavailable or rate-limited.
+- `CALENDAR_MODE=live` fetches the weekly economic calendar where available, targets Asia/Europe/US session coverage, uses a local ignored cache after successful pulls, and leaves the calendar blank instead of using scaffold/sample rows if no live or cached real calendar data exists.
 
 Theme source mode:
 
 - `THEME_SOURCE_MODE=sample` keeps Theme Radar deterministic.
-- `THEME_SOURCE_MODE=live` fetches curated RSS feeds, scores items against the assumed book/themes, and falls back to sample Theme Radar items if source collection fails.
+- `THEME_SOURCE_MODE=live` fetches curated RSS feeds, scores items against the assumed book/themes, and leaves Theme Radar blank instead of using scaffold/sample source items if no verified source candidates are available.
+
+Portfolio input:
+
+- `PORTFOLIO_PATH=inputs/portfolio/positions.csv` points to the position-assumption CSV.
+- Each row is an effective-date update. If no row is entered for the run date, the latest prior row for that asset carries forward.
+- Use `position=flat`, `closed`, `none`, or `0` to remove an asset from the active book.
 
 Do not commit `.env`.
 
@@ -141,15 +147,17 @@ The market dashboard currently uses:
 - [CoinGecko](https://www.coingecko.com/en/api) for BTC.
 - Dashboard notes explaining extraction time, close/prior basis, additional timing information for Hong Kong morning use, Frankfurter's latest-versus-immediately-previous published daily reference-rate convention, and BTC rolling 24-hour change convention.
 - Dashboard row read-throughs use the `Reading` label and describe the day's implication rather than repeating the instrument definition.
+- The dashboard includes `As of` and `Status` columns. `Live` means refreshed from a public source for the run date or query time; `*` means the live source's latest valid date is older than the run date, usually because of weekend, holiday, or publication lag; `†` means cached real-source data was used after a live refresh failed.
 - Cached real-source rows when a temporary source outage occurs.
-- Sample fallback rows when a source fails and no cached real-source row exists.
+- Blank value cells rather than scaffold/sample market numbers when no live or cached real row exists.
 
 The calendar currently uses:
 
 - Forex Factory/Fair Economy weekly JSON feed for event names, impact, forecast/consensus, and previous values.
 - Session-aware selection that targets Asia, Europe, and US coverage when the feed contains usable events.
 - Local ignored cache under `.cache/calendar/` after successful pulls.
-- Sample fallback rows when the feed fails or is rate-limited.
+- Event-date and status labels using the same `Live`, `*`, and `†` no-color convention.
+- Blank calendar output rather than scaffold/sample calendar rows when no live or cached real calendar rows exist.
 
 Theme Radar currently uses:
 
@@ -157,7 +165,14 @@ Theme Radar currently uses:
 - Bank Underground RSS.
 - FRED Blog RSS when reachable.
 - Keyword scoring against the assumed book and house themes.
-- Sample fallback items when no relevant source candidates are found.
+- Source-depth labels in the rendered brief, such as `RSS excerpt` or `RSS content field`. This tells the reader whether the summary is based on feed-level text rather than a full article.
+- Blank live-mode output rather than scaffold/sample source items when no relevant verified source candidates are found.
+
+## Portfolio And Feedback Inputs
+
+Tracked assignment assumptions live in `inputs/portfolio/positions.csv`. The format is documented in `inputs/portfolio/README.md`, with `positions.example.csv` as a template.
+
+Human feedback is documented in `inputs/feedback/README.md`, with `daily_feedback.example.csv` as the questionnaire template. The current rule is to record feedback locally first; later versions can load high-rated and low-rated patterns into source ranking and prompt construction. This is local preference memory, not model fine-tuning.
 
 ## GitHub Actions
 

@@ -127,11 +127,20 @@ def _format_event_time(local_time: datetime, run_date: date, reference_now: date
     return f"{local_time.strftime('%a %b %d')} {clock} {zone}"
 
 
+def _calendar_status(local_time: datetime, run_date: date, *, cached: bool) -> str:
+    if cached:
+        return "†"
+    if local_time.date() != run_date:
+        return "*"
+    return "Live"
+
+
 def _raw_event_to_calendar_event(
     raw_event: dict,
     timezone_name: str,
     run_date: date,
     reference_now: datetime | None = None,
+    cached: bool = False,
 ) -> CalendarEvent | None:
     impact = _clean_text(raw_event.get("impact"))
     if impact not in IMPACT_SCORE:
@@ -151,6 +160,8 @@ def _raw_event_to_calendar_event(
         event=f"{currency} {title}",
         consensus=forecast or "n/a",
         why_it_matters=_why_it_matters(title, currency, impact),
+        event_date=local_time.date().isoformat(),
+        status=_calendar_status(local_time, run_date, cached=cached),
     )
 
 
@@ -176,13 +187,14 @@ def _select_events(
     timezone_name: str,
     reference_now: datetime | None = None,
     max_events: int = 4,
+    cached: bool = False,
 ) -> list[CalendarEvent]:
     usable_events = [item for item in raw_events if _is_usable_event(item)]
     selected: list[CalendarEvent] = []
     seen: set[tuple[str, str, str]] = set()
 
     def add_event(raw_event: dict) -> bool:
-        event = _raw_event_to_calendar_event(raw_event, timezone_name, run_date, reference_now)
+        event = _raw_event_to_calendar_event(raw_event, timezone_name, run_date, reference_now, cached=cached)
         if event is None or _event_identity(event) in seen:
             return False
         selected.append(event)
@@ -277,11 +289,13 @@ def replace_calendar_with_live(
             reference_now = datetime.now(zone)
         with client_factory() as client:
             fetch_result = fetch_faireconomy_calendar(client, cache_path=cache_path)
+        source_is_cached = fetch_result.source.endswith(":cache")
         calendar = _select_events(
             fetch_result.raw_events,
             run_date=run_date,
             timezone_name=timezone_name,
             reference_now=reference_now,
+            cached=source_is_cached,
         )
         if not calendar:
             raise ValueError("calendar source returned no usable events")
@@ -289,15 +303,16 @@ def replace_calendar_with_live(
             errors["calendar_live_refresh"] = fetch_result.refresh_error
     except Exception as exc:  # noqa: BLE001 - logged fallback is intentional here.
         errors["calendar"] = str(exc)
-        fallback_note = "Calendar: live weekly feed unavailable; scaffold calendar fallback used."
+        fallback_note = "Calendar: no verified live or cached calendar rows available; calendar table left blank rather than using scaffold events."
         fallback_data = replace(
             data,
+            calendar=[],
             source_notes=[*[note for note in data.source_notes if not note.startswith("Calendar:")], fallback_note],
         )
         return CalendarDataResult(
             data=fallback_data,
             live_events=[],
-            fallback_events=fallback_events,
+            fallback_events=[],
             errors=errors,
             sources=[],
         )
@@ -312,7 +327,8 @@ def replace_calendar_with_live(
         calendar=calendar,
         assumptions=[
             *data.assumptions,
-            "Calendar uses the live Forex Factory/Fair Economy weekly feed when available and sample fallback rows when it fails.",
+            "Calendar uses the live Forex Factory/Fair Economy weekly feed when available, cached real rows after rate limits, and blank output rather than scaffold rows if no verified calendar data exists.",
+            "Calendar live mode leaves the table blank instead of using scaffold events when neither live nor cached real calendar rows are available.",
         ],
         data_sources=[*data.data_sources, *sources],
         source_notes=[*[note for note in data.source_notes if not note.startswith("Calendar:")], calendar_note],

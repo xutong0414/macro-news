@@ -11,6 +11,7 @@ from .costing import ZERO_TOKEN_USAGE
 from .emailer import send_email
 from .llm import synthesize_with_gemini
 from .market_data import MarketDataResult, replace_market_rows_with_live
+from .portfolio import apply_portfolio_assumptions
 from .render import render_html, render_markdown, utc_run_id, write_outputs
 from .sample_data import build_sample_brief_data
 from .theme_data import ThemeDataResult, replace_theme_radar_with_live
@@ -37,6 +38,7 @@ def run_brief(
     run_date = run_date or date.today()
     run_id = utc_run_id()
     data = build_sample_brief_data()
+    data = apply_portfolio_assumptions(data, run_date=run_date, path=settings.portfolio_path)
     market_data_result = MarketDataResult(data=data, live_assets=[], cached_assets=[], fallback_assets=[], errors={}, sources=[])
     calendar_data_result = CalendarDataResult(data=data, live_events=[], fallback_events=[], errors={}, sources=[])
     theme_data_result = ThemeDataResult(data=data, selected_titles=[], candidate_count=0, fallback_used=False, errors={}, sources=[])

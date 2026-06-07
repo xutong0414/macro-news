@@ -4,7 +4,7 @@ This file tracks expected and actual daily run cost.
 
 ## Current Estimate
 
-Status: Gemini synthesis, Gmail delivery, live market rows, live calendar rows, and live Theme Radar source collection have been smoke-tested. Free sources are used with fallback.
+Status: Gemini synthesis, Gmail delivery, live market rows, live calendar rows, and live Theme Radar source collection have been smoke-tested. Free sources are used with cached real-source fallback where appropriate; live mode leaves unavailable unsupported content blank rather than using generated scaffold values.
 
 | Category | Provider | Expected cost | Notes |
 | --- | --- | ---: | --- |
@@ -12,9 +12,9 @@ Status: Gemini synthesis, Gmail delivery, live market rows, live calendar rows, 
 | Optional LLM | DeepSeek V4 Flash | Near zero for expected token volume | Optional comparison provider later. |
 | Email delivery | Gmail SMTP | $0 | Uses user's Gmail account and app password. |
 | Scheduler | MacBook launchd / GitHub Actions | $0 expected | MacBook `launchd` is proven locally; GitHub manual runs are useful, but GitHub scheduled triggers failed short-window proof. |
-| Market data | Yahoo / Japan MOF / Frankfurter / CoinGecko | $0 initially | Current live dashboard sources are free/public, with cached real-source fallback before sample fallback rows. |
-| Calendar data | Forex Factory / Fair Economy | $0 initially | Free weekly feed with local cache and sample fallback; can rate-limit during repeated tests. |
-| Theme sources | Liberty Street / Bank Underground / FRED Blog | $0 initially | Curated RSS feeds with source-level fallback. |
+| Market data | Yahoo / Japan MOF / Frankfurter / CoinGecko | $0 initially | Current live dashboard sources are free/public, with cached real-source fallback and blank rows when no verified data exists. |
+| Calendar data | Forex Factory / Fair Economy | $0 initially | Free weekly feed with local cache; can rate-limit during repeated tests, and live mode leaves output blank if no verified rows exist. |
+| Theme sources | Liberty Street / Bank Underground / FRED Blog | $0 initially | Curated RSS feeds with source-depth labels; live mode leaves Theme Radar blank if no verified candidates exist. |
 | Hosting | Local MacBook for proof | $0 expected | Production should use an always-on Mac/workstation/VPS if precise scheduled delivery is required. |
 
 ## Token Accounting
@@ -25,14 +25,14 @@ Plain sample mode records zero actual LLM tokens.
 
 ## Runtime Accounting
 
-Latest successful timed live dry run: `20260607T011658Z`, measured with `/usr/bin/time -p` on Sunday morning at 09:17 HKT.
+Latest successful timed live dry run: `20260607T030050Z`, measured with `/usr/bin/time -p` on Sunday morning at 11:00 HKT.
 
-- Runtime: `real 27.44s`, `user 0.89s`, `sys 3.16s`.
-- Token use: 6,134 input, 1,469 output, 7,605 total.
-- Estimated LLM cost: $0.001201.
-- Source result: all 10 market dashboard rows live; calendar used cached Fair Economy rows after a 429 live refresh; Theme Radar selected live RSS items with one feed timeout.
+- Runtime: `real 126.03s`, `user 1.24s`, `sys 2.71s`.
+- Token use: 11,813 input, 2,437 output, 14,250 total.
+- Estimated LLM cost: $0.0021561.
+- Source result: 5/10 market dashboard rows refreshed from live public sources; cached real-source rows were used for S&P 500, Euro Stoxx 50, US 10Y yield, gold, and WTI after Yahoo SSL handshake timeouts; no scaffold fallback rows were used. Calendar used the live Fair Economy weekly feed. Theme Radar selected two live RSS items with one feed timeout.
 
-Operational note: use at least a 10-15 minute scheduler buffer before the desired inbox time. The successful run was under one minute, but quality-control testing saw provider/source failures and validation retries around 30-80 seconds before a clean output.
+Operational note: use at least a 10-15 minute scheduler buffer before the desired inbox time. Successful runs can be under one minute, but quality-control testing saw source timeouts and validation retries up to about two minutes before a clean output.
 
 ## Actual Runs
 
@@ -61,3 +61,5 @@ Operational note: use at least a 10-15 minute scheduler buffer before the desire
 | 2026-06-06 | `20260606T145317Z` | Bold chart reading wording dry run | 2,707 | 697 | $0.0005495 | Not sent |
 | 2026-06-06 | `20260606T153505Z` | Remove Germany 10Y dashboard row dry run | 2,583 | 657 | $0.0005320 | Not sent |
 | 2026-06-07 | `20260607T011658Z` | Sunday morning factual-guardrail v24 live dry run, 27.44s real | 6,134 | 1,469 | $0.0012010 | Not sent |
+| 2026-06-07 | `20260607T023726Z` | Freshness labels, portfolio input, feedback template, source-depth disclosure v27 live dry run, 34.40s real | 3,517 | 808 | $0.0006749 | Not sent |
+| 2026-06-07 | `20260607T030050Z` | Final freshness/status no-generated-data guardrail v32 live dry run, 126.03s real | 11,813 | 2,437 | $0.0021561 | Not sent |

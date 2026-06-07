@@ -10,6 +10,8 @@ class MarketRow:
     prior: str
     change: str
     so_what: str
+    as_of: str = ""
+    status: str = ""
 
 
 @dataclass(frozen=True)
@@ -19,6 +21,8 @@ class CalendarEvent:
     event: str
     consensus: str
     why_it_matters: str
+    event_date: str = ""
+    status: str = ""
 
 
 @dataclass(frozen=True)
@@ -28,6 +32,7 @@ class ThemeItem:
     link: str
     summary: str
     book_impact: str
+    source_depth: str = "Sample scaffold"
 
 
 @dataclass(frozen=True)
@@ -89,6 +94,7 @@ def build_sample_brief_data() -> BriefData:
                     " The note also says positioning has not fully adjusted, leaving rallies vulnerable when supply headlines return."
                 ),
                 book_impact="What this means for our book: duration pressure supports USD/JPY but can challenge the gold overweight.",
+                source_depth="Sample scaffold",
             ),
             ThemeItem(
                 title="EM debt is underpricing dollar persistence",
@@ -100,6 +106,7 @@ def build_sample_brief_data() -> BriefData:
                     " The author favors countries with credible disinflation, current-account cushions, and less need for external refinancing."
                 ),
                 book_impact="What this means for our book: keep EM debt exposure selective and hedge dollar-sensitive legs.",
+                source_depth="Sample scaffold",
             ),
         ],
         contrarian_corner=(
@@ -108,7 +115,7 @@ def build_sample_brief_data() -> BriefData:
         assumptions=[
             "Assumed book is long USD/JPY, overweight gold, and exposed to an EM debt basket.",
             "No real portfolio file is connected yet; book impacts are based on the assumed positions above.",
-            "Free/public data feeds are used for v1; unavailable rows are flagged as scaffold fallback rather than silently filled.",
+            "Free/public data feeds are used for v1; live mode leaves unavailable market/calendar values blank rather than silently filling scaffold data.",
         ],
         data_sources=["sample_market_data", "sample_calendar", "sample_deep_content"],
         source_notes=[
@@ -119,6 +126,6 @@ def build_sample_brief_data() -> BriefData:
         dashboard_notes=[
             "Dashboard scope: equities, rates, FX, gold, oil, and BTC are included because those are the PDF-required overnight market blocks.",
             "Timing basis: sample scaffold values are placeholders; live mode replaces them with source-level close/prior or query-time values where available.",
-            "Sources: live mode uses public/free data feeds and records live, cached, or scaffold status in the run log.",
+            "Sources: live mode uses public/free data feeds and records live, older-source-date, cached, or blank-row status in the brief and run log.",
         ],
     )

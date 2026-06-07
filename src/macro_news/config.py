@@ -52,6 +52,7 @@ class Settings:
     market_data_mode: str
     calendar_mode: str
     theme_source_mode: str
+    portfolio_path: Path
     output_dir: Path
     log_dir: Path
 
@@ -75,6 +76,7 @@ class Settings:
             market_data_mode=os.getenv("MARKET_DATA_MODE", "sample"),
             calendar_mode=os.getenv("CALENDAR_MODE", "sample"),
             theme_source_mode=os.getenv("THEME_SOURCE_MODE", "sample"),
+            portfolio_path=Path(os.getenv("PORTFOLIO_PATH", "inputs/portfolio/positions.csv")),
             output_dir=Path(os.getenv("OUTPUT_DIR", "outputs")),
             log_dir=Path(os.getenv("LOG_DIR", "logs")),
         )

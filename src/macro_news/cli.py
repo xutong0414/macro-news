@@ -17,9 +17,9 @@ def build_parser() -> argparse.ArgumentParser:
     mode.add_argument("--dry-run", action="store_true", help="Generate outputs without sending email")
     mode.add_argument("--send", action="store_true", help="Generate outputs and send email via SMTP")
     run_parser.add_argument("--use-llm", action="store_true", help="Use Gemini to draft narrative sections from sample facts")
-    run_parser.add_argument("--live-market-data", action="store_true", help="Fetch live market dashboard data with sample fallback rows")
-    run_parser.add_argument("--live-calendar", action="store_true", help="Fetch live economic-calendar rows with sample fallback rows")
-    run_parser.add_argument("--live-theme-radar", action="store_true", help="Fetch live Theme Radar source candidates with sample fallback items")
+    run_parser.add_argument("--live-market-data", action="store_true", help="Fetch live market dashboard data with cached real-source fallback and blank rows for unavailable data")
+    run_parser.add_argument("--live-calendar", action="store_true", help="Fetch live economic-calendar rows with cached real-source fallback and blank output if unavailable")
+    run_parser.add_argument("--live-theme-radar", action="store_true", help="Fetch live Theme Radar source candidates and leave the section blank if unavailable")
     run_parser.add_argument("--date", help="Run date in YYYY-MM-DD format. Defaults to today.")
     return parser
 

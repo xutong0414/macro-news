@@ -22,6 +22,10 @@ logs/*
 # Local artifacts
 .DS_Store
 .worklog/
+inputs/portfolio/*.local.csv
+inputs/portfolio/*.private.csv
+inputs/feedback/*.local.csv
+inputs/feedback/*.private.csv
 
 # Keep the assignment PDF local unless explicitly approved for release.
 Case_Study__Daily_Macro_Brief_Agent.pdf

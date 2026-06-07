@@ -37,6 +37,7 @@ class ThemeCandidate:
     matched_rule: ThemeRule
     matched_keywords: tuple[str, ...]
     score: int
+    source_depth: str
 
 
 @dataclass(frozen=True)
@@ -192,14 +193,12 @@ def _best_rule(title: str, text: str) -> tuple[ThemeRule, tuple[str, ...], int]:
 
 def _summary_from_candidate(candidate: ThemeCandidate) -> str:
     excerpt = _excerpt(candidate.text)
-    keywords = ", ".join(candidate.matched_keywords[:3]) or candidate.matched_rule.label
     summary = (
         f"Thesis: {candidate.title} is relevant to {candidate.matched_rule.label}. "
-        f"Evidence: {excerpt} "
-        f"The selector picked it because the feed discusses {keywords}. "
-        "Portfolio link: it is a live source for judging whether the assumed FX, gold, or EM debt exposures need attention today."
+        f"Evidence from the available {candidate.source_depth.lower()}: {excerpt} "
+        "Portfolio link: use it as source input for judging whether the assumed FX, gold, or EM debt exposures need attention today."
     )
-    if _word_count(summary) < 60:
+    if _word_count(summary) < 45:
         summary += " It should be read as a source input for portfolio-aware judgment, not as a standalone trade recommendation."
     return _trim_words(summary, 100)
 
@@ -208,8 +207,10 @@ def _parse_feed_item(item: ET.Element, source: ThemeSource) -> ThemeCandidate | 
     title = _strip_html(_child_text(item, "title"))
     link = _link_text(item)
     description = _child_text(item, "description", "summary")
+    source_depth = "RSS excerpt"
     if _word_count(_strip_html(description)) < 30:
         description = _child_text(item, "content", "encoded")
+        source_depth = "RSS content field"
     text = _strip_html(description)
     if not title or not link or not text:
         return None
@@ -226,6 +227,7 @@ def _parse_feed_item(item: ET.Element, source: ThemeSource) -> ThemeCandidate | 
         matched_rule=matched_rule,
         matched_keywords=matched_keywords,
         score=score,
+        source_depth=source_depth,
     )
 
 
@@ -253,7 +255,7 @@ def fetch_theme_candidates(
             response = client.get(source.feed_url)
             response.raise_for_status()
             source_candidates = parse_feed(response.text, source, max_items=max_items_per_source)
-        except Exception as exc:  # noqa: BLE001 - source-level fallback is intentional here.
+        except Exception as exc:  # noqa: BLE001 - source-level outage is logged per feed.
             errors[source.source_id] = str(exc)
             continue
         if source_candidates:
@@ -301,6 +303,7 @@ def candidate_to_theme_item(candidate: ThemeCandidate) -> ThemeItem:
         link=candidate.link,
         summary=_summary_from_candidate(candidate),
         book_impact=candidate.matched_rule.book_impact,
+        source_depth=candidate.source_depth,
     )
 
 
@@ -325,13 +328,14 @@ def replace_theme_radar_with_live(
         candidates, errors, successful_sources = fetch_theme_candidates(client, sources=sources)
     selected = select_theme_candidates(candidates)
     if not selected:
-        fallback_note = "Theme Radar: live RSS sources returned no usable candidates; scaffold source items used."
-        fallback_data = replace(
+        blank_note = "Theme Radar: no verified live RSS candidates available; section left blank rather than using scaffold source items."
+        blank_data = replace(
             data,
-            source_notes=[*[note for note in data.source_notes if not note.startswith("Theme Radar:")], fallback_note],
+            theme_radar=[],
+            source_notes=[*[note for note in data.source_notes if not note.startswith("Theme Radar:")], blank_note],
         )
         return ThemeDataResult(
-            data=fallback_data,
+            data=blank_data,
             selected_titles=[],
             candidate_count=len(candidates),
             fallback_used=True,
@@ -347,7 +351,7 @@ def replace_theme_radar_with_live(
         theme_radar=[candidate_to_theme_item(candidate) for candidate in selected],
         assumptions=[
             *data.assumptions,
-            "Theme Radar uses curated live RSS sources when available and sample fallback items when source collection fails.",
+            "Theme Radar live mode uses curated RSS source text when available and leaves the section blank rather than using scaffold source items when no verified candidates exist.",
         ],
         data_sources=[*data.data_sources, *selected_sources],
         source_notes=[*[note for note in data.source_notes if not note.startswith("Theme Radar:")], theme_note],

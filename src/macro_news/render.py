@@ -78,14 +78,14 @@ def _three_thing_title(item: str) -> str:
     lowered = item.lower()
     if any(term in lowered for term in ("usd/jpy", "intervention", "yen reversal", "yen appreciation")):
         return "USD/JPY Intervention Risk"
-    if any(term in lowered for term in ("us 10y", "treasury", "higher us yields", "yields rose")) and any(
-        term in lowered for term in ("dxy", "dollar", "gold", "em debt", "em financing")
-    ):
-        return "Rates And Dollar Pressure"
     if any(term in lowered for term in ("s&p", "equities", "risk-off", "risk aversion", "risk assets")):
         return "Risk Tone Turns Defensive"
     if "gold" in lowered:
         return "Gold Under Rate Pressure"
+    if any(term in lowered for term in ("us 10y", "treasury", "higher us yields", "yields rose")) and any(
+        term in lowered for term in ("dxy", "dollar", "gold", "em debt", "em financing")
+    ):
+        return "Rates And Dollar Pressure"
     if any(term in lowered for term in ("em debt", "em duration", "emerging market")):
         return "EM Debt Faces Tighter Conditions"
     if "oil" in lowered or "inflation" in lowered:
@@ -117,18 +117,18 @@ def _chart_reading(data: BriefData) -> str:
 def render_markdown(data: BriefData, run_date: date | None = None) -> str:
     run_date = run_date or date.today()
     market_table = _table(
-        ["Asset", "Close", "Prior", "Change", "Reading"],
-        [[r.asset, r.close, r.prior, r.change, r.so_what] for r in data.market_rows],
+        ["Asset", "Close", "Prior", "Change", "As of", "Status", "Reading"],
+        [[r.asset, r.close, r.prior, r.change, r.as_of, r.status, r.so_what] for r in data.market_rows],
     )
     calendar_table = _table(
-        ["Session", "Time", "Event", "Consensus", "Why it matters"],
-        [[e.session, e.time, e.event, e.consensus, e.why_it_matters] for e in data.calendar],
+        ["Session", "Event date", "Time", "Event", "Consensus", "Status", "Why it matters"],
+        [[e.session, e.event_date, e.time, e.event, e.consensus, e.status, e.why_it_matters] for e in data.calendar],
     )
     three = _render_three_things_markdown(data.three_things)
     themes = "\n\n".join(
         (
             f"### {item.title}\n"
-            f"Source: [{item.source}]({item.link})\n\n"
+            f"Source: [{item.source}]({item.link}) | Source depth: {item.source_depth}\n\n"
             f"{item.summary}\n\n"
             f"{item.book_impact}"
         )

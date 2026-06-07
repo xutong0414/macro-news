@@ -318,3 +318,28 @@ Changes:
 Outcome: timed live dry run `20260607T011658Z` passed with prompt version `gemini_narrative_v24`, all 10 market rows refreshed from live public sources, cached Fair Economy calendar rows after a 429 live refresh, two live Theme Radar selections, no scaffold market fallback rows, runtime `27.44s`, 6,134 input tokens, 1,469 output tokens, 7,605 total tokens, and estimated Gemini cost $0.001201.
 
 Operational note: successful runs can be under one minute, but provider/source failures and validation repair attempts during this pass took roughly 30-80 seconds. A scheduled production send should start at least 10-15 minutes before the target inbox time.
+
+## 2026-06-07 - Freshness Labels, Portfolio Input, And Feedback Rules
+
+Decision: add row-level freshness/status labels, replace generated live-mode fallback values with blanks, move portfolio assumptions into a CSV input, add feedback templates, and disclose Theme Radar source depth.
+
+Reason: the user flagged weekend/holiday ambiguity, portfolio extensibility, feedback-driven relevance, and source-depth transparency as the next hallucination-control layer.
+
+This decision supersedes earlier live-mode sample-fallback decisions for market rows, calendar rows, and Theme Radar source items. Sample mode remains available for framework demos, but live mode should not silently use scaffold/generated content when verified source content is unavailable.
+
+Changes:
+
+- Market dashboard now renders `As of` and `Status` columns.
+- Market status rule: `Live` means refreshed from a public source for the run date or query time; `*` means the live source's latest valid date is older than the run date, usually because of weekend, holiday, or publication lag; `†` means cached real-source data was used after a live refresh failed.
+- No generated market fallback rule: in live mode, if an asset has neither live nor cached real data, close/prior/change/as-of/status/reading cells are left blank rather than filled with scaffold/sample values.
+- Calendar now renders `Event date` and `Status` columns with the same no-color convention.
+- No generated calendar fallback rule: in live mode, if neither live nor cached real calendar data exists, the calendar table is left blank rather than filled with scaffold/sample events.
+- Portfolio assumptions now come from `inputs/portfolio/positions.csv` by default. Each row is an effective-date update; if no row is entered for a run date, the latest prior row for that asset carries forward.
+- Feedback templates now live under `inputs/feedback/`; the intended process is a simple 1-5 rating plus action (`keep`, `deprioritize`, `drop`, `rewrite`) and short comment.
+- Theme Radar output now labels source depth, such as `RSS excerpt` or `RSS content field`, so the reader can distinguish feed-level synthesis from full-article reading.
+- Theme Radar live mode leaves the section blank rather than using scaffold/sample source items if no verified source candidate is available.
+- Gemini prompt/validation advanced to `gemini_narrative_v32` after live-output inspection added guardrails against change-at-price wording, unsupported spread narrowing/widening language, and brittle Theme Radar generic-opener failures.
+
+Tradeoff: the brief may show blank cells or cached/calendar caveats more visibly, but that is preferable to silently generating unsupported values.
+
+Outcome: timed live dry run `20260607T030050Z` passed with prompt version `gemini_narrative_v32`, 5 live market rows plus 5 cached real-source market rows after Yahoo SSL handshake timeouts, no scaffold fallback rows, Sunday/older source dates labeled with `*` or cached rows labeled with `†`, live Fair Economy calendar rows, two live Theme Radar selections with `RSS excerpt` source-depth labels, portfolio assumptions loaded from `inputs/portfolio/positions.csv`, runtime `126.03s`, 11,813 input tokens, 2,437 output tokens, 14,250 total tokens, and estimated Gemini cost $0.0021561.

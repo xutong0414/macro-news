@@ -10,7 +10,7 @@ from .config import Settings
 from .costing import TokenUsage, estimate_llm_cost_usd
 from .sample_data import BriefData, MarketRow, ThemeItem
 
-PROMPT_VERSION = "gemini_narrative_v24"
+PROMPT_VERSION = "gemini_narrative_v32"
 
 
 @dataclass(frozen=True)
@@ -37,6 +37,58 @@ def _require_word_max(label: str, text: str, maximum: int) -> None:
     count = word_count(text)
     if count > maximum:
         raise ValueError(f"{label} must be <= {maximum} words; got {count}")
+
+
+def _trim_words(text: str, maximum: int) -> str:
+    words = re.findall(r"\b\w+(?:'\w+)?\b|[^\w\s]", text)
+    word_seen = 0
+    kept: list[str] = []
+    for token in words:
+        if re.match(r"\b\w", token):
+            word_seen += 1
+        if word_seen > maximum:
+            break
+        kept.append(token)
+    trimmed = " ".join(kept)
+    trimmed = re.sub(r"\s+([.,;:!?])", r"\1", trimmed).strip()
+    return trimmed.rstrip(" ,;:") + "." if trimmed and trimmed[-1] not in ".!?" else trimmed
+
+
+def _trim_to_sentence_boundary(text: str, maximum: int) -> str:
+    if word_count(text) <= maximum:
+        return text.strip()
+    sentences = [sentence.strip() for sentence in re.split(r"(?<=[.!?])\s+", text) if sentence.strip()]
+    kept: list[str] = []
+    for sentence in sentences:
+        candidate = " ".join([*kept, sentence]).strip()
+        if word_count(candidate) > maximum:
+            break
+        kept.append(sentence)
+    if kept:
+        return " ".join(kept)
+    return _trim_words(text, maximum)
+
+
+def _trim_three_thing(item: str, maximum: int = 80) -> str:
+    if word_count(item) <= maximum:
+        return _normalize_market_text_spacing(item)
+    match = re.search(r"\bSo what:\s*", item, flags=re.IGNORECASE)
+    if not match:
+        return _normalize_market_text_spacing(_trim_to_sentence_boundary(item, maximum))
+    main = item[: match.start()].strip()
+    implication = item[match.end() :].strip()
+    implication_limit = min(24, max(12, maximum // 3))
+    trimmed_implication = _trim_to_sentence_boundary(implication, implication_limit)
+    so_what_words = word_count(f"So what: {trimmed_implication}")
+    main_limit = max(20, maximum - so_what_words)
+    return _normalize_market_text_spacing(f"{_trim_to_sentence_boundary(main, main_limit)} So what: {trimmed_implication}")
+
+
+def _normalize_market_text_spacing(text: str) -> str:
+    normalized = re.sub(r"\b(USD|EUR)\s*/\s*(JPY|USD)\b", r"\1/\2", text)
+    normalized = re.sub(r"(?<=\d)\.\s+(?=\d)", ".", normalized)
+    normalized = re.sub(r"(?<=\d)\s+%", "%", normalized)
+    return normalized
 
 
 def _extract_json(text: str) -> dict:
@@ -74,6 +126,12 @@ def _strip_theme_source_mechanics(summary: str) -> str:
     )
     kept = [sentence for sentence in sentences if not any(fragment in sentence.lower() for fragment in banned_fragments)]
     return " ".join(kept).strip()
+
+
+def _rewrite_common_theme_openers(summary: str) -> str:
+    rewritten = re.sub(r"\bthis article explores\b", "This article shows", summary, flags=re.IGNORECASE)
+    rewritten = re.sub(r"\bthis piece explores\b", "This piece argues", rewritten, flags=re.IGNORECASE)
+    return rewritten
 
 
 def _reject_generic_theme_language(summary: str, idx: int) -> None:
@@ -124,13 +182,20 @@ def _reject_unsupported_market_claims(text: str, label: str) -> None:
         "narrow the us-japan",
         "narrow the yield spread",
         "narrow the spread",
+        "narrows the spread",
+        "narrowing the spread",
         "us-japan spread",
+        "widen the spread",
+        "widens the spread",
+        "widening the spread",
         "opened softer",
         "opened lower",
         "opened firmer",
         "opened higher",
         "real rates",
         "real-rate",
+        "change flat at",
+        "changed flat at",
         "safe-haven",
         "crowded positioning",
         "yen shorts",
@@ -188,13 +253,8 @@ def _nearby_change_numbers(text: str, alias: str, kind: str) -> list[float]:
     )
     values: list[float] = []
     after_pattern = re.compile(rf"{alias_pattern}(?P<between>.{{0,35}}?){number_pattern}", re.IGNORECASE)
-    before_pattern = re.compile(rf"{number_pattern}(?P<between>.{{0,35}}?){alias_pattern}(?P<after>.{{0,25}})", re.IGNORECASE)
     for match in after_pattern.finditer(text):
         if movement_pattern.search(match.group("between").lower()):
-            values.append(abs(float(match.group("num"))))
-    for match in before_pattern.finditer(text):
-        bridge = f"{match.group('between')} {match.group('after')}".lower()
-        if movement_pattern.search(bridge):
             values.append(abs(float(match.group("num"))))
     return values
 
@@ -242,6 +302,7 @@ def build_narrative_prompt(data: BriefData) -> str:
         "Do not say the US-Japan spread narrowed or widened unless the facts provide a calculated spread; mention the US and Japan yield moves separately.\n"
         "Do not say markets opened higher/lower/softer/firmer unless the facts explicitly provide opening data; use closed lower, traded lower, or were softer.\n"
         "Do not mention real rates unless the facts provide real-yield data; use US yields or rates instead.\n"
+        "Do not describe a percentage change as being 'at' a price; say the asset closed at the price and changed by the dashboard Change value.\n"
         "Do not mention JSON field names, charts, figures, prompts, or source mechanics in the brief; describe the underlying market risk directly.\n"
         "Do not use record-high or historical-extreme language unless the facts explicitly provide that history; use 'elevated' if that is all the facts support.\n"
         "Keep the tone concise, investment-oriented, and opinionated.\n"
@@ -262,7 +323,7 @@ def build_narrative_prompt(data: BriefData) -> str:
         '  "contrarian_corner": "string"\n'
         "}\n\n"
         "Constraints:\n"
-        "- Each item in three_things must be 80 words or fewer and include a clear 'So what:' clause tied to the assumed book.\n"
+        "- Each item in three_things should target 70 words or fewer and must be 80 words or fewer; include a clear 'So what:' clause tied to the assumed book.\n"
         "- The first item in three_things must be the USD/JPY or intervention-risk item.\n"
         "- theme_radar must contain 1-3 items and reuse the provided title, source, and link values.\n"
         "- Each theme_radar summary must be 45-100 words, start with the thesis directly, and explain the author's thesis and evidence without generic openers like 'this piece examines', 'this piece explores', 'this article explores', 'this analysis explores', or 'this analysis examines'.\n"
@@ -270,7 +331,7 @@ def build_narrative_prompt(data: BriefData) -> str:
         "- Do not use the word 'posits'. Use 'argues', 'shows', or direct wording instead.\n"
         "- Each book_impact line must start with 'What this means for our book:' and must be specific to that source.\n"
         "- Do not repeat the same book_impact line across Theme Radar items.\n"
-        "- contrarian_corner must be 50-100 words, name a simple read or consensus narrative based only on the facts, and include one concrete trigger that would challenge it.\n\n"
+        "- contrarian_corner must be 50-100 words, name a simple read or consensus narrative based only on the facts, include one concrete trigger that would challenge it, and avoid exact market move numbers unless essential.\n\n"
         f"Facts:\n{json.dumps(facts, indent=2)}"
     )
 
@@ -281,7 +342,7 @@ def parse_narrative_response(text: str, base_data: BriefData) -> BriefData:
     three_things = payload.get("three_things")
     if not isinstance(three_things, list) or len(three_things) != 3:
         raise ValueError("Gemini response must include exactly three items in three_things")
-    three_things = [str(item).strip() for item in three_things]
+    three_things = [_trim_three_thing(_normalize_market_text_spacing(str(item).strip())) for item in three_things]
     _require_first_item_supports_chart(three_things)
     for idx, item in enumerate(three_things, 1):
         if "so what:" not in item.lower():
@@ -291,7 +352,7 @@ def parse_narrative_response(text: str, base_data: BriefData) -> BriefData:
         _reject_unsupported_market_claims(item, f"three_things item {idx}")
         _reject_mismatched_market_numbers(item, base_data.market_rows, f"three_things item {idx}")
 
-    allowed_theme_meta = {(item.title, item.source, item.link) for item in base_data.theme_radar}
+    allowed_theme_meta = {(item.title, item.source, item.link): item for item in base_data.theme_radar}
     theme_payload = payload.get("theme_radar")
     if not isinstance(theme_payload, list) or not 1 <= len(theme_payload) <= 3:
         raise ValueError("Gemini response must include 1-3 theme_radar items")
@@ -304,10 +365,15 @@ def parse_narrative_response(text: str, base_data: BriefData) -> BriefData:
         title = str(item.get("title", "")).strip()
         source = str(item.get("source", "")).strip()
         link = str(item.get("link", "")).strip()
-        summary = _strip_theme_source_mechanics(_strip_embedded_theme_impact(str(item.get("summary", "")).strip()))
-        book_impact = _normalize_book_impact(str(item.get("book_impact", "")))
+        summary = _normalize_market_text_spacing(
+            _rewrite_common_theme_openers(
+                _strip_theme_source_mechanics(_strip_embedded_theme_impact(str(item.get("summary", "")).strip()))
+            )
+        )
+        book_impact = _normalize_book_impact(_normalize_market_text_spacing(str(item.get("book_impact", ""))))
 
-        if (title, source, link) not in allowed_theme_meta:
+        base_theme_item = allowed_theme_meta.get((title, source, link))
+        if base_theme_item is None:
             raise ValueError(f"theme_radar item {idx} must reuse an existing title, source, and link")
         _require_word_range(f"theme_radar summary {idx}", summary, 45, 100)
         _reject_generic_theme_language(summary, idx)
@@ -322,10 +388,11 @@ def parse_narrative_response(text: str, base_data: BriefData) -> BriefData:
                 link=link,
                 summary=summary,
                 book_impact=book_impact,
+                source_depth=base_theme_item.source_depth,
             )
         )
 
-    contrarian_corner = str(payload.get("contrarian_corner", "")).strip()
+    contrarian_corner = _normalize_market_text_spacing(str(payload.get("contrarian_corner", "")).strip())
     _require_word_range("contrarian_corner", contrarian_corner, 50, 100)
     _reject_portfolio_logic_errors(contrarian_corner, "contrarian_corner")
     _reject_unsupported_market_claims(contrarian_corner, "contrarian_corner")
@@ -404,6 +471,7 @@ def synthesize_with_gemini(settings: Settings, data: BriefData) -> SynthesisResu
                 f"{prompt}\n\n"
                 "Validation repair instruction:\n"
                 f"The previous JSON failed validation because: {exc}.\n"
+                " Keep every three_things item at 70 words or fewer so it safely passes the 80-word limit."
                 "Return the full JSON object again. Be especially careful that every theme_radar summary is 45-100 words."
                 " Also ensure Theme Radar book_impact lines are source-specific and not repeated."
                 " Do not mention selector mechanics, ranking, matching keywords, or why a Theme Radar source was picked."
@@ -414,8 +482,10 @@ def synthesize_with_gemini(settings: Settings, data: BriefData) -> SynthesisResu
                 " Do not use record-high or historical-extreme language; use 'elevated' if the facts only show a high current level."
                 " Do not say markets opened higher/lower/softer/firmer unless the facts explicitly provide opening data."
                 " Do not mention real rates unless the facts provide real-yield data."
+                " Do not describe an asset's change as being at a price."
                 " Do not say the US-Japan spread narrowed or widened unless the facts provide a calculated spread."
                 " Do not frame dollar strength itself as a risk to long USD/JPY; only intervention or yen reversal are risks."
+                " In contrarian_corner, avoid exact market move numbers; focus on the competing narrative and the trigger."
             )
 
     if generated_data is None:

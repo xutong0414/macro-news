@@ -4,8 +4,9 @@ import csv
 import io
 import json
 import math
+import re
 from dataclasses import asdict, dataclass, replace
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable
 from zoneinfo import ZoneInfo
@@ -27,6 +28,7 @@ class LiveQuote:
     change_style: str
     source: str
     so_what: str
+    as_of: str
     series: tuple[tuple[str, float], ...] = ()
 
 
@@ -174,14 +176,30 @@ def _why_it_matters(quote: LiveQuote) -> str:
     return quote.so_what
 
 
-def quote_to_row(quote: LiveQuote) -> MarketRow:
+def _status_for_quote(quote: LiveQuote, run_date: date, *, cached: bool = False) -> str:
+    if cached:
+        return "†"
+    as_of_date = quote.as_of[:10]
+    if as_of_date and as_of_date != run_date.isoformat():
+        return "*"
+    return "Live"
+
+
+def quote_to_row(quote: LiveQuote, run_date: date, *, cached: bool = False) -> MarketRow:
+    as_of = quote.as_of or ("cached date unknown" if cached else "")
     return MarketRow(
         asset=quote.asset,
         close=_format_value(quote.close, quote.unit, quote.decimals),
         prior=_format_value(quote.prior, quote.unit, quote.decimals),
         change=_format_change(quote.close, quote.prior, quote.change_style),
         so_what=_why_it_matters(quote),
+        as_of=as_of,
+        status=_status_for_quote(quote, run_date, cached=cached),
     )
+
+
+def blank_market_row(asset: str) -> MarketRow:
+    return MarketRow(asset=asset, close="", prior="", change="", so_what="", as_of="", status="")
 
 
 def fetch_yahoo_chart(client: httpx.Client, spec: YahooSpec) -> LiveQuote:
@@ -204,19 +222,26 @@ def fetch_yahoo_chart(client: httpx.Client, spec: YahooSpec) -> LiveQuote:
     result = payload.get("chart", {}).get("result", [])
     if not result:
         raise ValueError("missing chart result")
+    timestamps = result[0].get("timestamp", [])
     closes = result[0].get("indicators", {}).get("quote", [{}])[0].get("close", [])
-    valid_closes = [value for value in (_safe_float(item) for item in closes) if value is not None]
-    if len(valid_closes) < 2:
+    dated_closes = [
+        (int(timestamp), value)
+        for timestamp, value in zip(timestamps, (_safe_float(item) for item in closes), strict=False)
+        if value is not None
+    ]
+    if len(dated_closes) < 2:
         raise ValueError("not enough close values")
+    as_of = datetime.fromtimestamp(dated_closes[-1][0], timezone.utc).date().isoformat()
     return LiveQuote(
         asset=spec.asset,
-        close=valid_closes[-1],
-        prior=valid_closes[-2],
+        close=dated_closes[-1][1],
+        prior=dated_closes[-2][1],
         unit=spec.unit,
         decimals=spec.decimals,
         change_style=spec.change_style,
         source=spec.source,
         so_what=spec.so_what,
+        as_of=as_of,
     )
 
 
@@ -243,6 +268,7 @@ def _read_market_cache(cache_path: Path) -> dict[str, LiveQuote]:
                 change_style=str(item["change_style"]),
                 source=str(item["source"]),
                 so_what=str(item["so_what"]),
+                as_of=str(item.get("as_of", "")),
                 series=tuple((str(label), float(value)) for label, value in item.get("series", [])),
             )
         except (KeyError, TypeError, ValueError):
@@ -295,8 +321,20 @@ def fetch_fx_reference(
         change_style="pct",
         source=source,
         so_what=so_what,
+        as_of=dated_values[-1][0],
         series=tuple((day[-5:], value) for day, value in dated_values[-5:]) if include_series else (),
     )
+
+
+def _parse_japan_mof_date(value: str) -> str:
+    text = value.strip()
+    match = re.match(r"R(\d+)\.(\d+)\.(\d+)", text, flags=re.IGNORECASE)
+    if not match:
+        return text
+    year = 2018 + int(match.group(1))
+    month = int(match.group(2))
+    day = int(match.group(3))
+    return date(year, month, day).isoformat()
 
 
 def fetch_eurusd(client: httpx.Client, run_date: date) -> LiveQuote:
@@ -331,24 +369,25 @@ def fetch_japan_10y_mof(client: httpx.Client) -> LiveQuote:
     response.raise_for_status()
     text = response.content.decode("cp932")
     rows = csv.reader(io.StringIO(text))
-    values: list[float] = []
+    dated_values: list[tuple[str, float]] = []
     for row in rows:
         if len(row) <= 10:
             continue
         value = _safe_float(row[10])
         if value is not None:
-            values.append(value)
-    if len(values) < 2:
+            dated_values.append((_parse_japan_mof_date(row[0]), value))
+    if len(dated_values) < 2:
         raise ValueError("not enough Japan 10Y yield values")
     return LiveQuote(
         asset="Japan 10Y yield",
-        close=values[-1],
-        prior=values[-2],
+        close=dated_values[-1][1],
+        prior=dated_values[-2][1],
         unit="%",
         decimals=3,
         change_style="bp",
         source="mof_japan:jgbcm_10y",
         so_what="Japan rates are a direct risk factor for the assumed long USD/JPY.",
+        as_of=dated_values[-1][0],
     )
 
 
@@ -373,6 +412,7 @@ def fetch_btc(client: httpx.Client) -> LiveQuote:
         change_style="pct",
         source="coingecko:bitcoin",
         so_what="Crypto risk appetite is a useful cross-check, not core to the assumed book.",
+        as_of=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     )
 
 
@@ -431,7 +471,7 @@ def replace_market_rows_with_live(
             except Exception as exc:  # noqa: BLE001 - logged fallback is intentional here.
                 cached_quote = cached_quotes.get(asset)
                 if cached_quote is not None:
-                    live_rows[asset] = quote_to_row(cached_quote)
+                    live_rows[asset] = quote_to_row(cached_quote, run_date, cached=True)
                     cached_assets.append(asset)
                     sources.append(f"{cached_quote.source}:cache")
                     if cached_quote.asset == "USD/JPY" and cached_quote.series:
@@ -441,7 +481,7 @@ def replace_market_rows_with_live(
                     fallback_assets.append(asset)
                     errors[asset] = str(exc)
                 continue
-            live_rows[asset] = quote_to_row(quote)
+            live_rows[asset] = quote_to_row(quote, run_date)
             live_assets.append(asset)
             sources.append(quote.source)
             cache_updates[asset] = quote
@@ -458,7 +498,7 @@ def replace_market_rows_with_live(
         elif asset in fallback_by_asset:
             if asset not in fallback_assets:
                 fallback_assets.append(asset)
-            merged_rows.append(fallback_by_asset[asset])
+            merged_rows.append(blank_market_row(asset))
 
     for row in data.market_rows:
         if row.asset not in target_order:
@@ -470,7 +510,7 @@ def replace_market_rows_with_live(
         if cached_assets:
             status_parts.append(f"cached real-source rows used for {', '.join(cached_assets)}")
         if fallback_assets:
-            status_parts.append(f"scaffold fallback used for {', '.join(fallback_assets)}")
+            status_parts.append(f"no live/cached real row for {', '.join(fallback_assets)}; cells left blank")
         else:
             status_parts.append("no scaffold fallback rows used")
         market_note = f"Market: {'; '.join(status_parts)}."
@@ -479,7 +519,7 @@ def replace_market_rows_with_live(
 
     assumptions = [
         *data.assumptions,
-        "Market dashboard uses public live sources where available, cached real-source rows for temporary outages, and scaffold fallback only when neither is available.",
+        "Market dashboard uses public live sources where available, cached real-source rows for temporary outages, and blank cells rather than scaffold values when neither is available.",
     ]
     try:
         zone = ZoneInfo(timezone_name)
@@ -495,6 +535,7 @@ def replace_market_rows_with_live(
             "BTC uses query-time price vs rolling 24-hour change."
         ),
         "Additional information about timing: around 07:00-08:00 HKT, US/EU cash markets are closed from prior sessions, while FX and BTC are continuous and Asia may already be open.",
+        "Status basis: Live means refreshed from a public source for the run date or query time; * means the live source's latest valid date is older than the run date, usually because of weekend, holiday, or publication lag; † means cached real-source data was used after a live refresh failed. If no live or cached real row exists, value cells are left blank rather than filled with scaffold/sample numbers.",
         (
             "Sources: [Yahoo Finance chart endpoint](https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC) for equities/US rates/DXY/gold/oil, "
             "[Japan MOF JGB yield CSV](https://www.mof.go.jp/jgbs/reference/interest_rate/jgbcm.csv) for Japan 10Y, "

@@ -1,0 +1,4 @@
+effective_date,asset,position,exposure,quantity,unit,notes
+2026-06-01,USD/JPY,long,high,,,Assignment PDF assumption
+2026-06-01,Gold,overweight,medium,,,Assignment PDF assumption
+2026-06-01,EM debt basket,exposed,medium,,,Assignment PDF assumption

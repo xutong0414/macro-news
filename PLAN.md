@@ -2,15 +2,17 @@
 
 ## Current Stage
 
-Sunday-morning brief quality pass is complete. The latest verified dry run (`20260607T011658Z`) renders the dashboard with a `Reading` column, all 10 market rows from live public sources, cached real-source calendar rows after a Fair Economy 429, live Theme Radar selections, prompt version `gemini_narrative_v24`, and no scaffold market fallback rows.
+Freshness/status input pass is implemented and verified. The project now renders row-level `As of`/`Status` fields for the dashboard, event-date/status fields for the calendar, source-depth labels for Theme Radar, and portfolio assumptions from `inputs/portfolio/positions.csv`.
 
-Measured runtime for that successful run was `27.44s` wall-clock, with 6,134 input tokens, 1,469 output tokens, 7,605 total tokens, and estimated Gemini cost of $0.001201.
+The latest verified dry run (`20260607T030050Z`) rendered the dashboard with a `Reading` column, row-level freshness labels, 5 live market rows plus 5 cached real-source rows after Yahoo SSL handshakes timed out, event-date/status calendar labels from the live Fair Economy weekly feed, live Theme Radar selections with source-depth labels, prompt version `gemini_narrative_v32`, and no generated scaffold rows in live market/calendar/theme fallback paths.
+
+Measured runtime for that successful run was `126.03s` wall-clock, with 11,813 input tokens, 2,437 output tokens, 14,250 total tokens, and estimated Gemini cost of $0.0021561.
 
 ## Whose Turn
 
-Agent turn: checkpoint saved; wait for user review of `outputs/latest/brief.html` and decide the next revision focus.
+Agent turn: commit and push the verified row-level freshness/status, portfolio-input, feedback-template, source-depth, and no-generated-data guardrail modifications.
 
-User turn: review the latest brief output, especially the dashboard, Three Things, Theme Radar tone, and whether the Sunday calendar/cache note is acceptable for the assignment story.
+User turn: after verification, review the latest `outputs/latest/brief.html` for the new no-color status labels and input assumptions.
 
 ## Locked Setup Choices
 
@@ -29,11 +31,13 @@ User turn: review the latest brief output, especially the dashboard, Three Thing
 - First run mode: sample data only.
 - Private process notes: keep in ignored `.worklog/`, then delete before final handoff.
 - LLM role: draft narrative sections only; code owns facts, tables, chart, validation, and logging.
-- Market data role: fetch live dashboard rows where available; use cached real-source rows for temporary outages; fall back to sample rows only when neither live nor cached data is available.
-- Calendar data role: fetch live economic-calendar rows where available; target Asia/Europe/US session coverage; use ignored cache and sample fallback if the public feed fails or rate-limits.
-- Theme Radar role: fetch curated RSS sources, rank them against the assumed book/themes, and let Gemini synthesize only selected source facts.
+- Market data role: fetch live dashboard rows where available; use cached real-source rows for temporary outages; leave live-mode value cells blank rather than using scaffold/sample rows when neither live nor cached data is available.
+- Calendar data role: fetch live economic-calendar rows where available; target Asia/Europe/US session coverage; use ignored cache after rate limits; leave live-mode calendar output blank rather than using scaffold rows when no verified calendar data exists.
+- Theme Radar role: fetch curated RSS sources, rank them against the assumed book/themes, label source depth (`RSS excerpt` or `RSS content field`), and let Gemini synthesize only selected source facts; in live mode, leave Theme Radar blank rather than using scaffold items when no verified candidates exist.
+- Portfolio input role: read `inputs/portfolio/positions.csv`; each row is an effective-date update, and the latest prior row carries forward until changed or closed.
+- Feedback input role: keep the human-rating questionnaire in `inputs/feedback/`; feedback is local preference memory for future ranking/prompt rules, not model fine-tuning.
 - LLM validation role: retry up to four attempts when Gemini output fails strict JSON, word-limit, market-number, or portfolio-logic validation; retry transient Gemini request failures instead of failing immediately.
-- Brief quality role: render source-status notes, keep live/cache/scaffold fallback explicit, use Gemini prompt v24, validate market-number consistency, reject unsupported market-positioning language in narrative sections, and strip Theme Radar source-mechanics text before rendering.
+- Brief quality role: render source-status notes, keep live/cache/blank fallback explicit, use Gemini prompt v32, validate market-number consistency, reject unsupported market-positioning language in narrative sections, and strip or rewrite Theme Radar source-mechanics/style text before rendering.
 - Dashboard note role: document dashboard scope, extraction time, close/prior basis, additional timing information, Frankfurter FX reference-rate convention, BTC rolling 24-hour convention, and linked data-source basis in the brief itself.
 - Three Things link role: render compact item sub-titles, smaller `So what:` support lines, and deterministic Yahoo Finance topic-search links; the LLM does not invent those links.
 - Chart role: use USD/JPY because it is the assumed FX position and the most direct visual support for the intervention-risk item; render the note as bold `Reading:` rather than `Caption:`.
@@ -41,7 +45,7 @@ User turn: review the latest brief output, especially the dashboard, Three Thing
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. Review the v24 output for evaluator-facing tone and decide whether one more content polish round is needed.
+2. Review latest `outputs/latest/brief.html` for no-color status labels and blank-if-unavailable rules.
 3. Add a second calendar provider if the free weekly feed remains thin or stale outside weekday windows.
 4. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.
 5. Generate final `memo.pdf` from `memo.md`.
@@ -50,8 +54,8 @@ User turn: review the latest brief output, especially the dashboard, Three Thing
 
 - GitHub scheduled events created zero runs in short-window tests; manual GitHub runs, email sending, and MacBook `launchd` scheduled sending with inbox receipt are confirmed.
 - A permanent MacBook schedule requires the Mac to be on and awake enough at the scheduled time.
-- Free public calendar feed can rate-limit or be thin outside market mornings; local cache and sample fallback are implemented.
-- Some free RSS feeds can time out; source-level fallback is implemented.
+- Free public calendar feed can rate-limit or be thin outside market mornings; local cache is implemented, and live mode leaves the calendar blank rather than using scaffold events when no verified rows exist.
+- Some free RSS feeds can time out; live mode logs feed-level errors and leaves Theme Radar blank if no verified source candidates remain.
 
 ## Acceptance Criteria For Setup
 

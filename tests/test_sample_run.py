@@ -9,6 +9,7 @@ from macro_news.config import Settings, normalize_timezone
 from macro_news.costing import TokenUsage
 from macro_news.llm import SynthesisResult, parse_narrative_response
 from macro_news.market_data import replace_market_rows_with_live
+from macro_news.portfolio import active_positions, apply_portfolio_assumptions, read_position_entries
 from macro_news.render import render_html, render_markdown
 import macro_news.runner as runner_module
 from macro_news.calendar_data import replace_calendar_with_live
@@ -32,6 +33,32 @@ def test_timezone_aliases_normalize() -> None:
     assert normalize_timezone("Asia/Shanghai") == "Asia/Shanghai"
 
 
+def test_portfolio_positions_carry_forward(tmp_path) -> None:
+    path = tmp_path / "positions.csv"
+    path.write_text(
+        "\n".join(
+            [
+                "effective_date,asset,position,exposure,quantity,unit,notes",
+                "2026-06-01,USD/JPY,long,high,,,Assignment assumption",
+                "2026-06-01,Gold,overweight,medium,,,Assignment assumption",
+                "2026-06-10,Gold,neutral,low,,,Risk reduced",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    entries = read_position_entries(path)
+    active = active_positions(entries, date(2026, 6, 12))
+    active_by_asset = {entry.asset: entry for entry in active}
+    data = apply_portfolio_assumptions(build_sample_brief_data(), run_date=date(2026, 6, 12), path=path)
+
+    assert active_by_asset["USD/JPY"].position == "long"
+    assert active_by_asset["Gold"].position == "neutral"
+    assert any("USD/JPY: long" in item for item in data.assumptions)
+    assert any("Gold: neutral" in item for item in data.assumptions)
+    assert any("carry-forward rule" in item.lower() for item in data.assumptions)
+
+
 def test_sample_brief_contains_required_sections() -> None:
     brief = render_markdown(build_sample_brief_data())
     required = [
@@ -45,14 +72,15 @@ def test_sample_brief_contains_required_sections() -> None:
     for section in required:
         assert section in brief
     assert "Dashboard notes:" in brief
-    assert "| Asset | Close | Prior | Change | Reading |" in brief
-    assert "| Session | Time | Event | Consensus | Why it matters |" in brief
+    assert "| Asset | Close | Prior | Change | As of | Status | Reading |" in brief
+    assert "| Session | Event date | Time | Event | Consensus | Status | Why it matters |" in brief
     assert "| Asset | Close | Prior | Change | So what |" not in brief
     assert "### 1. USD/JPY Intervention Risk" in brief
     assert "momentum.\n\n**So what:** keep the FX view" in brief
     assert "**Read more:** [Yahoo Finance](https://finance.yahoo.com/search?p=USD+JPY+Japan+intervention+yield+spread)" in brief
     assert "![USD/JPY in Five Days](chart.png)" in brief
     assert "**Reading:** This chart supports the first thing that matters today (see above)." in brief
+    assert "Source depth: Sample scaffold" in brief
     assert "Caption:" not in brief
     assert "EUR/USD" in brief
     assert "Germany 10Y yield" not in brief
@@ -71,7 +99,7 @@ def test_three_things_japan_yield_item_gets_rates_title() -> None:
         build_sample_brief_data(),
         three_things=[
             "USD/JPY is near the intervention zone after a large rise. So what: keep the long USD/JPY risk tightly monitored.",
-            "US 10Y yields rose while Japan 10Y yields also increased and DXY gained. So what: EM debt and gold both face pressure from rates and dollar strength.",
+            "US 10Y yields rose while Japan 10Y yields also increased and DXY gained. So what: EM debt faces pressure from rates and dollar strength.",
             "Equities are softer and oil is lower. So what: treat riskier exposures cautiously.",
         ],
     )
@@ -180,6 +208,43 @@ def test_parse_narrative_response_requires_first_item_to_support_chart() -> None
         assert "chart-support item" in str(exc)
     else:
         raise AssertionError("Expected first-item chart-support validation to fail")
+
+
+def test_parse_narrative_response_trims_long_three_things_item() -> None:
+    base = build_sample_brief_data()
+    long_item = (
+        "USD / JPY is near the intervention zone after a large rise, and the market discussion around the pair is now focused on "
+        "whether officials become more uncomfortable with the level, pace, and persistence of yen weakness, while US yields and "
+        "Japan yields both remain important background signals after the US 10Y moved to 4. 54 % and should be monitored carefully through the session. "
+        "So what: keep the long USD/JPY risk tightly monitored because a sudden official warning or intervention headline could reverse gains quickly."
+    )
+    response = f"""
+    {{
+      "three_things": [
+        {json.dumps(long_item)},
+        "WTI oil rose 1.7%, adding another inflation signal to the morning tape. So what: EM debt exposure should be treated carefully.",
+        "Gold is lower as rates rise. So what: the gold overweight needs tighter risk monitoring."
+      ],
+      "theme_radar": [
+        {{
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }}
+      ],
+      "contrarian_corner": "The simple read is that USD/JPY can keep rising while US yields stay high and the dollar is firm. A trigger that would challenge this view is a direct warning from Japanese officials that forces investors to reassess yen-reversal risk and reduce exposure before the next policy headline."
+    }}
+    """
+
+    generated = parse_narrative_response(response, base)
+
+    assert _word_count(generated.three_things[0]) <= 80
+    assert "So what:" in generated.three_things[0]
+    assert "USD / JPY" not in generated.three_things[0]
+    assert "4. 54 %" not in generated.three_things[0]
+    assert "4.54%" in generated.three_things[0]
 
 
 def test_parse_narrative_response_rejects_japan_yield_carry_error() -> None:
@@ -303,6 +368,36 @@ def test_parse_narrative_response_rejects_mismatched_market_number() -> None:
         raise AssertionError("Expected mismatched market-number validation to fail")
 
 
+def test_parse_narrative_response_rejects_change_at_price_language() -> None:
+    base = build_sample_brief_data()
+    response = """
+    {
+      "three_things": [
+        "USD/JPY is trading near elevated levels, with the pair's change flat at 157.20. So what: keep the long USD/JPY risk tightly monitored.",
+        "WTI oil rose 1.7%, adding another inflation signal to the morning tape. So what: EM debt exposure should be treated carefully.",
+        "Gold is lower as rates rise. So what: the gold overweight needs tighter risk monitoring."
+      ],
+      "theme_radar": [
+        {
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note says duration risk remains central.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }
+      ],
+      "contrarian_corner": "The simple read is that USD/JPY can keep rising while US yields stay high and the dollar is firm. A trigger that would challenge this view is a direct warning from Japanese officials that forces investors to reassess yen-reversal risk and reduce exposure before the next policy headline."
+    }
+    """
+
+    try:
+        parse_narrative_response(response, base)
+    except ValueError as exc:
+        assert "unsupported market-positioning language" in str(exc)
+    else:
+        raise AssertionError("Expected change-at-price validation to fail")
+
+
 def test_parse_narrative_response_rejects_generic_theme_openers() -> None:
     base = build_sample_brief_data()
     response = """
@@ -410,6 +505,7 @@ def test_dry_run_writes_outputs(tmp_path) -> None:
         market_data_mode="sample",
         calendar_mode="sample",
         theme_source_mode="sample",
+        portfolio_path=tmp_path / "positions.csv",
         output_dir=tmp_path / "outputs",
         log_dir=tmp_path / "logs",
     )
@@ -441,6 +537,7 @@ def test_dry_run_with_llm_writes_usage_log(tmp_path, monkeypatch) -> None:
         market_data_mode="sample",
         calendar_mode="sample",
         theme_source_mode="sample",
+        portfolio_path=tmp_path / "positions.csv",
         output_dir=tmp_path / "outputs",
         log_dir=tmp_path / "logs",
     )
@@ -503,6 +600,7 @@ class FakeMarketClient:
                     "chart": {
                         "result": [
                             {
+                                "timestamp": [1780358400, 1780444800],
                                 "indicators": {
                                     "quote": [
                                         {
@@ -545,6 +643,8 @@ def test_live_market_data_replaces_rows_and_logs_fallback(tmp_path) -> None:
     assert "Germany 10Y yield" not in row_by_asset
     assert row_by_asset["S&P 500"].close == "102.00"
     assert row_by_asset["S&P 500"].change == "+2.0%"
+    assert row_by_asset["S&P 500"].as_of
+    assert row_by_asset["S&P 500"].status == "*"
     assert row_by_asset["S&P 500"].so_what == "Risk tone improved; EM beta has some support if rates and the dollar stay contained."
     assert row_by_asset["US 10Y yield"].change == "+5 bp"
     assert row_by_asset["US 10Y yield"].so_what.startswith("Higher Treasury yields pressure gold")
@@ -555,7 +655,11 @@ def test_live_market_data_replaces_rows_and_logs_fallback(tmp_path) -> None:
     assert row_by_asset["EUR/USD"].change == "+0.9%"
     assert row_by_asset["USD/JPY"].close == "159.00"
     assert row_by_asset["BTC"].change == "+2.0%"
-    assert row_by_asset["DXY"].close == "104.8"
+    assert row_by_asset["DXY"].close == ""
+    assert row_by_asset["DXY"].prior == ""
+    assert row_by_asset["DXY"].change == ""
+    assert row_by_asset["DXY"].as_of == ""
+    assert row_by_asset["DXY"].status == ""
     assert "DXY" in result.fallback_assets
     assert "DXY" in result.errors
     assert "frankfurter:EURUSD" in result.sources
@@ -569,6 +673,7 @@ def test_live_market_data_replaces_rows_and_logs_fallback(tmp_path) -> None:
     rendered = render_markdown(result.data)
     assert "Frankfurter FX rows use the latest published daily reference rate" in rendered
     assert "Source Status shows live, cached, or scaffold fallback rows" not in rendered
+    assert "value cells are left blank" in rendered
 
 
 class FailingMarketClient(FakeMarketClient):
@@ -600,6 +705,7 @@ def test_live_market_data_uses_cached_real_rows_before_scaffold(tmp_path) -> Non
     assert first.live_assets
     assert "S&P 500" in second.cached_assets
     assert second_rows["S&P 500"].close == "102.00"
+    assert second_rows["S&P 500"].status == "†"
     assert "S&P 500" not in second.fallback_assets
     assert "DXY" in second.fallback_assets
 
@@ -678,8 +784,13 @@ def test_live_calendar_data_replaces_calendar_rows(tmp_path) -> None:
 
     assert event_by_name["USD Non-Farm Employment Change"].session == "US"
     assert event_by_name["USD Non-Farm Employment Change"].consensus == "85K"
+    assert event_by_name["USD Non-Farm Employment Change"].event_date == "2026-06-06"
+    assert event_by_name["USD Non-Farm Employment Change"].status == "Live"
     assert event_by_name["EUR Core CPI Flash Estimate y/y"].session == "Europe"
+    assert event_by_name["EUR Core CPI Flash Estimate y/y"].status == "Live"
     assert event_by_name["CNY RatingDog Manufacturing PMI"].session == "Asia"
+    assert event_by_name["CNY RatingDog Manufacturing PMI"].event_date == "2026-06-07"
+    assert event_by_name["CNY RatingDog Manufacturing PMI"].status == "*"
     assert "NZD Bank Holiday" not in event_by_name
     assert result.fallback_events == []
     assert "faireconomy:ff_calendar_thisweek" in result.sources
@@ -714,6 +825,8 @@ def test_live_calendar_uses_cache_when_feed_refresh_fails(tmp_path) -> None:
 
     assert result.data.calendar[0].event == "USD ISM Services PMI"
     assert result.data.calendar[0].consensus == "53.7"
+    assert result.data.calendar[0].event_date == "2026-06-06"
+    assert result.data.calendar[0].status == "†"
     assert result.fallback_events == []
     assert "calendar_live_refresh" in result.errors
     assert result.sources == ["faireconomy:ff_calendar_thisweek:cache"]
@@ -737,6 +850,7 @@ def test_dry_run_with_live_calendar_writes_usage_log(tmp_path, monkeypatch) -> N
         market_data_mode="sample",
         calendar_mode="sample",
         theme_source_mode="sample",
+        portfolio_path=tmp_path / "positions.csv",
         output_dir=tmp_path / "outputs",
         log_dir=tmp_path / "logs",
     )
@@ -850,11 +964,12 @@ def test_live_theme_radar_replaces_sample_sources() -> None:
     assert result.candidate_count == 2
     assert "theme_feed:test_fred" in result.sources
     assert "theme_feed:test_liberty" in result.sources
-    assert all(60 <= _word_count(item.summary) <= 100 for item in result.data.theme_radar)
+    assert all(45 <= _word_count(item.summary) <= 100 for item in result.data.theme_radar)
     assert all(item.link.startswith("https://") for item in result.data.theme_radar)
+    assert all(item.source_depth == "RSS excerpt" for item in result.data.theme_radar)
 
 
-def test_live_theme_radar_falls_back_when_sources_fail() -> None:
+def test_live_theme_radar_leaves_section_blank_when_sources_fail() -> None:
     base = build_sample_brief_data()
     result = replace_theme_radar_with_live(
         base,
@@ -862,11 +977,12 @@ def test_live_theme_radar_falls_back_when_sources_fail() -> None:
         sources=_theme_sources(),
     )
 
-    assert result.data.theme_radar == base.theme_radar
+    assert result.data.theme_radar == []
     assert result.fallback_used is True
     assert result.candidate_count == 0
     assert "theme_feed:test_fred" in result.errors
     assert "theme_feed:test_liberty" in result.errors
+    assert any("section left blank" in note for note in result.data.source_notes)
 
 
 def test_dry_run_with_live_theme_radar_writes_usage_log(tmp_path, monkeypatch) -> None:
@@ -887,6 +1003,7 @@ def test_dry_run_with_live_theme_radar_writes_usage_log(tmp_path, monkeypatch) -
         market_data_mode="sample",
         calendar_mode="sample",
         theme_source_mode="sample",
+        portfolio_path=tmp_path / "positions.csv",
         output_dir=tmp_path / "outputs",
         log_dir=tmp_path / "logs",
     )
