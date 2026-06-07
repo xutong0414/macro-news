@@ -15,7 +15,7 @@ For production-style use, run the project from one of these schedulers:
 - Linux workstation or VPS: `cron` or `systemd`
 - Cloud scheduler: a scheduler service that triggers a small server endpoint or a GitHub `workflow_dispatch`
 
-GitHub Actions manual runs are useful and controlled. GitHub scheduled workflows use UTC and can be delayed or skipped, so this repo does not treat GitHub schedules as the dependable delivery mechanism.
+GitHub Actions manual runs are useful and controlled. GitHub scheduled workflows use UTC and can be delayed, skipped, or affected by runner availability, so this repo does not treat GitHub schedules as a stable or trustworthy delivery mechanism for time-sensitive daily email.
 
 ## Command To Schedule
 
@@ -121,6 +121,8 @@ The Mac must be on and awake enough for `launchd` to run the job. For a laptop, 
 
 GitHub schedules use UTC.
 
+Use this option for cloud-run convenience and testing, not as the primary dependable scheduler. For production-style morning delivery, prefer `launchd`, `cron`, `systemd`, a VPS, or a cloud scheduler you control.
+
 Production weekday morning send:
 
 A weekday 08:30 Hong Kong schedule would be:
@@ -149,7 +151,7 @@ on:
     - cron: "36 4 * * *"
 ```
 
-This test schedule is not one-time. It repeats daily until commented or removed. Use GitHub schedules only after accepting that they may be delayed or may not trigger reliably in short test windows. Manual `workflow_dispatch` remains the proven GitHub path.
+This test schedule is not one-time. It repeats daily until commented or removed. Use GitHub schedules only after accepting that they may be delayed, skipped, or not trigger reliably in short test windows. Manual `workflow_dispatch` remains the proven GitHub path.
 
 The send workflow includes disabled production and test schedule templates in `.github/workflows/daily-brief-manual-send.yml`. The `schedule:` lines are commented out so a clone of the repo does not start sending email automatically. To enable GitHub scheduled sending, uncomment only one block after repository secrets are configured and one manual send has succeeded.
 

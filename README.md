@@ -199,7 +199,7 @@ Why this works:
 
 Temporary cron test:
 
-If testing starts at 12:30 HKT and you want one proof run around 12:36 HKT, convert 12:36 HKT to 04:36 UTC, then paste:
+If testing starts at 12:30 HKT and you want one test run around 12:36 HKT, convert 12:36 HKT to 04:36 UTC, then paste:
 
 ```cron
 36 4 * * * cd /ABSOLUTE/PATH/TO/macro_news && /bin/bash scripts/run_daily_brief.sh >> logs/scheduler.out.log 2>> logs/scheduler.err.log
@@ -231,6 +231,8 @@ This repo does not include a Windows Task Scheduler template. The simplest Windo
 
 Use this if you want GitHub to provide the computer power.
 
+Important: GitHub Actions is useful for manual cloud runs, but it is not a stable or fully trustworthy scheduler for a time-sensitive daily email. Scheduled runs can be delayed, skipped, or affected by GitHub runner availability. For dependable weekday morning delivery, use `launchd`, `cron`, `systemd`, a VPS, or a cloud scheduler you control.
+
 Do not run the schedule examples in Terminal. Edit this workflow file:
 
 ```text
@@ -257,7 +259,7 @@ on:
 
 Temporary GitHub schedule test:
 
-If testing starts at 12:30 HKT and you want a proof run around 12:36 HKT, use:
+If testing starts at 12:30 HKT and you want a test run around 12:36 HKT, use:
 
 ```yaml
 on:
@@ -265,7 +267,7 @@ on:
     - cron: "36 4 * * *"
 ```
 
-This test is not one-time. Comment it again after the proof run. GitHub scheduled runs can still be delayed or skipped, so the dependable GitHub path is manual `workflow_dispatch`.
+This test is not one-time. Comment it again after the test run. Treat GitHub schedule as a convenience check, not the primary production scheduler. The dependable GitHub path is manual `workflow_dispatch`.
 
 ## Brief Contents
 

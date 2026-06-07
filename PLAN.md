@@ -23,7 +23,7 @@ Implemented:
 
 ## Latest Verification
 
-Latest pre-push live dry run:
+Latest recorded live dry run:
 
 - Run id: `20260607T132626Z`
 - Mode: live market data, live calendar, live Theme Radar, Gemini narrative
@@ -67,7 +67,7 @@ Before final submission:
 
 1. Push local commits to GitHub.
 2. Decide repository access: public repo or private repo with evaluator/collaborator access.
-3. Review `memo.pdf` once more if desired.
+3. Review `memo.pdf` if required by the evaluator.
 4. Confirm no secrets, caches, logs, generated outputs, or local assignment PDF are tracked by Git.
 
 ## Known Caveats
