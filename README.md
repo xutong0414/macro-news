@@ -1,67 +1,94 @@
 # Daily Macro Brief Agent
 
-Prototype for the case study assignment: a scheduled agent that sends a concise Daily Macro Brief to an email inbox before the market day starts.
+This repo contains a prototype agent for the case-study assignment. It generates a Daily Macro Brief for a macro PM, renders Markdown/HTML plus a chart, and can send the brief by email through Gmail SMTP.
 
-The target reader is a macro PM who wants: what changed overnight, why it matters, and what it means for an assumed book. The project starts local-first with sample data, then adds live market/calendar/content APIs and scheduled delivery.
+The brief answers three practical questions:
 
-## Current Status
+- What changed overnight?
+- Why does it matter for the assumed book?
+- What should the reader watch next?
 
-Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows including Japan 10Y, EUR/USD, and USD/JPY, a top `Updated as of` timestamp, dashboard `As of` labels with compact status markers on asset names, small dashboard/calendar footnotes, dashboard timing/source notes with clickable source links, cached real-source fallback, no generated scaffold values in live market/calendar/theme fallback paths, a longer USD/JPY chart with the latest five observations highlighted and a small source link, live/cached economic-calendar rows with event-date/status labels, calendar status footnotes, and clickable event-source links, live Theme Radar source collection with source-depth labels, factual guardrails for market-number consistency and unsupported narrative claims, grouped assumptions with source links, feedback questionnaire output, portfolio assumptions loaded from `inputs/portfolio/positions.csv`, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
+The LLM is deliberately constrained. Code owns market data, calendar data, charting, source links, validation, logging, and email delivery. Gemini drafts only the narrative sections from structured inputs.
 
-Locked defaults:
+## What You Need
 
-- Delivery: Gmail SMTP first.
-- LLM: Gemini 2.5 Flash-Lite first.
-- DeepSeek: optional provider later.
-- GitHub: after the local scaffold and dry run work.
+- Python 3.11 or newer.
+- Internet access for live market/calendar/RSS sources.
+- A Gemini API key if you want LLM-written narrative sections.
+- A Gmail account with 2-Step Verification and an app password if you want email delivery.
+- An always-on machine, VPS, or scheduler service if you want automatic daily delivery.
 
-The assignment PDF is kept local and is intentionally not committed to git.
+You can run the sample dry run without any secrets.
 
-## Quickstart
+## Install
 
-Run the first sample dry run without secrets:
+Clone the repo, then from the project root:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+```
+
+Run the test suite:
+
+```bash
+PYTHONPATH=src pytest -q
+```
+
+## Configure
+
+Create a local `.env` file:
+
+```bash
+cp .env.example .env
+```
+
+Fill only the values you need. Do not commit `.env`.
+
+Required for Gemini narrative synthesis:
+
+```bash
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=your_key_here
+GEMINI_MODEL=gemini-2.5-flash-lite
+```
+
+Required for Gmail delivery:
+
+```bash
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_gmail_address
+SMTP_PASSWORD=your_16_character_gmail_app_password
+BRIEF_FROM_EMAIL=your_gmail_address
+BRIEF_TO_EMAIL=recipient@example.com
+```
+
+Recommended run settings:
+
+```bash
+BRIEF_TIMEZONE=Asia/Hong_Kong
+PORTFOLIO_PATH=inputs/portfolio/positions.csv
+OUTPUT_DIR=outputs
+LOG_DIR=logs
+```
+
+## Run Locally
+
+Sample dry run, no secrets required:
 
 ```bash
 PYTHONPATH=src python -m macro_news run --dry-run
 ```
 
-Run a sample dry run with Gemini drafting the narrative sections:
-
-```bash
-PYTHONPATH=src python -m macro_news run --dry-run --use-llm
-```
-
-Run with live market dashboard data and cached real-source fallback:
-
-```bash
-PYTHONPATH=src python -m macro_news run --dry-run --live-market-data
-```
-
-Run with live economic calendar data and cached real-source fallback:
-
-```bash
-PYTHONPATH=src python -m macro_news run --dry-run --live-calendar
-```
-
-Run with live Theme Radar source collection:
-
-```bash
-PYTHONPATH=src python -m macro_news run --dry-run --live-theme-radar
-```
-
-Run with all live data layers and Gemini narrative synthesis:
+Live data plus Gemini narrative, no email:
 
 ```bash
 PYTHONPATH=src python -m macro_news run --dry-run --live-market-data --live-calendar --live-theme-radar --use-llm
 ```
 
-Send a sample brief by email:
-
-```bash
-PYTHONPATH=src python -m macro_news run --send --use-llm
-```
-
-Send the fuller prototype brief by email:
+Send one live brief by email:
 
 ```bash
 PYTHONPATH=src python -m macro_news run --send --live-market-data --live-calendar --live-theme-radar --use-llm
@@ -75,169 +102,105 @@ Expected local outputs:
 - `outputs/archive/YYYY-MM-DD/`
 - `logs/run-*.jsonl`
 
-Install for command-line use after dependencies are ready:
+Generated outputs and logs are ignored by git.
 
-```bash
-python -m pip install -e .
-macro-news run --dry-run
-```
+## Brief Contents
 
-## Email And LLM Setup
+The generated brief includes the six required assignment modules:
 
-Create a local `.env` file from `.env.example`.
+1. Overnight market dashboard.
+2. The 3 Things That Matter Today.
+3. Today's Calendar / Next Session.
+4. One Chart Worth Seeing.
+5. Theme Radar.
+6. Contrarian Corner.
 
-Required for sending:
+It also includes a feedback questionnaire, source status, and assumptions so the reader can audit what was used.
 
-- `SMTP_HOST=smtp.gmail.com`
-- `SMTP_PORT=587`
-- `SMTP_USER`
-- `SMTP_PASSWORD` from a Gmail app password
-- `BRIEF_FROM_EMAIL`
-- `BRIEF_TO_EMAIL`
+## Data Sources
 
-Required for Gemini synthesis:
+Current live sources:
 
-- `LLM_PROVIDER=gemini`
-- `GEMINI_API_KEY`
-- `GEMINI_MODEL=gemini-2.5-flash-lite`
+- Market dashboard: Yahoo Finance quote/chart data, Japan MOF JGB yield CSV, Frankfurter FX reference rates, and CoinGecko BTC data.
+- Calendar: Fair Economy / Forex Factory weekly calendar feed.
+- Theme Radar: curated RSS feeds from Liberty Street Economics, Bank Underground, and FRED Blog when reachable.
+- Chart: USD/JPY daily reference-rate history from Frankfurter.
 
-Market data mode:
-
-- `MARKET_DATA_MODE=sample` keeps the dashboard fully deterministic.
-- `MARKET_DATA_MODE=live` fetches live dashboard rows where available and uses cached real-source rows for temporary outages. If neither live nor cached real data exists, the row's value cells are left blank instead of using scaffold/sample numbers.
-
-Calendar data mode:
-
-- `CALENDAR_MODE=sample` keeps the calendar deterministic.
-- `CALENDAR_MODE=live` fetches the weekly economic calendar where available, targets Asia/Europe/US session coverage without forcing a fixed row count, de-duplicates same-currency same-time event clusters, uses a local ignored cache after successful pulls, and leaves the calendar blank instead of using scaffold/sample rows if no live or cached real calendar data exists.
-
-Theme source mode:
-
-- `THEME_SOURCE_MODE=sample` keeps Theme Radar deterministic.
-- `THEME_SOURCE_MODE=live` fetches curated RSS feeds, scores items against the assumed book/themes, and leaves Theme Radar blank instead of using scaffold/sample source items if no verified source candidates are available.
-
-Portfolio input:
-
-- `PORTFOLIO_PATH=inputs/portfolio/positions.csv` points to the position-assumption CSV.
-- Each row is an effective-date update. If no row is entered for the run date, the latest prior row for that asset carries forward.
-- Use `position=flat`, `closed`, `none`, or `0` to remove an asset from the active book.
-
-Do not commit `.env`.
-
-## Assignment Modules
-
-The final brief must include:
-
-1. Overnight market dashboard as a table.
-2. The 3 things that matter today, each with a clear "so what" paragraph and a reader-facing news link.
-3. Today's calendar across Asia, EU, and US sessions with consensus.
-4. One chart worth seeing with a concise reading line.
-5. Theme radar summaries tied to assumed positions/themes.
-6. Contrarian corner.
-
-The 3 Things section keeps Gemini responsible for concise PM-facing narrative, while rendering code adds compact item sub-titles, keeps `So what:` at normal body size, and adds deterministic reader-facing Yahoo Finance quote/market links in smaller `Read more` text. The LLM does not invent news links.
-
-## Current Data Sources
-
-The market dashboard currently uses:
-
-- [Yahoo Finance quote pages](https://finance.yahoo.com/quote/%5ETNX/) for broad equity, US rate, dollar, gold, and oil instruments.
-- [Japan MOF JGB yield CSV](https://www.mof.go.jp/jgbs/reference/interest_rate/jgbcm.csv) for Japan 10Y.
-- [Frankfurter](https://frankfurter.dev/) for EUR/USD and USD/JPY daily reference-rate rows.
-- [CoinGecko](https://www.coingecko.com/en/api) for BTC.
-- Dashboard notes explaining extraction time, close/prior basis, additional timing information for Hong Kong morning use, Frankfurter's latest-versus-immediately-previous published daily reference-rate convention, and BTC rolling 24-hour change convention.
-- Dashboard row read-throughs use the `Reading` label and describe the day's implication rather than repeating the instrument definition.
-- The dashboard includes an `As of` column and compact no-color status markers in the asset label. No marker means refreshed for the run date or query time; `*` means the live source's latest valid date is older than the run date, usually because of weekend, holiday, or publication lag; `†` means cached real-source data was used after a live refresh failed.
-- Cached real-source rows when a temporary source outage occurs.
-- Blank value cells rather than scaffold/sample market numbers when no live or cached real row exists.
-
-The calendar currently uses:
-
-- Forex Factory/Fair Economy weekly JSON feed for event names, impact, forecast/consensus, and previous values.
-- Session-aware selection that targets Asia, Europe, and US coverage when the feed contains usable events.
-- Local ignored cache under `.cache/calendar/` after successful pulls.
-- Event-date and status labels using the same `Live`, `*`, and `†` no-color convention.
-- Footnotes below the calendar table explain the regular `Live` and `*` status labels, and add `†` only when cached calendar rows actually appear.
-- Clickable event names pointing to the calendar source.
-- Blank calendar output rather than scaffold/sample calendar rows when no live or cached real calendar rows exist.
-
-The chart currently uses USD/JPY because that is the assumed FX position and a direct risk for the book. For line charts, the rule is to prefer more than one month of context when the source supports it; the current USD/JPY chart uses roughly three months of history, highlights the latest five observations, and renders a small source link below the chart reading.
-
-Theme Radar currently uses:
-
-- [Liberty Street Economics](https://libertystreeteconomics.newyorkfed.org/) RSS.
-- [Bank Underground](https://bankunderground.co.uk/) RSS.
-- FRED Blog RSS when reachable.
-- Keyword scoring against the assumed book and house themes.
-- Source-depth labels in the rendered brief, such as `RSS excerpt` or `RSS content field`. This tells the reader whether the summary is based on feed-level text rather than a full article.
-- Blank live-mode output rather than scaffold/sample source items when no relevant verified source candidates are found.
+Live mode does not use generated/sample market, calendar, or Theme Radar fallback content. If a live source and cached real row are both unavailable, the relevant value cells or section are left blank rather than filled with invented values.
 
 ## Portfolio And Feedback Inputs
 
-Tracked assignment assumptions live in `inputs/portfolio/positions.csv`. The format is documented in `inputs/portfolio/README.md`, with `positions.example.csv` as a template.
+Portfolio assumptions live in:
 
-Human feedback is documented in `inputs/feedback/README.md`, with `daily_feedback.example.csv` as the questionnaire template. The current rule is to record feedback locally first; later versions can load high-rated and low-rated patterns into source ranking and prompt construction. This is local preference memory, not model fine-tuning.
+```text
+inputs/portfolio/positions.csv
+```
 
-The rendered brief includes a compact feedback questionnaire with section, item, usefulness, and comment fields. The dashboard stays as one feedback row; other sections can use item-level rows. The intended workflow is to paste useful replies into a CSV/Excel sheet and later let the agent load those rows as local preference memory.
+Each row is an effective-date update. If there is no new row for a run date, the latest prior row carries forward. See `inputs/portfolio/README.md`.
 
-## GitHub Actions
+Human feedback is tracked with:
 
-The first workflow is intentionally safe:
+```text
+inputs/feedback/daily_feedback.example.csv
+```
 
-- `.github/workflows/daily-brief-dry-run.yml`
-- Runs on manual trigger and weekday schedule.
-- Installs dependencies.
-- Runs tests.
-- Generates a sample dry-run brief.
-- Uploads generated outputs/logs as workflow artifacts.
-- Uses no secrets and sends no email.
-
-The second workflow tests the live prototype without sending email:
-
-- `.github/workflows/daily-brief-live-dry-run.yml`
-- Runs only on manual trigger.
-- Reads GitHub Secrets for Gemini and Gmail configuration.
-- Runs tests.
-- Generates a live-source dry-run brief with Gemini narrative synthesis.
-- Uploads generated outputs/logs as workflow artifacts.
-- Sends no email.
-
-The third workflow sends one real live brief only when manually confirmed:
-
-- `.github/workflows/daily-brief-manual-send.yml`
-- Runs only on manual trigger.
-- Requires typing `SEND` in the confirmation input.
-- Reads GitHub Secrets for Gemini and Gmail configuration.
-- Runs tests.
-- Sends one live-source email brief.
-- Uploads generated outputs/logs as workflow artifacts.
-
-The temporary scheduler smoke test was removed after an inconclusive short-window test. GitHub recognized the workflow as active, but no scheduled run appeared during the test window.
-
-The temporary scheduled email proof workflow was also removed after the proof window ended:
-
-- GitHub recognized the workflow as active.
-- The 2026-06-06 17:40-18:15 Hong Kong test window produced zero scheduled runs.
-- Because no workflow run was created, the failure was at GitHub's scheduled trigger layer, not in Python, Gemini, or Gmail delivery.
-
-The next workflow step is to keep the proven manual GitHub send workflow and use an external or local/server scheduler when precise timing is required.
+The current feedback loop is local preference memory, not model fine-tuning. See `inputs/feedback/README.md`.
 
 ## Scheduling
 
-See `docs/scheduling.md` for the scheduler plan.
+The command can be scheduled by any system that can run a shell command and access the `.env` file.
 
-Key idea: the brief command is proven, but a separate scheduler must wake it. Manual GitHub send is confirmed; GitHub scheduled events failed our short-window proof; a MacBook `launchd` one-shot scheduled send succeeded. For dependable daily delivery, use an always-on Mac with `launchd`, a Linux workstation/VPS with `cron` or `systemd`, or a cloud scheduler.
-
-The reusable scheduler command is:
+Recommended production-style path:
 
 ```bash
 /bin/bash /ABSOLUTE/PATH/TO/macro_news/scripts/run_daily_brief.sh
 ```
 
-## Repo Control Files
+For a 07:30 Hong Kong inbox target, schedule the job around 07:15 Hong Kong time so there is buffer for data fetching, Gemini synthesis, rendering, and email delivery.
 
-- `PLAN.md`: live control tower and handoff state.
-- `DECISIONS.md`: decision log.
-- `ASSIGNMENT_AUDIT.md`: PDF requirement checklist and remaining submission tasks.
-- `costs.md`: expected and measured run costs.
-- `memo.md`: working source for the final 1-page memo.
+Supported scheduler options:
+
+- macOS `launchd` on an always-on Mac.
+- Linux `cron` or `systemd` on a workstation or VPS.
+- A cloud scheduler that triggers a deployed job or GitHub manual workflow.
+
+See `docs/scheduling.md` and `scheduling/com.macro-news.daily-brief.plist.example`.
+
+Note: manual GitHub Actions sends are proven, but short-window GitHub scheduled-trigger tests were unreliable in this repo. For dependable timing, use a scheduler you control.
+
+## GitHub Actions
+
+The repo includes three workflows:
+
+- `daily-brief-dry-run.yml`: safe sample dry run, no secrets and no email.
+- `daily-brief-live-dry-run.yml`: manual live-source dry run with secrets, no email.
+- `daily-brief-manual-send.yml`: manual live email send, requiring `SEND` confirmation.
+
+For GitHub live runs or sends, add repository secrets matching `.env.example`:
+
+- `GEMINI_API_KEY`
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASSWORD`
+- `BRIEF_FROM_EMAIL`
+- `BRIEF_TO_EMAIL`
+- `BRIEF_TIMEZONE`
+
+## Assignment Files
+
+- `memo.pdf`: final one-page memo for the assignment.
+- `memo.md`: memo source.
+- `costs.md`: token, runtime, delivery, source, and scheduler cost notes.
+- `ASSIGNMENT_AUDIT.md`: requirement checklist against the assignment PDF.
+- `PLAN.md`: current handoff state.
+- `DECISIONS.md`: decision log and implementation rationale.
+
+The assignment PDF is intentionally kept local and ignored by git.
+
+## Current Caveats
+
+- Free public data sources can timeout, rate-limit, or lag on weekends and holidays.
+- Theme Radar currently uses RSS-level text, not full article text.
+- Scheduled delivery requires an always-on machine or scheduler service.
+- GitHub scheduled events are not treated as the dependable production scheduler for this prototype.
