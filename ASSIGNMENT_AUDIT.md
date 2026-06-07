@@ -2,6 +2,8 @@
 
 This file maps the original case-study PDF requirements to the current repo state.
 
+Last rechecked: 2026-06-07, using the local PDF in this folder. This recheck did not depend on network access.
+
 ## PDF Requirement Summary
 
 The assignment asks for a prototype that automatically sends a Daily Macro Brief at an agreed time each day to a designated email inbox or Telegram.
@@ -34,7 +36,7 @@ The PDF allows reasonable assumptions or sample data for unavailable firm-specif
 
 | Requirement | Current status | Evidence / notes |
 | --- | --- | --- |
-| GitHub repo, public or collaborator access | Local repo exists; push/access pending | GitHub remote exists, but local branch is currently ahead of `origin/main` by 3 commits. Before submission, push and either keep repo public or invite the evaluator as collaborator. |
+| GitHub repo, public or collaborator access | Local repo exists; push/access pending | GitHub remote exists, but the local branch has unpushed commits. Before submission, push and either keep repo public or invite the evaluator as collaborator. |
 | Code + README | Done | Source lives under `src/macro_news/`; setup and usage are documented in `README.md`. |
 | `costs.md` with daily run cost: tokens + hosting | Done | `costs.md` records token usage, estimated USD cost, runtime, email delivery, and hosting/scheduler notes. |
 | 1-page Memo PDF | Not done yet | `memo.md` has the required content scaffold, but it still needs compression into a true 1-page memo and export to PDF. |
@@ -51,7 +53,7 @@ The PDF allows reasonable assumptions or sample data for unavailable firm-specif
 
 ## Remaining Submission Checklist
 
-1. Push the three local commits to GitHub after explicit approval.
+1. Push unpushed local commits to GitHub after explicit approval.
 2. Decide repository access: public repo or invite evaluator/collaborators.
 3. Compress `memo.md` into a true 1-page memo.
 4. Fill in actual hours spent.

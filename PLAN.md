@@ -54,7 +54,7 @@ User turn: review the latest email or `outputs/latest/brief.html`, especially th
 2. User review latest `outputs/latest/brief.html` and the delivered email for Outlook typography, footnote size, data-handling links, and questionnaire size.
 3. Compress `memo.md` into a true 1-page memo and fill actual hours spent.
 4. Generate final `memo.pdf`.
-5. Push the two local commits to GitHub after explicit approval, then decide public repo vs collaborator invite for submission.
+5. Push unpushed local commits to GitHub after explicit approval, then decide public repo vs collaborator invite for submission.
 6. Add a second calendar provider if the free weekly feed remains thin or stale outside weekday windows.
 7. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.
 

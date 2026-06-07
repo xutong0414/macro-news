@@ -430,3 +430,11 @@ Decision: add `ASSIGNMENT_AUDIT.md` as the checklist that maps the original PDF 
 Reason: before final memo writing, the project needs a clear view of what is complete, what is caveated, and what remains before submission.
 
 Outcome: the audit confirms the six brief modules, technical constraints, cost logging, source/fallback disclosure, scheduling evidence, and repo hygiene are covered. Remaining submission tasks are to push local commits after explicit approval, decide repo access, compress `memo.md` into a true 1-page memo, fill actual hours spent, and export `memo.pdf`.
+
+## 2026-06-07 - Assignment Audit Recheck
+
+Decision: recheck the audit against the local case-study PDF without relying on network access.
+
+Reason: the user asked for the previous wrap-up to be redone after network-related errors and wanted to make sure no PDF requirement was missed.
+
+Outcome: the recheck confirms the same remaining items: push unpushed local commits after explicit approval, choose public repo versus collaborator access, compress `memo.md` into a true 1-page memo, fill actual hours spent, and export `memo.pdf`. The main caveats remain GitHub scheduled-trigger unreliability, RSS-level Theme Radar source depth, and free-source calendar/market fragility.
