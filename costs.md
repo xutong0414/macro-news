@@ -27,12 +27,13 @@ Plain sample mode records zero actual LLM tokens.
 
 ## Runtime Accounting
 
-Latest successful timed live send: `20260607T114151Z`, measured with `/usr/bin/time -p` on Sunday at 19:41 HKT.
+Latest successful timed live send: `20260607T120308Z`, measured with `/usr/bin/time -p` on Sunday at 20:03 HKT.
 
-- Runtime: `real 55.00s`, `user 8.91s`, `sys 1.63s`.
-- Token use: 4,049 input, 820 output, 4,869 total.
-- Estimated LLM cost: $0.0007329.
+- Runtime: `real 34.33s`, `user 0.86s`, `sys 3.10s`.
+- Token use: 4,061 input, 907 output, 4,968 total.
+- Estimated LLM cost: $0.0007689.
 - Source result: all 10 market dashboard rows refreshed from live public sources; no scaffold fallback rows were used. Calendar used the live Fair Economy weekly feed with six live-source rows. Theme Radar selected two live RSS items, with the FRED Blog RSS feed timing out.
+- Link check: 17 unique external URLs in the final rendered brief were checked with public GET requests; all returned OK status.
 
 Operational note: use at least a 10-15 minute scheduler buffer before the desired inbox time. Successful runs can be under one minute, but quality-control testing saw source timeouts and validation retries up to about two minutes before a clean output.
 
@@ -73,3 +74,5 @@ Operational note: use at least a 10-15 minute scheduler buffer before the desire
 | 2026-06-07 | `20260607T090925Z` | Variable calendar and same-time event de-duplication send, 31.77s real | 4,049 | 918 | $0.0007721 | Sent |
 | 2026-06-07 | `20260607T110644Z` | Timestamp wording, calendar note, and chart source revision send, 38.84s real | 4,049 | 750 | $0.0007049 | Sent |
 | 2026-06-07 | `20260607T114151Z` | Memo wrap-up live send, 55.00s real | 4,049 | 820 | $0.0007329 | Sent |
+| 2026-06-07 | `20260607T115826Z` | First briefing-link revision send, 39.21s real | 8,472 | 1,594 | $0.0014848 | Sent |
+| 2026-06-07 | `20260607T120308Z` | Final briefing-link validation send, 34.33s real | 4,061 | 907 | $0.0007689 | Sent |

@@ -135,13 +135,13 @@ The final brief must include:
 5. Theme radar summaries tied to assumed positions/themes.
 6. Contrarian corner.
 
-The 3 Things section keeps Gemini responsible for concise PM-facing narrative, while rendering code adds compact item sub-titles, keeps `So what:` at normal body size, and adds deterministic Yahoo Finance topic-search links in smaller `Read more` text. The LLM does not invent news links.
+The 3 Things section keeps Gemini responsible for concise PM-facing narrative, while rendering code adds compact item sub-titles, keeps `So what:` at normal body size, and adds deterministic reader-facing Yahoo Finance quote/market links in smaller `Read more` text. The LLM does not invent news links.
 
 ## Current Data Sources
 
 The market dashboard currently uses:
 
-- [Yahoo Finance chart endpoint](https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC) for broad equity, US rate, dollar, gold, and oil instruments.
+- [Yahoo Finance quote pages](https://finance.yahoo.com/quote/%5ETNX/) for broad equity, US rate, dollar, gold, and oil instruments.
 - [Japan MOF JGB yield CSV](https://www.mof.go.jp/jgbs/reference/interest_rate/jgbcm.csv) for Japan 10Y.
 - [Frankfurter](https://frankfurter.dev/) for EUR/USD and USD/JPY daily reference-rate rows.
 - [CoinGecko](https://www.coingecko.com/en/api) for BTC.
@@ -165,8 +165,8 @@ The chart currently uses USD/JPY because that is the assumed FX position and a d
 
 Theme Radar currently uses:
 
-- Liberty Street Economics RSS.
-- Bank Underground RSS.
+- [Liberty Street Economics](https://libertystreeteconomics.newyorkfed.org/) RSS.
+- [Bank Underground](https://bankunderground.co.uk/) RSS.
 - FRED Blog RSS when reachable.
 - Keyword scoring against the assumed book and house themes.
 - Source-depth labels in the rendered brief, such as `RSS excerpt` or `RSS content field`. This tells the reader whether the summary is based on feed-level text rather than a full article.

@@ -508,7 +508,7 @@ def replace_market_rows_with_live(
 
     total_assets = len(merged_rows)
     source_links = (
-        "[Yahoo Finance](https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC), "
+        "[Yahoo Finance quote pages](https://finance.yahoo.com/quote/%5ETNX/), "
         "[Japan MOF](https://www.mof.go.jp/jgbs/reference/interest_rate/jgbcm.csv), "
         "[Frankfurter](https://frankfurter.dev/), and "
         "[CoinGecko](https://www.coingecko.com/en/api)"
@@ -529,7 +529,7 @@ def replace_market_rows_with_live(
         *data.assumptions,
         (
             "Market dashboard uses public live sources where available "
-            "([Yahoo Finance](https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC), "
+            "([Yahoo Finance quote pages](https://finance.yahoo.com/quote/%5ETNX/), "
             "[Japan MOF](https://www.mof.go.jp/jgbs/reference/interest_rate/jgbcm.csv), "
             "[Frankfurter](https://frankfurter.dev/), "
             "[CoinGecko](https://www.coingecko.com/en/api)), cached real-source rows for temporary outages, "
@@ -552,7 +552,7 @@ def replace_market_rows_with_live(
         "Additional information about timing: around 07:00-08:00 HKT, US/EU cash markets are closed from prior sessions, while FX and BTC are continuous and Asia may already be open.",
         "Status marker basis: asset labels show * when the live source's latest valid date is older than the run date, usually because of weekend, holiday, or publication lag; asset labels show † when cached real-source data was used after a live refresh failed. Rows without a marker refreshed for the run date or query time. If no live or cached real row exists, value cells are left blank rather than filled with scaffold/sample numbers.",
         (
-            "Sources: [Yahoo Finance chart endpoint](https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC) for equities/US rates/DXY/gold/oil, "
+            "Sources: [Yahoo Finance quote pages](https://finance.yahoo.com/quote/%5ETNX/) for equities/US rates/DXY/gold/oil, "
             "[Japan MOF JGB yield CSV](https://www.mof.go.jp/jgbs/reference/interest_rate/jgbcm.csv) for Japan 10Y, "
             "[Frankfurter](https://frankfurter.dev/) for EUR/USD and USD/JPY, "
             "[CoinGecko](https://www.coingecko.com/en/api) for BTC."

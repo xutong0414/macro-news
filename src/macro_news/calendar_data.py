@@ -12,7 +12,7 @@ import httpx
 from .sample_data import BriefData, CalendarEvent
 
 FAIRECONOMY_WEEKLY_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
-FOREX_FACTORY_CALENDAR_URL = "https://www.forexfactory.com/en/calendar/"
+FOREX_FACTORY_CALENDAR_URL = "https://www.forexfactory.com/calendar"
 FAIRECONOMY_SOURCE = "faireconomy:ff_calendar_thisweek"
 CALENDAR_CACHE_PATH = Path(".cache") / "calendar" / "ff_calendar_thisweek.json"
 
@@ -37,6 +37,7 @@ CURRENCY_SESSION = {
 }
 
 REQUIRED_SESSIONS = ("Asia", "Europe", "US")
+MONTH_SLUGS = ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")
 
 
 @dataclass(frozen=True)
@@ -134,6 +135,11 @@ def _format_event_time(local_time: datetime, run_date: date, reference_now: date
     return f"{local_time.strftime('%a %b %d')} {clock} {zone}"
 
 
+def _forex_factory_day_link(event_date: date) -> str:
+    month = MONTH_SLUGS[event_date.month - 1]
+    return f"{FOREX_FACTORY_CALENDAR_URL}?day={month}{event_date.day}.{event_date.year}"
+
+
 def _calendar_status(local_time: datetime, run_date: date, *, cached: bool) -> str:
     if cached:
         return "†"
@@ -169,7 +175,7 @@ def _raw_event_to_calendar_event(
         why_it_matters=_why_it_matters(title, currency, impact),
         event_date=local_time.date().isoformat(),
         status=_calendar_status(local_time, run_date, cached=cached),
-        link=FOREX_FACTORY_CALENDAR_URL,
+        link=_forex_factory_day_link(local_time.date()),
     )
 
 
@@ -340,15 +346,15 @@ def replace_calendar_with_live(
 
     sources.append(fetch_result.source)
     if fetch_result.refresh_error:
-        calendar_note = "Calendar: cached [Fair Economy / Forex Factory weekly feed](https://www.forexfactory.com/en/calendar/) used after live refresh failed; selector still targets Asia/Europe/US coverage when available."
+        calendar_note = "Calendar: cached [Fair Economy / Forex Factory weekly feed](https://www.forexfactory.com/calendar) used after live refresh failed; selector still targets Asia/Europe/US coverage when available."
     else:
-        calendar_note = "Calendar: live [Fair Economy / Forex Factory weekly feed](https://www.forexfactory.com/en/calendar/) used; selector targets Asia/Europe/US coverage and labels same-day, next-session, or nearest source-week events."
+        calendar_note = "Calendar: live [Fair Economy / Forex Factory weekly feed](https://www.forexfactory.com/calendar) used; selector targets Asia/Europe/US coverage and labels same-day, next-session, or nearest source-week events."
     updated = replace(
         data,
         calendar=calendar,
         assumptions=[
             *data.assumptions,
-            "Calendar uses the live [Forex Factory/Fair Economy weekly feed](https://www.forexfactory.com/en/calendar/) when available, cached real rows after rate limits, and blank output rather than scaffold rows if no verified calendar data exists.",
+            "Calendar uses the live [Forex Factory/Fair Economy weekly feed](https://www.forexfactory.com/calendar) when available, cached real rows after rate limits, and blank output rather than scaffold rows if no verified calendar data exists.",
             "Calendar live mode leaves the table blank instead of using scaffold events when neither live nor cached real calendar rows are available.",
         ],
         data_sources=[*data.data_sources, *sources],

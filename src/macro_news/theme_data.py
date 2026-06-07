@@ -55,6 +55,8 @@ THEME_SOURCES = [
     ThemeSource("Bank Underground", "https://bankunderground.co.uk/feed/", "theme_feed:bank_underground"),
     ThemeSource("FRED Blog", "https://fredblog.stlouisfed.org/feed/", "theme_feed:fred_blog"),
 ]
+LIBERTY_STREET_HOME = "https://libertystreeteconomics.newyorkfed.org/"
+BANK_UNDERGROUND_HOME = "https://bankunderground.co.uk/"
 
 THEME_RULES = [
     ThemeRule(
@@ -330,9 +332,9 @@ def replace_theme_radar_with_live(
     if not selected:
         blank_note = (
             "Theme Radar: no verified live RSS candidates available from "
-            "[Liberty Street Economics RSS](https://libertystreeteconomics.newyorkfed.org/feed/), "
-            "[Bank Underground RSS](https://bankunderground.co.uk/feed/), or "
-            "[FRED Blog RSS](https://fredblog.stlouisfed.org/feed/); section left blank rather than using scaffold source items."
+            f"[Liberty Street Economics]({LIBERTY_STREET_HOME}), "
+            f"[Bank Underground]({BANK_UNDERGROUND_HOME}), or "
+            "FRED Blog; section left blank rather than using scaffold source items."
         )
         blank_data = replace(
             data,
@@ -351,12 +353,12 @@ def replace_theme_radar_with_live(
     selected_sources = list(dict.fromkeys([*successful_sources, *[f"theme_selected:{candidate.source}" for candidate in selected]]))
     failed_note = ""
     if errors:
-        failed_note = " One configured feed, [FRED Blog RSS](https://fredblog.stlouisfed.org/feed/), failed and is logged."
+        failed_note = " One configured feed, FRED Blog, failed and is logged."
     theme_note = (
         "Theme Radar: selected "
         f"{len(selected)} items from curated live RSS sources: "
-        "[Liberty Street Economics RSS](https://libertystreeteconomics.newyorkfed.org/feed/) and "
-        "[Bank Underground RSS](https://bankunderground.co.uk/feed/)."
+        f"[Liberty Street Economics]({LIBERTY_STREET_HOME}) and "
+        f"[Bank Underground]({BANK_UNDERGROUND_HOME})."
         f"{failed_note}"
     )
     updated = replace(
@@ -366,9 +368,9 @@ def replace_theme_radar_with_live(
             *data.assumptions,
             (
                 "Theme Radar live mode uses curated RSS source text when available "
-                "([Liberty Street Economics RSS](https://libertystreeteconomics.newyorkfed.org/feed/), "
-                "[Bank Underground RSS](https://bankunderground.co.uk/feed/), "
-                "[FRED Blog RSS](https://fredblog.stlouisfed.org/feed/)) and leaves the section blank rather than using scaffold source items when no verified candidates exist."
+                f"([Liberty Street Economics]({LIBERTY_STREET_HOME}), "
+                f"[Bank Underground]({BANK_UNDERGROUND_HOME}), "
+                "FRED Blog) and leaves the section blank rather than using scaffold source items when no verified candidates exist."
             ),
         ],
         data_sources=[*data.data_sources, *selected_sources],

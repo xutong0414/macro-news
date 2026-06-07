@@ -452,3 +452,18 @@ Rules:
 - Regenerate `memo.pdf` after the actual-hours value is filled.
 
 Outcome: `memo.md` was compressed to 528 words and `memo.pdf` was generated locally with `pandoc`. A fresh live email send, run `20260607T114151Z`, completed with delivery status `sent`, runtime `55.00s`, 4,049 input tokens, 820 output tokens, 4,869 total tokens, and estimated Gemini cost `$0.0007329`.
+
+## 2026-06-07 - Briefing Link Validation
+
+Decision: replace broken or confusing briefing links with stable reader-facing targets.
+
+Reason: the latest email had several links that were poor human-click targets: Yahoo Finance search links returned `404`, the Yahoo API endpoint could rate-limit, and a failed FRED Blog feed should not invite the reader to click a slow source.
+
+Rules:
+
+- Use direct Yahoo Finance quote/currency pages instead of Yahoo search URLs.
+- Use date-targeted Forex Factory calendar links for calendar events.
+- Link source-status notes to human-readable source pages rather than raw RSS/API endpoints when practical.
+- If a source failed during the run, mention it plainly instead of linking a slow or unavailable target.
+
+Outcome: final send `20260607T120308Z` delivered successfully. A post-send check found 17 unique external URLs in the rendered brief, and all returned OK status.

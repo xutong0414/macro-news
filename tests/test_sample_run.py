@@ -78,7 +78,7 @@ def test_sample_brief_contains_required_sections() -> None:
     assert "| Asset | Close | Prior | Change | So what |" not in brief
     assert "### 1. USD/JPY Intervention Risk" in brief
     assert "momentum.\n\n**So what:** keep the FX view" in brief
-    assert "**Read more:** [Yahoo Finance](https://finance.yahoo.com/search?p=USD+JPY+Japan+intervention+yield+spread)" in brief
+    assert "**Read more:** [Yahoo Finance currencies](https://finance.yahoo.com/markets/currencies/)" in brief
     assert "![USD/JPY: 3-Month Trend](chart.png)" in brief
     assert "the latest five observations are highlighted" in brief
     assert "**Data source:** sample USD/JPY series" in brief
@@ -711,7 +711,7 @@ def test_live_market_data_replaces_rows_and_logs_fallback(tmp_path) -> None:
     assert "Frankfurter FX rows use the latest published daily reference rate" in rendered
     assert "Source Status shows live, cached, or scaffold fallback rows" not in rendered
     assert "value cells are left blank" in rendered
-    assert "[Yahoo Finance](https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC)" in rendered
+    assert "[Yahoo Finance quote pages](https://finance.yahoo.com/quote/%5ETNX/)" in rendered
     assert "[Frankfurter](https://frankfurter.dev/)" in rendered
 
 
@@ -843,7 +843,7 @@ def test_live_calendar_data_replaces_calendar_rows(tmp_path) -> None:
     assert event_by_name["USD Non-Farm Employment Change"].consensus == "85K"
     assert event_by_name["USD Non-Farm Employment Change"].event_date == "2026-06-06"
     assert event_by_name["USD Non-Farm Employment Change"].status == "Live"
-    assert event_by_name["USD Non-Farm Employment Change"].link == "https://www.forexfactory.com/en/calendar/"
+    assert event_by_name["USD Non-Farm Employment Change"].link == "https://www.forexfactory.com/calendar?day=jun6.2026"
     assert event_by_name["EUR Core CPI Flash Estimate y/y"].session == "Europe"
     assert event_by_name["EUR Core CPI Flash Estimate y/y"].status == "Live"
     assert event_by_name["CNY RatingDog Manufacturing PMI"].session == "Asia"
@@ -854,12 +854,12 @@ def test_live_calendar_data_replaces_calendar_rows(tmp_path) -> None:
     assert "NZD Bank Holiday" not in event_by_name
     assert result.fallback_events == []
     assert "faireconomy:ff_calendar_thisweek" in result.sources
-    assert "[USD Non-Farm Employment Change](https://www.forexfactory.com/en/calendar/)" in render_markdown(result.data)
+    assert "[USD Non-Farm Employment Change](https://www.forexfactory.com/calendar?day=jun6.2026)" in render_markdown(result.data)
     assert "Calendar status notes:" in render_markdown(result.data)
     assert "Live = event is dated today in the calendar source." in render_markdown(result.data)
     assert "* = next-session or nearest source-week item" in render_markdown(result.data)
     assert "† = cached real calendar row after live refresh failed" not in render_markdown(result.data)
-    assert "[Forex Factory/Fair Economy weekly feed](https://www.forexfactory.com/en/calendar/)" in render_markdown(result.data)
+    assert "[Forex Factory/Fair Economy weekly feed](https://www.forexfactory.com/calendar)" in render_markdown(result.data)
 
 
 def test_live_calendar_uses_cache_when_feed_refresh_fails(tmp_path) -> None:
@@ -1036,8 +1036,8 @@ def test_live_theme_radar_replaces_sample_sources() -> None:
     assert all(item.link.startswith("https://") for item in result.data.theme_radar)
     assert all(item.source_depth == "RSS excerpt" for item in result.data.theme_radar)
     rendered = render_markdown(result.data)
-    assert "[Liberty Street Economics RSS](https://libertystreeteconomics.newyorkfed.org/feed/)" in rendered
-    assert "[Bank Underground RSS](https://bankunderground.co.uk/feed/)" in rendered
+    assert "[Liberty Street Economics](https://libertystreeteconomics.newyorkfed.org/)" in rendered
+    assert "[Bank Underground](https://bankunderground.co.uk/)" in rendered
 
 
 def test_live_theme_radar_leaves_section_blank_when_sources_fail() -> None:

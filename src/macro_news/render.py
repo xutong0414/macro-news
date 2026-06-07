@@ -5,15 +5,14 @@ import os
 import re
 from datetime import date, datetime, timezone
 from pathlib import Path
-from urllib.parse import quote_plus
 
 from .sample_data import BriefData
 
 
 CONTRARIAN_READING_LINKS = [
-    ("Yahoo Finance", "https://finance.yahoo.com/search?p=USD+JPY+Japan+intervention"),
+    ("Yahoo Finance currencies", "https://finance.yahoo.com/markets/currencies/"),
     ("Japan MOF intervention data", "https://www.mof.go.jp/english/policy/international_policy/reference/feio/quarter/index.html"),
-    ("BOJ intervention operations outline", "https://www.boj.or.jp/en/intl_finance/outline/expkainyu.htm"),
+    ("BOJ international finance", "https://www.boj.or.jp/en/intl_finance/index.htm"),
 ]
 
 
@@ -52,33 +51,29 @@ def _split_so_what(item: str) -> tuple[str, str]:
     return main, f"So what: {so_what}" if so_what else ""
 
 
-def _three_things_news_query(item: str) -> str:
+def _three_thing_read_more(item: str) -> tuple[str, str]:
     lowered = item.lower()
     if any(term in lowered for term in ("usd/jpy", "intervention", "yen reversal", "yen appreciation")):
-        return "USD JPY Japan intervention yield spread"
+        return ("Yahoo Finance currencies", "https://finance.yahoo.com/markets/currencies/")
     if any(term in lowered for term in ("em debt", "em duration", "em financing", "emerging market")) and any(
         term in lowered for term in ("s&p", "equities", "risk-off", "risk aversion", "risk assets")
     ):
-        return "emerging market debt US yields dollar"
+        return ("Yahoo Finance EMB", "https://finance.yahoo.com/quote/EMB/")
     if any(term in lowered for term in ("us 10y", "treasury", "higher us yields", "yields rose", "yield differential")):
-        return "US 10Y yields gold EM debt"
+        return ("Yahoo Finance US 10Y", "https://finance.yahoo.com/quote/%5ETNX/")
     if any(term in lowered for term in ("dxy", "dollar strength", "broad dollar", "usd funding")):
-        return "US dollar index DXY EM debt gold"
+        return ("Yahoo Finance currencies", "https://finance.yahoo.com/markets/currencies/")
     if any(term in lowered for term in ("em debt", "em duration", "em financing", "emerging market")):
-        return "emerging market debt US yields dollar"
+        return ("Yahoo Finance EMB", "https://finance.yahoo.com/quote/EMB/")
     if any(term in lowered for term in ("s&p", "equities", "risk-off", "risk assets")):
-        return "global equities risk off US yields dollar"
+        return ("Yahoo Finance EMB", "https://finance.yahoo.com/quote/EMB/")
     if "gold" in lowered:
-        return "gold US yields dollar"
+        return ("Yahoo Finance gold futures", "https://finance.yahoo.com/quote/GC=F/")
     if "oil" in lowered or "inflation" in lowered:
-        return "oil inflation rates market"
+        return ("Yahoo Finance WTI oil", "https://finance.yahoo.com/quote/CL=F/")
     if any(term in lowered for term in ("dxy", "dollar")):
-        return "US dollar index DXY market news"
-    return "macro markets rates FX"
-
-
-def _three_thing_news_link(item: str) -> str:
-    return f"https://finance.yahoo.com/search?p={quote_plus(_three_things_news_query(item))}"
+        return ("Yahoo Finance currencies", "https://finance.yahoo.com/markets/currencies/")
+    return ("Yahoo Finance US 10Y", "https://finance.yahoo.com/quote/%5ETNX/")
 
 
 def _three_thing_title(item: str) -> str:
@@ -204,7 +199,8 @@ def _render_three_things_markdown(items: list[str]) -> str:
         if so_what:
             implication = so_what.removeprefix("So what:").strip()
             parts.append(f"**So what:** {implication}")
-        parts.append(f"**Read more:** [Yahoo Finance]({_three_thing_news_link(item)})")
+        label, url = _three_thing_read_more(item)
+        parts.append(f"**Read more:** [{label}]({url})")
         blocks.append("\n\n".join(parts))
     return "\n\n".join(blocks)
 
