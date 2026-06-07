@@ -211,6 +211,24 @@ Remove this test line after one successful email. It repeats daily until removed
 
 Use macOS `launchd`.
 
+Quick schedule test:
+
+After the manual send command works, run this in Terminal from the repo folder to schedule one test run about 5 minutes from now:
+
+```bash
+/bin/bash scripts/install_launchd_test_send.sh 5
+```
+
+Expected outcome:
+
+- The script creates and loads a temporary macOS schedule.
+- One email should arrive around 5 minutes later.
+- After the email arrives, run the `launchctl bootout ...` command printed by the script.
+
+This test schedule repeats daily if you do not unload it.
+
+Production weekday schedule:
+
 Edit this file, not in Terminal:
 
 ```text

@@ -97,6 +97,32 @@ Use `scheduling/com.macro-news.daily-brief.plist.example` as the template.
 
 In `launchd`, `0` and `7` are Sunday, so the template's `Weekday` values `1-5` mean Monday-Friday.
 
+### Quick macOS Schedule Test
+
+After manual email sending works, use the helper script to schedule one test run a few minutes from now:
+
+```bash
+/bin/bash scripts/install_launchd_test_send.sh 5
+```
+
+What this does:
+
+- Creates `~/Library/LaunchAgents/com.macro-news.test-send.plist`.
+- Sets the launch time to about 5 minutes from the current Mac time.
+- Uses `.venv/bin/python` when available.
+- Loads the temporary job with `launchctl`.
+- Prints the exact command for unloading the test schedule.
+
+After the email arrives, unload the test job with the printed command:
+
+```bash
+launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.macro-news.test-send.plist
+```
+
+This test job is not one-time by itself. If it is not unloaded, macOS will run it again at the same time on later days.
+
+### Production macOS Setup
+
 Manual setup:
 
 1. Copy the example to `~/Library/LaunchAgents/com.macro-news.daily-brief.plist`.
