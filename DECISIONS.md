@@ -47,7 +47,7 @@ Decision: sample mode and live mode are separate.
 
 Rules:
 
-- Sample mode can use deterministic scaffold data for framework demos.
+- Sample mode can use deterministic sample data for framework demos.
 - Live market mode must use live rows or cached real-source rows.
 - Live calendar mode must use live rows or cached real-source rows.
 - Live Theme Radar mode must use verified source candidates.

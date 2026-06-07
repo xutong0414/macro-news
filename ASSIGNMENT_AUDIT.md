@@ -45,10 +45,10 @@ The PDF allows reasonable assumptions or sample data for unavailable firm-specif
 
 | Memo item | Current status | Notes |
 | --- | --- | --- |
-| Design tradeoffs | Drafted | `memo.md` covers local-first setup, Gmail vs Telegram, Gemini role, deterministic data vs LLM writing, data sources, validation, and scheduler tradeoffs. |
-| Position/theme assumptions | Drafted | `inputs/portfolio/positions.csv` and `memo.md` cover long USD/JPY, overweight gold, EM debt exposure, and house themes. |
-| 3 v2 features not completed | Drafted | `memo.md` lists exactly 3 unfinished v2 features. |
-| 1-month full-time roadmap | Drafted | `memo.md` has a concise one-month roadmap paragraph. |
+| Design tradeoffs | Done | `memo.md` covers local-first setup, Gmail vs Telegram, Gemini role, deterministic data vs LLM writing, data sources, validation, and scheduler tradeoffs. |
+| Position/theme assumptions | Done | `inputs/portfolio/positions.csv` and `memo.md` cover long USD/JPY, overweight gold, EM debt exposure, and house themes. |
+| 3 v2 features not completed | Done | `memo.md` lists exactly 3 unfinished v2 features. |
+| 1-month full-time roadmap | Done | `memo.md` has a concise one-month roadmap paragraph. |
 | Actual hours spent | Done | `memo.md` records roughly 3-4 hours for the initial framework plus more than 10 additional hours for checking, revision, and extension planning. |
 
 ## Remaining Submission Checklist

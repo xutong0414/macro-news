@@ -1,8 +1,8 @@
 # Feedback Input Rules
 
-This folder is for the human feedback loop.
+This folder defines the human feedback format used by the project.
 
-For now, feedback is recorded as a managed CSV template. Later versions can load this file before source ranking and prompt construction.
+In this submission, feedback is recorded as a CSV template. A future version can load this file before source ranking and prompt construction.
 
 Suggested questionnaire after each brief:
 
@@ -20,7 +20,7 @@ CSV columns:
 - `usefulness`: 1-5 usefulness score.
 - `comment`: short human note.
 
-Planned incorporation rule:
+Future incorporation rule:
 
 - High-rated repeated patterns increase ranking weight.
 - Low-rated patterns reduce ranking weight or trigger prompt warnings.

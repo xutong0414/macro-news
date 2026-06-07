@@ -99,7 +99,7 @@ Expected outcome:
 - No secrets are needed.
 - No email is sent.
 - The project creates or updates `outputs/latest/brief.md`, `outputs/latest/brief.html`, `outputs/latest/chart.png`, and a run log under `logs/`.
-- The content uses sample/scaffold data, so this step only proves that the framework runs.
+- The content uses sample data, so this step only checks that the framework runs.
 
 ### Step 3.2: Live Dry Run
 
