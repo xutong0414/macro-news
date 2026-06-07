@@ -6,7 +6,7 @@ The target reader is a macro PM who wants: what changed overnight, why it matter
 
 ## Current Status
 
-Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows including Japan 10Y, EUR/USD, and USD/JPY, dashboard timing/source notes with clickable source links, cached real-source market fallback, no persistent scaffold market row in the latest verified output, a USD/JPY chart reading linked to the first thing that matters, live economic-calendar rows with Asia/Europe/US session targeting, live Theme Radar source collection with fallback, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
+Stage: polished live prototype with Gemini synthesis, Gmail delivery, live market rows including Japan 10Y, EUR/USD, and USD/JPY, dashboard timing/source notes with clickable source links, cached real-source fallback, no scaffold market row in the latest verified output, a USD/JPY chart reading linked to the first thing that matters, live/cached economic-calendar rows with Asia/Europe/US session targeting, live Theme Radar source collection with fallback, factual guardrails for market-number consistency and unsupported narrative claims, GitHub manual-send automation, and confirmed MacBook `launchd` scheduled delivery with inbox receipt. Short-window GitHub schedule tests did not produce scheduled runs, so dependable scheduled delivery is routed through the documented local/server scheduler path.
 
 Locked defaults:
 
@@ -140,7 +140,7 @@ The market dashboard currently uses:
 - [Frankfurter](https://frankfurter.dev/) for EUR/USD and USD/JPY daily reference-rate rows.
 - [CoinGecko](https://www.coingecko.com/en/api) for BTC.
 - Dashboard notes explaining extraction time, close/prior basis, additional timing information for Hong Kong morning use, Frankfurter's latest-versus-immediately-previous published daily reference-rate convention, and BTC rolling 24-hour change convention.
-- Dashboard row read-throughs use the `Why it matters` label and describe the day's implication rather than repeating the instrument definition.
+- Dashboard row read-throughs use the `Reading` label and describe the day's implication rather than repeating the instrument definition.
 - Cached real-source rows when a temporary source outage occurs.
 - Sample fallback rows when a source fails and no cached real-source row exists.
 

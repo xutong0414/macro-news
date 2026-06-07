@@ -47,7 +47,7 @@ def _split_so_what(item: str) -> tuple[str, str]:
 
 def _three_things_news_query(item: str) -> str:
     lowered = item.lower()
-    if any(term in lowered for term in ("usd/jpy", "yen", "boj", "japan", "jgb")):
+    if any(term in lowered for term in ("usd/jpy", "intervention", "yen reversal", "yen appreciation")):
         return "USD JPY Japan intervention yield spread"
     if any(term in lowered for term in ("em debt", "em duration", "em financing", "emerging market")) and any(
         term in lowered for term in ("s&p", "equities", "risk-off", "risk aversion", "risk assets")
@@ -76,7 +76,7 @@ def _three_thing_news_link(item: str) -> str:
 
 def _three_thing_title(item: str) -> str:
     lowered = item.lower()
-    if any(term in lowered for term in ("usd/jpy", "yen", "boj", "japan", "jgb")):
+    if any(term in lowered for term in ("usd/jpy", "intervention", "yen reversal", "yen appreciation")):
         return "USD/JPY Intervention Risk"
     if any(term in lowered for term in ("us 10y", "treasury", "higher us yields", "yields rose")) and any(
         term in lowered for term in ("dxy", "dollar", "gold", "em debt", "em financing")
@@ -117,7 +117,7 @@ def _chart_reading(data: BriefData) -> str:
 def render_markdown(data: BriefData, run_date: date | None = None) -> str:
     run_date = run_date or date.today()
     market_table = _table(
-        ["Asset", "Close", "Prior", "Change", "Why it matters"],
+        ["Asset", "Close", "Prior", "Change", "Reading"],
         [[r.asset, r.close, r.prior, r.change, r.so_what] for r in data.market_rows],
     )
     calendar_table = _table(

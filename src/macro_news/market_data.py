@@ -56,7 +56,7 @@ YAHOO_SPECS = [
     YahooSpec("Euro Stoxx 50", "^STOXX50E", "", 2, "pct", "yahoo_chart:^STOXX50E", "European equities show whether risk appetite is broadening."),
     YahooSpec("US 10Y yield", "^TNX", "%", 2, "bp", "yahoo_chart:^TNX", "Treasury duration pressure drives USD/JPY, gold, and EM debt."),
     YahooSpec("DXY", "DX-Y.NYB", "", 2, "pct", "yahoo_chart:DX-Y.NYB", "Dollar direction is central for the assumed FX and EM book."),
-    YahooSpec("Gold", "GC=F", "$", 2, "pct", "yahoo_chart:GC=F", "Gold tests whether real-rate pressure is biting."),
+    YahooSpec("Gold", "GC=F", "$", 2, "pct", "yahoo_chart:GC=F", "Gold tests whether rate or dollar pressure is biting."),
     YahooSpec("WTI oil", "CL=F", "$", 2, "pct", "yahoo_chart:CL=F", "Oil matters for inflation risk and rates pricing."),
 ]
 
@@ -114,7 +114,7 @@ def _why_it_matters(quote: LiveQuote) -> str:
     if asset == "S&P 500":
         return {
             "up": "Risk tone improved; EM beta has some support if rates and the dollar stay contained.",
-            "down": "Risk tone softened; EM debt and high-beta FX should open on the defensive.",
+            "down": "Risk tone softened; EM debt and high-beta FX should trade defensively.",
             "flat": "US equities give little direction; rates and FX are the cleaner overnight signal.",
         }[direction]
     if asset == "Euro Stoxx 50":
@@ -150,7 +150,7 @@ def _why_it_matters(quote: LiveQuote) -> str:
     if asset == "Gold":
         return {
             "up": "Gold is resisting rates and dollar pressure, giving the overweight some cushion.",
-            "down": "Gold weakness shows real-rate or dollar pressure is biting the overweight.",
+            "down": "Gold weakness shows rate or dollar pressure is biting the overweight.",
             "flat": "Gold is holding steady; rates and DXY will decide whether the overweight has cover.",
         }[direction]
     if asset == "WTI oil":
@@ -167,8 +167,8 @@ def _why_it_matters(quote: LiveQuote) -> str:
         }[direction]
     if asset == "Japan 10Y yield":
         return {
-            "up": "Higher JGB yields can narrow the US-Japan spread and add risk to long USD/JPY.",
-            "down": "Lower JGB yields support the yield spread behind long USD/JPY.",
+            "up": "Higher JGB yields put Japan-rate pressure on the long USD/JPY view; compare against the US yield move.",
+            "down": "Lower JGB yields reduce Japan-rate pressure on the long USD/JPY view.",
             "flat": "Japan rates add little today; intervention risk is the cleaner USD/JPY watchpoint.",
         }[direction]
     return quote.so_what
@@ -348,7 +348,7 @@ def fetch_japan_10y_mof(client: httpx.Client) -> LiveQuote:
         decimals=3,
         change_style="bp",
         source="mof_japan:jgbcm_10y",
-        so_what="Japan rates are the direct yield-spread risk for the assumed long USD/JPY.",
+        so_what="Japan rates are a direct risk factor for the assumed long USD/JPY.",
     )
 
 

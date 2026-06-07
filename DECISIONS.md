@@ -298,3 +298,23 @@ Changes:
 - Add tests confirming Germany 10Y is not rendered.
 
 Outcome: full live dry run `20260606T153505Z` passed with 10 dashboard rows, no Germany 10Y row, no scaffold fallback rows, 9/10 live rows, 1 cached real-source S&P 500 row after a Yahoo timeout, prompt version `gemini_narrative_v7`, and delivery status `dry_run`.
+
+## 2026-06-07 - Sunday Morning Factual Guardrail Pass
+
+Decision: change the dashboard's final column from `Why it matters` to `Reading`, tighten factual validation, and treat code-owned market rows as the source of truth for all market-number references.
+
+Reason: the user correctly asked for a careful check that nothing is imagined except the assumed positions from the assignment PDF. A morning-style run exposed small but important model risks: moving a percentage from one asset to another, implying an uncalculated spread direction, using opening-language for prior closes, and leaking source-selection mechanics into Theme Radar.
+
+Changes:
+
+- Render the market dashboard header as `Reading`; keep the calendar header as `Why it matters`.
+- Add market-number consistency validation so a generated sentence that mentions an asset move must match that asset's dashboard `Change` value.
+- Reject unsupported narrative phrases such as uncalculated spread narrowing/widening, record-high language, market-pricing claims, opening-session claims, and real-rate language when no real-yield data is fetched.
+- Remove spread and real-rate wording from deterministic dashboard/sample facts where the code does not calculate those quantities.
+- Retry transient Gemini request failures and allow up to four LLM attempts for validation repair.
+- Strip embedded Theme Radar `So what:` text and source-selection/debug sentences before rendering.
+- Keep Theme Radar source summaries tied to selected live RSS source metadata, while code owns source links and book-impact rendering.
+
+Outcome: timed live dry run `20260607T011658Z` passed with prompt version `gemini_narrative_v24`, all 10 market rows refreshed from live public sources, cached Fair Economy calendar rows after a 429 live refresh, two live Theme Radar selections, no scaffold market fallback rows, runtime `27.44s`, 6,134 input tokens, 1,469 output tokens, 7,605 total tokens, and estimated Gemini cost $0.001201.
+
+Operational note: successful runs can be under one minute, but provider/source failures and validation repair attempts during this pass took roughly 30-80 seconds. A scheduled production send should start at least 10-15 minutes before the target inbox time.

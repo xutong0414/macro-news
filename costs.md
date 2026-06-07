@@ -23,6 +23,17 @@ The runner logs token usage and estimated LLM cost for `--use-llm` runs.
 
 Plain sample mode records zero actual LLM tokens.
 
+## Runtime Accounting
+
+Latest successful timed live dry run: `20260607T011658Z`, measured with `/usr/bin/time -p` on Sunday morning at 09:17 HKT.
+
+- Runtime: `real 27.44s`, `user 0.89s`, `sys 3.16s`.
+- Token use: 6,134 input, 1,469 output, 7,605 total.
+- Estimated LLM cost: $0.001201.
+- Source result: all 10 market dashboard rows live; calendar used cached Fair Economy rows after a 429 live refresh; Theme Radar selected live RSS items with one feed timeout.
+
+Operational note: use at least a 10-15 minute scheduler buffer before the desired inbox time. The successful run was under one minute, but quality-control testing saw provider/source failures and validation retries around 30-80 seconds before a clean output.
+
 ## Actual Runs
 
 | Date | Run id | Mode | Input tokens | Output tokens | Estimated LLM cost | Delivery |
@@ -49,3 +60,4 @@ Plain sample mode records zero actual LLM tokens.
 | 2026-06-06 | `20260606T144542Z` | USD/JPY chart reading dry run | 2,704 | 700 | $0.0005504 | Not sent |
 | 2026-06-06 | `20260606T145317Z` | Bold chart reading wording dry run | 2,707 | 697 | $0.0005495 | Not sent |
 | 2026-06-06 | `20260606T153505Z` | Remove Germany 10Y dashboard row dry run | 2,583 | 657 | $0.0005320 | Not sent |
+| 2026-06-07 | `20260607T011658Z` | Sunday morning factual-guardrail v24 live dry run, 27.44s real | 6,134 | 1,469 | $0.0012010 | Not sent |

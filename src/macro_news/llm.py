@@ -8,9 +8,9 @@ import httpx
 
 from .config import Settings
 from .costing import TokenUsage, estimate_llm_cost_usd
-from .sample_data import BriefData, ThemeItem
+from .sample_data import BriefData, MarketRow, ThemeItem
 
-PROMPT_VERSION = "gemini_narrative_v7"
+PROMPT_VERSION = "gemini_narrative_v24"
 
 
 @dataclass(frozen=True)
@@ -59,9 +59,38 @@ def _normalize_book_impact(text: str) -> str:
     return f"{prefix} {stripped}"
 
 
+def _strip_embedded_theme_impact(summary: str) -> str:
+    return re.split(r"\s+So what:\s*", summary, maxsplit=1, flags=re.IGNORECASE)[0].strip()
+
+
+def _strip_theme_source_mechanics(summary: str) -> str:
+    sentences = re.split(r"(?<=[.!?])\s+", summary)
+    banned_fragments = (
+        "selector picked",
+        "selected it because",
+        "selected because",
+        "this is relevant",
+        "source mechanics",
+    )
+    kept = [sentence for sentence in sentences if not any(fragment in sentence.lower() for fragment in banned_fragments)]
+    return " ".join(kept).strip()
+
+
 def _reject_generic_theme_language(summary: str, idx: int) -> None:
     lowered = summary.lower()
-    banned_phrases = ("the article explores", "this piece explores", "this analysis examines", "this is relevant")
+    banned_phrases = (
+        "the article explores",
+        "this article explores",
+        "this article investigates",
+        "this article posits",
+        "this piece examines",
+        "this piece explores",
+        "this analysis explores",
+        "this analysis examines",
+        "this analysis posits",
+        "it posits",
+        "posits",
+    )
     for phrase in banned_phrases:
         if phrase in lowered:
             raise ValueError(f"theme_radar summary {idx} uses generic phrasing: {phrase}")
@@ -77,12 +106,128 @@ def _reject_portfolio_logic_errors(text: str, label: str) -> None:
         raise ValueError(f"{label} must treat higher Japan yields as a USD/JPY spread risk, not generic carry support")
 
 
+def _reject_unsupported_market_claims(text: str, label: str) -> None:
+    lowered = text.lower()
+    banned_phrases = (
+        "chart",
+        "chart caption",
+        "record high",
+        "record highs",
+        "market is increasingly pricing",
+        "market pricing",
+        "pricing in",
+        "priced in",
+        "narrowing us-japan",
+        "narrowing the us-japan",
+        "narrowing yield spread",
+        "narrowing spread",
+        "narrow the us-japan",
+        "narrow the yield spread",
+        "narrow the spread",
+        "us-japan spread",
+        "opened softer",
+        "opened lower",
+        "opened firmer",
+        "opened higher",
+        "real rates",
+        "real-rate",
+        "safe-haven",
+        "crowded positioning",
+        "yen shorts",
+        "carry trade",
+        "fed remains hawkish",
+        "hawkish relative",
+        "boj remains dovish",
+    )
+    for phrase in banned_phrases:
+        if phrase in lowered:
+            raise ValueError(f"{label} uses unsupported market-positioning language: {phrase}")
+
+
+def _market_aliases(asset: str) -> tuple[str, ...]:
+    aliases = {
+        "S&P 500": ("s&p 500", "s&p", "spx"),
+        "Euro Stoxx 50": ("euro stoxx 50", "stoxx 50"),
+        "US 10Y yield": ("us 10y", "treasury yield", "treasury yields", "us yield", "us yields"),
+        "Japan 10Y yield": ("japan 10y", "japan yield", "japan yields", "jgb yield", "jgb yields", "japanese yield", "japanese yields"),
+        "DXY": ("dxy", "dollar index"),
+        "EUR/USD": ("eur/usd",),
+        "USD/JPY": ("usd/jpy",),
+        "Gold": ("gold",),
+        "WTI oil": ("wti oil", "wti"),
+        "BTC": ("btc", "bitcoin"),
+    }
+    return aliases.get(asset, (asset.lower(),))
+
+
+def _parse_change(change: str) -> tuple[str, float] | None:
+    normalized = change.lower().replace(" ", "")
+    if normalized.endswith("bp"):
+        try:
+            return ("bp", abs(float(normalized.removesuffix("bp"))))
+        except ValueError:
+            return None
+    if normalized.endswith("%"):
+        try:
+            return ("pct", abs(float(normalized.removesuffix("%"))))
+        except ValueError:
+            return None
+    return None
+
+
+def _nearby_change_numbers(text: str, alias: str, kind: str) -> list[float]:
+    lowered = text.lower()
+    alias_pattern = rf"\b{re.escape(alias)}\b"
+    number_pattern = r"(?<![\d.])(?P<num>[+-]?\d+(?:\.\d+)?)\s*%" if kind == "pct" else r"(?<![\d.])(?P<num>[+-]?\d+(?:\.\d+)?)\s*bp\b"
+    movement_pattern = re.compile(
+        r"\b(up|down|rose|rise|rises|rising|fell|fall|falls|falling|gained|gain|gains|"
+        r"lost|lose|loses|dropped|drop|drops|declined|decline|declines|increased|"
+        r"increase|increases|decreased|decrease|decreases|moved|move|moves|"
+        r"appreciated|appreciate|appreciates|weakened|weaken|weakens|"
+        r"strengthened|strengthen|strengthens|change|changed)\b"
+    )
+    values: list[float] = []
+    after_pattern = re.compile(rf"{alias_pattern}(?P<between>.{{0,35}}?){number_pattern}", re.IGNORECASE)
+    before_pattern = re.compile(rf"{number_pattern}(?P<between>.{{0,35}}?){alias_pattern}(?P<after>.{{0,25}})", re.IGNORECASE)
+    for match in after_pattern.finditer(text):
+        if movement_pattern.search(match.group("between").lower()):
+            values.append(abs(float(match.group("num"))))
+    for match in before_pattern.finditer(text):
+        bridge = f"{match.group('between')} {match.group('after')}".lower()
+        if movement_pattern.search(bridge):
+            values.append(abs(float(match.group("num"))))
+    return values
+
+
+def _reject_mismatched_market_numbers(text: str, rows: list[MarketRow], label: str) -> None:
+    for row in rows:
+        parsed = _parse_change(row.change)
+        if parsed is None:
+            continue
+        kind, expected = parsed
+        candidates: list[float] = []
+        for alias in _market_aliases(row.asset):
+            candidates.extend(_nearby_change_numbers(text, alias, kind))
+        if candidates and not any(abs(value - expected) <= 0.05 for value in candidates):
+            unit = "%" if kind == "pct" else " bp"
+            seen = ", ".join(f"{value:g}{unit}" for value in sorted(set(candidates)))
+            raise ValueError(
+                f"{label} appears to attach {seen} to {row.asset}, "
+                f"but the dashboard row change is {row.change}"
+            )
+
+
+def _require_first_item_supports_chart(three_things: list[str]) -> None:
+    first = three_things[0].lower()
+    if not any(term in first for term in ("usd/jpy", "yen", "japan", "intervention")):
+        raise ValueError("three_things item 1 must be the USD/JPY chart-support item")
+
+
 def build_narrative_prompt(data: BriefData) -> str:
     facts = {
         "market_dashboard": [asdict(row) for row in data.market_rows],
         "dashboard_notes": data.dashboard_notes,
         "calendar": [asdict(event) for event in data.calendar],
-        "chart_caption": data.chart_caption,
         "theme_inputs": [asdict(item) for item in data.theme_radar],
         "assumptions": data.assumptions,
     }
@@ -90,15 +235,23 @@ def build_narrative_prompt(data: BriefData) -> str:
     return (
         "You are writing a Daily Macro Brief for a time-poor macro portfolio manager.\n"
         "Use only the facts below. Do not invent market numbers, source names, links, or positions.\n"
+        "If you mention an asset's percentage or bp move, copy that asset's Change value exactly from the market dashboard.\n"
+        "Do not move a number from one dashboard row to another.\n"
         "Do not add generic risk factors unless they appear in the facts.\n"
+        "Do not claim market pricing, safe-haven flows, crowded positioning, yen shorts, carry trades, or central-bank stances unless those facts appear below.\n"
+        "Do not say the US-Japan spread narrowed or widened unless the facts provide a calculated spread; mention the US and Japan yield moves separately.\n"
+        "Do not say markets opened higher/lower/softer/firmer unless the facts explicitly provide opening data; use closed lower, traded lower, or were softer.\n"
+        "Do not mention real rates unless the facts provide real-yield data; use US yields or rates instead.\n"
+        "Do not mention JSON field names, charts, figures, prompts, or source mechanics in the brief; describe the underlying market risk directly.\n"
+        "Do not use record-high or historical-extreme language unless the facts explicitly provide that history; use 'elevated' if that is all the facts support.\n"
         "Keep the tone concise, investment-oriented, and opinionated.\n"
         "Write like a PM-facing morning note: catalyst first, portfolio read-through second, no filler.\n\n"
         "Portfolio semantics:\n"
         "- A long USD/JPY position benefits when USD/JPY rises, but is hurt by intervention or yen-strength reversal risk.\n"
         "- Do not say dollar strength itself is a risk to long USD/JPY; the risk is intervention, yen reversal, or position crowding after a large rise.\n"
-        "- Rising Japan 10Y yields are not automatically supportive for long USD/JPY; they can narrow the US-Japan yield-spread advantage unless US yields rise more.\n"
-        "- Do not say higher Japanese yields reinforce USD/JPY carry unless the facts explicitly show the US-Japan yield spread widened.\n"
-        "- A gold overweight benefits when gold rises, but is pressured by higher real rates or dollar strength.\n"
+        "- Rising Japan 10Y yields are not automatically supportive for long USD/JPY; compare them with the US yield move and do not infer the trade direction from Japan yields alone.\n"
+        "- Do not say higher Japanese yields reinforce USD/JPY carry unless the facts explicitly provide a carry or spread calculation.\n"
+        "- A gold overweight benefits when gold rises, but is pressured by higher US yields/rates or dollar strength.\n"
         "- EM debt exposure is usually pressured by higher US yields, stronger dollar funding stress, or weaker China demand.\n\n"
         "Return only valid JSON with this exact shape:\n"
         "{\n"
@@ -110,11 +263,14 @@ def build_narrative_prompt(data: BriefData) -> str:
         "}\n\n"
         "Constraints:\n"
         "- Each item in three_things must be 80 words or fewer and include a clear 'So what:' clause tied to the assumed book.\n"
+        "- The first item in three_things must be the USD/JPY or intervention-risk item.\n"
         "- theme_radar must contain 1-3 items and reuse the provided title, source, and link values.\n"
-        "- Each theme_radar summary must be 60-100 words and explain the author's thesis and evidence without generic openers like 'this piece explores' or 'this analysis examines'.\n"
+        "- Each theme_radar summary must be 45-100 words, start with the thesis directly, and explain the author's thesis and evidence without generic openers like 'this piece examines', 'this piece explores', 'this article explores', 'this analysis explores', or 'this analysis examines'.\n"
+        "- Theme Radar summaries must not mention selector mechanics, ranking, matching keywords, or why the source was picked.\n"
+        "- Do not use the word 'posits'. Use 'argues', 'shows', or direct wording instead.\n"
         "- Each book_impact line must start with 'What this means for our book:' and must be specific to that source.\n"
         "- Do not repeat the same book_impact line across Theme Radar items.\n"
-        "- contrarian_corner must be 50-100 words, name the consensus narrative, and include one concrete trigger that would challenge it.\n\n"
+        "- contrarian_corner must be 50-100 words, name a simple read or consensus narrative based only on the facts, and include one concrete trigger that would challenge it.\n\n"
         f"Facts:\n{json.dumps(facts, indent=2)}"
     )
 
@@ -126,11 +282,14 @@ def parse_narrative_response(text: str, base_data: BriefData) -> BriefData:
     if not isinstance(three_things, list) or len(three_things) != 3:
         raise ValueError("Gemini response must include exactly three items in three_things")
     three_things = [str(item).strip() for item in three_things]
+    _require_first_item_supports_chart(three_things)
     for idx, item in enumerate(three_things, 1):
         if "so what:" not in item.lower():
             raise ValueError(f"three_things item {idx} must include 'So what:'")
         _require_word_max(f"three_things item {idx}", item, 80)
         _reject_portfolio_logic_errors(item, f"three_things item {idx}")
+        _reject_unsupported_market_claims(item, f"three_things item {idx}")
+        _reject_mismatched_market_numbers(item, base_data.market_rows, f"three_things item {idx}")
 
     allowed_theme_meta = {(item.title, item.source, item.link) for item in base_data.theme_radar}
     theme_payload = payload.get("theme_radar")
@@ -145,12 +304,12 @@ def parse_narrative_response(text: str, base_data: BriefData) -> BriefData:
         title = str(item.get("title", "")).strip()
         source = str(item.get("source", "")).strip()
         link = str(item.get("link", "")).strip()
-        summary = str(item.get("summary", "")).strip()
+        summary = _strip_theme_source_mechanics(_strip_embedded_theme_impact(str(item.get("summary", "")).strip()))
         book_impact = _normalize_book_impact(str(item.get("book_impact", "")))
 
         if (title, source, link) not in allowed_theme_meta:
             raise ValueError(f"theme_radar item {idx} must reuse an existing title, source, and link")
-        _require_word_range(f"theme_radar summary {idx}", summary, 60, 100)
+        _require_word_range(f"theme_radar summary {idx}", summary, 45, 100)
         _reject_generic_theme_language(summary, idx)
         impact_key = book_impact.lower()
         if impact_key in seen_book_impacts:
@@ -169,6 +328,8 @@ def parse_narrative_response(text: str, base_data: BriefData) -> BriefData:
     contrarian_corner = str(payload.get("contrarian_corner", "")).strip()
     _require_word_range("contrarian_corner", contrarian_corner, 50, 100)
     _reject_portfolio_logic_errors(contrarian_corner, "contrarian_corner")
+    _reject_unsupported_market_claims(contrarian_corner, "contrarian_corner")
+    _reject_mismatched_market_numbers(contrarian_corner, base_data.market_rows, "contrarian_corner")
 
     return replace(
         base_data,
@@ -188,12 +349,14 @@ def synthesize_with_gemini(settings: Settings, data: BriefData) -> SynthesisResu
     total_usage = TokenUsage(input_tokens=0, output_tokens=0, total_tokens=0, provider="gemini")
     generated_data: BriefData | None = None
     last_validation_error: ValueError | None = None
+    last_request_error: RuntimeError | None = None
 
-    for attempt in range(2):
+    max_attempts = 4
+    for attempt in range(max_attempts):
         payload = {
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {
-                "temperature": 0.3,
+                "temperature": 0.1,
                 "responseMimeType": "application/json",
             },
         }
@@ -207,7 +370,10 @@ def synthesize_with_gemini(settings: Settings, data: BriefData) -> SynthesisResu
             )
             response.raise_for_status()
         except httpx.HTTPError as exc:
-            raise RuntimeError(f"Gemini request failed: {exc}") from exc
+            last_request_error = RuntimeError(f"Gemini request failed: {exc}")
+            if attempt == max_attempts - 1:
+                break
+            continue
 
         body = response.json()
         candidates = body.get("candidates", [])
@@ -232,20 +398,30 @@ def synthesize_with_gemini(settings: Settings, data: BriefData) -> SynthesisResu
             break
         except ValueError as exc:
             last_validation_error = exc
-            if attempt == 1:
+            if attempt == max_attempts - 1:
                 break
             prompt = (
                 f"{prompt}\n\n"
                 "Validation repair instruction:\n"
                 f"The previous JSON failed validation because: {exc}.\n"
-                "Return the full JSON object again. Be especially careful that every theme_radar summary is 60-100 words."
+                "Return the full JSON object again. Be especially careful that every theme_radar summary is 45-100 words."
                 " Also ensure Theme Radar book_impact lines are source-specific and not repeated."
-                " Avoid generic phrases such as 'this piece explores', 'this analysis examines', 'it posits', or 'this is relevant'."
-                " Do not frame dollar strength itself as a risk to long USD/JPY; only intervention, yen reversal, or crowding are risks."
+                " Do not mention selector mechanics, ranking, matching keywords, or why a Theme Radar source was picked."
+                " Avoid generic phrases such as 'this piece examines', 'this piece explores', 'this article explores', 'this analysis explores', 'this analysis examines', or 'it posits'."
+                " Do not use the word 'posits'."
+                " Do not mention chart captions, JSON fields, prompts, source mechanics, market pricing, positioning, or safe-haven flows."
+                " If you mention an asset move, copy that asset's dashboard Change value exactly."
+                " Do not use record-high or historical-extreme language; use 'elevated' if the facts only show a high current level."
+                " Do not say markets opened higher/lower/softer/firmer unless the facts explicitly provide opening data."
+                " Do not mention real rates unless the facts provide real-yield data."
+                " Do not say the US-Japan spread narrowed or widened unless the facts provide a calculated spread."
+                " Do not frame dollar strength itself as a risk to long USD/JPY; only intervention or yen reversal are risks."
             )
 
     if generated_data is None:
-        raise RuntimeError(f"Gemini response failed validation after retry: {last_validation_error}") from last_validation_error
+        if last_request_error is not None and last_validation_error is None:
+            raise last_request_error
+        raise RuntimeError(f"Gemini response failed validation after retries: {last_validation_error}") from last_validation_error
 
     usage = total_usage
     estimated_cost = estimate_llm_cost_usd("gemini", settings.gemini_model, usage)

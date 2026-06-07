@@ -51,16 +51,16 @@ def build_sample_brief_data() -> BriefData:
             MarketRow("S&P 500", "5,412", "5,389", "+0.4%", "Risk tone improved; EM beta has some support if rates and the dollar stay contained."),
             MarketRow("Euro Stoxx 50", "5,020", "4,995", "+0.5%", "Eurozone risk appetite is firming, a useful cross-check against the US equity signal."),
             MarketRow("US 10Y yield", "4.42%", "4.36%", "+6 bp", "Higher Treasury yields pressure gold and EM duration, while keeping dollar carry supported."),
-            MarketRow("Japan 10Y yield", "2.67%", "2.65%", "+2 bp", "Higher JGB yields can narrow the US-Japan spread and add risk to long USD/JPY."),
+            MarketRow("Japan 10Y yield", "2.67%", "2.65%", "+2 bp", "Higher JGB yields put Japan-rate pressure on the long USD/JPY view; compare against the US yield move."),
             MarketRow("DXY", "104.8", "104.3", "+0.5%", "Dollar strength tightens EM financing conditions and is a headwind for gold and commodities."),
             MarketRow("EUR/USD", "1.0850", "1.0800", "+0.5%", "Euro firmness trims broad-dollar pressure; confirm with DXY before adding USD exposure."),
             MarketRow("USD/JPY", "157.20", "156.10", "+0.7%", "The long is working, but extension raises intervention and crowded-position risk."),
-            MarketRow("Gold", "$2,352", "$2,371", "-0.8%", "Gold weakness shows real-rate or dollar pressure is biting the overweight."),
+            MarketRow("Gold", "$2,352", "$2,371", "-0.8%", "Gold weakness shows rate or dollar pressure is biting the overweight."),
             MarketRow("WTI oil", "$78.40", "$77.10", "+1.7%", "Oil strength adds inflation risk and can delay the easing impulse rates want to price."),
             MarketRow("BTC", "$68,900", "$67,500", "+2.1%", "Speculative risk appetite is firm, but this remains a cross-check rather than a core book driver."),
         ],
         three_things=[
-            "Rates are doing the heavy lifting overnight. The US 10Y yield rose 6 bp and the dollar firmed, so the book's USD/JPY long is aligned with momentum. So what: keep the FX view, but watch whether real-rate pressure starts to hurt gold more visibly.",
+            "Rates are doing the heavy lifting overnight. The US 10Y yield rose 6 bp and the dollar firmed, so the book's USD/JPY long is aligned with momentum. So what: keep the FX view, but watch whether rate pressure starts to hurt gold more visibly.",
             "Oil is quietly rebuilding an inflation impulse. WTI rose 1.7% in the sample dashboard, which matters because the market narrative still leans toward eventual easing. So what: higher oil can delay rate relief and pressure EM duration.",
             "Risk assets are up, but the signal is not cleanly reflationary. Equities and BTC are firmer while gold is softer and yields are higher. So what: this is a dollar-and-rates morning, not a broad risk-on signal.",
         ],
@@ -103,7 +103,7 @@ def build_sample_brief_data() -> BriefData:
             ),
         ],
         contrarian_corner=(
-            "The market may be too comfortable with a clean disinflation path. If oil, freight, or shelter components stop cooperating at the same time that fiscal issuance keeps term premium elevated, the next surprise could be a higher real-rate regime rather than a growth scare. That would favor dollar resilience and punish crowded duration longs."
+            "The market may be too comfortable with a clean disinflation path. If oil, freight, or shelter components stop cooperating at the same time that fiscal issuance keeps term premium elevated, the next surprise could be a higher-rate regime rather than a growth scare. That would favor dollar resilience and punish crowded duration longs."
         ),
         assumptions=[
             "Assumed book is long USD/JPY, overweight gold, and exposed to an EM debt basket.",

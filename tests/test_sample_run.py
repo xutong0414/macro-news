@@ -45,7 +45,8 @@ def test_sample_brief_contains_required_sections() -> None:
     for section in required:
         assert section in brief
     assert "Dashboard notes:" in brief
-    assert "| Asset | Close | Prior | Change | Why it matters |" in brief
+    assert "| Asset | Close | Prior | Change | Reading |" in brief
+    assert "| Session | Time | Event | Consensus | Why it matters |" in brief
     assert "| Asset | Close | Prior | Change | So what |" not in brief
     assert "### 1. USD/JPY Intervention Risk" in brief
     assert "momentum.\n\n**So what:** keep the FX view" in brief
@@ -65,6 +66,20 @@ def test_sample_brief_html_renders_chart_reading_label() -> None:
     assert "Caption:" not in html
 
 
+def test_three_things_japan_yield_item_gets_rates_title() -> None:
+    data = replace(
+        build_sample_brief_data(),
+        three_things=[
+            "USD/JPY is near the intervention zone after a large rise. So what: keep the long USD/JPY risk tightly monitored.",
+            "US 10Y yields rose while Japan 10Y yields also increased and DXY gained. So what: EM debt and gold both face pressure from rates and dollar strength.",
+            "Equities are softer and oil is lower. So what: treat riskier exposures cautiously.",
+        ],
+    )
+    brief = render_markdown(data)
+
+    assert "### 2. Rates And Dollar Pressure" in brief
+
+
 def test_sample_brief_assignment_word_limits() -> None:
     data = build_sample_brief_data()
 
@@ -79,7 +94,7 @@ def test_parse_narrative_response_replaces_narrative_sections() -> None:
     response = """
     {
       "three_things": [
-        "Rates remain the cleanest overnight signal as higher yields reinforce dollar momentum. So what: keep USD/JPY as the main expression, but watch whether gold starts reacting more negatively to real-rate pressure.",
+        "USD/JPY is near the intervention zone after a large rise. So what: keep the long USD/JPY risk tightly monitored.",
         "Oil strength adds an awkward inflation tail to an otherwise calm risk tape. So what: EM duration exposure should stay hedged until energy stops pushing against the easing narrative.",
         "Equities look firm, but the cross-asset mix is more about rates and the dollar than broad reflation. So what: avoid reading this as a simple risk-on day for the whole book."
       ],
@@ -92,7 +107,7 @@ def test_parse_narrative_response_replaces_narrative_sections() -> None:
           "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
         }
       ],
-      "contrarian_corner": "The market may be too relaxed about the idea that policy easing can arrive without a renewed inflation problem. If oil, freight, or shelter data firm while Treasury supply keeps term premium elevated, the next surprise is higher real rates rather than weaker growth. That would support the dollar and challenge duration-heavy trades."
+      "contrarian_corner": "The market may be too relaxed about the idea that policy easing can arrive without a renewed inflation problem. If oil, freight, or shelter data firm while Treasury supply keeps term premium elevated, the next surprise is higher US yields rather than weaker growth. That would support the dollar and challenge duration-heavy trades."
     }
     """
 
@@ -101,7 +116,7 @@ def test_parse_narrative_response_replaces_narrative_sections() -> None:
     assert generated.market_rows == base.market_rows
     assert generated.calendar == base.calendar
     assert generated.chart_series == base.chart_series
-    assert generated.three_things[0].startswith("Rates remain")
+    assert generated.three_things[0].startswith("USD/JPY")
     assert generated.theme_radar[0].summary.startswith("The author argues")
     assert generated.contrarian_corner.startswith("The market may be")
     assert "gemini_synthesis" in generated.data_sources
@@ -125,7 +140,7 @@ def test_parse_narrative_response_rejects_usdjpy_portfolio_logic_error() -> None
           "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
         }
       ],
-      "contrarian_corner": "The market may be too relaxed about the idea that policy easing can arrive without a renewed inflation problem. If oil, freight, or shelter data firm while Treasury supply keeps term premium elevated, the next surprise is higher real rates rather than weaker growth. That would support the dollar and challenge duration-heavy trades."
+      "contrarian_corner": "The market may be too relaxed about the idea that policy easing can arrive without a renewed inflation problem. If oil, freight, or shelter data firm while Treasury supply keeps term premium elevated, the next surprise is higher US yields rather than weaker growth. That would support the dollar and challenge duration-heavy trades."
     }
     """
 
@@ -135,6 +150,36 @@ def test_parse_narrative_response_rejects_usdjpy_portfolio_logic_error() -> None
         assert "dollar strength" in str(exc)
     else:
         raise AssertionError("Expected USD/JPY portfolio logic validation to fail")
+
+
+def test_parse_narrative_response_requires_first_item_to_support_chart() -> None:
+    base = build_sample_brief_data()
+    response = """
+    {
+      "three_things": [
+        "Gold is lower as rates rise. So what: the gold overweight needs tighter risk monitoring.",
+        "USD/JPY is near the intervention zone after a large rise. So what: keep the long USD/JPY risk tightly monitored.",
+        "Equities are softer and the dollar is firmer. So what: EM debt exposure should be treated carefully."
+      ],
+      "theme_radar": [
+        {
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note says duration risk remains central.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }
+      ],
+      "contrarian_corner": "The simple read is that USD/JPY can keep rising while US yields stay high and the dollar is firm. A trigger that would challenge this view is a direct warning from Japanese officials that forces investors to reassess yen-reversal risk and reduce exposure before the next policy headline."
+    }
+    """
+
+    try:
+        parse_narrative_response(response, base)
+    except ValueError as exc:
+        assert "chart-support item" in str(exc)
+    else:
+        raise AssertionError("Expected first-item chart-support validation to fail")
 
 
 def test_parse_narrative_response_rejects_japan_yield_carry_error() -> None:
@@ -165,6 +210,186 @@ def test_parse_narrative_response_rejects_japan_yield_carry_error() -> None:
         assert "Japan yields" in str(exc)
     else:
         raise AssertionError("Expected Japan yield carry validation to fail")
+
+
+def test_parse_narrative_response_rejects_unsupported_market_pricing_claim() -> None:
+    base = build_sample_brief_data()
+    response = """
+    {
+      "three_things": [
+        "USD/JPY is near the intervention zone after a large rise. So what: keep the long USD/JPY risk tightly monitored.",
+        "Gold is lower as rates rise. So what: the gold overweight needs tighter risk monitoring.",
+        "Equities are softer and the dollar is firmer. So what: EM debt exposure should be treated carefully."
+      ],
+      "theme_radar": [
+        {
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note says duration risk remains central.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }
+      ],
+      "contrarian_corner": "The simple read is that USD/JPY can keep rising while US yields stay high and the dollar is firm. However, the market is increasingly pricing in intervention risk as spot nears 160. A trigger that would challenge the trend is a direct warning from Japanese officials that forces traders to reassess yen-reversal risk."
+    }
+    """
+
+    try:
+        parse_narrative_response(response, base)
+    except ValueError as exc:
+        assert "unsupported market-positioning language" in str(exc)
+    else:
+        raise AssertionError("Expected unsupported market-pricing validation to fail")
+
+
+def test_parse_narrative_response_rejects_unsupported_spread_claim() -> None:
+    base = build_sample_brief_data()
+    response = """
+    {
+      "three_things": [
+        "Japan yields rose and the narrowing US-Japan yield spread adds risk to USD/JPY. So what: keep the long USD/JPY risk tightly monitored.",
+        "Gold is lower as rates rise. So what: the gold overweight needs tighter risk monitoring.",
+        "Equities are softer and the dollar is firmer. So what: EM debt exposure should be treated carefully."
+      ],
+      "theme_radar": [
+        {
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note says duration risk remains central.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }
+      ],
+      "contrarian_corner": "The simple read is that USD/JPY can keep rising while US yields stay high and the dollar is firm. A trigger that would challenge this view is a direct warning from Japanese officials that forces investors to reassess yen-reversal risk and reduce exposure before the next policy headline."
+    }
+    """
+
+    try:
+        parse_narrative_response(response, base)
+    except ValueError as exc:
+        assert "unsupported market-positioning language" in str(exc)
+    else:
+        raise AssertionError("Expected unsupported spread validation to fail")
+
+
+def test_parse_narrative_response_rejects_mismatched_market_number() -> None:
+    base = build_sample_brief_data()
+    response = """
+    {
+      "three_things": [
+        "USD/JPY is near the intervention zone after a large rise. So what: keep the long USD/JPY risk tightly monitored.",
+        "WTI oil fell 3.1%, adding another risk-off signal to the morning tape. So what: EM debt exposure should be treated carefully.",
+        "Gold is lower as rates rise. So what: the gold overweight needs tighter risk monitoring."
+      ],
+      "theme_radar": [
+        {
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note says duration risk remains central.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }
+      ],
+      "contrarian_corner": "The simple read is that USD/JPY can keep rising while US yields stay high and the dollar is firm. A trigger that would challenge this view is a direct warning from Japanese officials that forces investors to reassess yen-reversal risk and reduce exposure before the next policy headline."
+    }
+    """
+
+    try:
+        parse_narrative_response(response, base)
+    except ValueError as exc:
+        assert "WTI oil" in str(exc)
+        assert "dashboard row change" in str(exc)
+    else:
+        raise AssertionError("Expected mismatched market-number validation to fail")
+
+
+def test_parse_narrative_response_rejects_generic_theme_openers() -> None:
+    base = build_sample_brief_data()
+    response = """
+    {
+      "three_things": [
+        "USD/JPY is near the intervention zone after a large rise. So what: keep the long USD/JPY risk tightly monitored.",
+        "WTI oil rose 1.7%, adding another inflation signal to the morning tape. So what: EM debt exposure should be treated carefully.",
+        "Gold is lower as rates rise. So what: the gold overweight needs tighter risk monitoring."
+      ],
+      "theme_radar": [
+        {
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "This analysis explores how fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note says duration risk remains central.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }
+      ],
+      "contrarian_corner": "The simple read is that USD/JPY can keep rising while US yields stay high and the dollar is firm. A trigger that would challenge this view is a direct warning from Japanese officials that forces investors to reassess yen-reversal risk and reduce exposure before the next policy headline."
+    }
+    """
+
+    try:
+        parse_narrative_response(response, base)
+    except ValueError as exc:
+        assert "generic phrasing" in str(exc)
+    else:
+        raise AssertionError("Expected generic Theme Radar opener validation to fail")
+
+
+def test_parse_narrative_response_strips_theme_summary_so_what() -> None:
+    base = build_sample_brief_data()
+    response = """
+    {
+      "three_things": [
+        "USD/JPY is near the intervention zone after a large rise. So what: keep the long USD/JPY risk tightly monitored.",
+        "WTI oil rose 1.7%, adding another inflation signal to the morning tape. So what: EM debt exposure should be treated carefully.",
+        "Gold is lower as rates rise. So what: the gold overweight needs tighter risk monitoring."
+      ],
+      "theme_radar": [
+        {
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note adds that duration risk remains central when supply pressure keeps returning. The selector picked it because the feed discusses rates and credit. So what: USD/JPY can keep support, but gold needs close monitoring.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }
+      ],
+      "contrarian_corner": "The simple read is that USD/JPY can keep rising while US yields stay high and the dollar is firm. A trigger that would challenge this view is a direct warning from Japanese officials that forces investors to reassess yen-reversal risk and reduce exposure before the next policy headline."
+    }
+    """
+
+    generated = parse_narrative_response(response, base)
+
+    assert "So what:" not in generated.theme_radar[0].summary
+    assert "selector picked" not in generated.theme_radar[0].summary.lower()
+    assert generated.theme_radar[0].summary.endswith("supply pressure keeps returning.")
+
+
+def test_parse_narrative_response_rejects_unsourced_open_and_real_rate_language() -> None:
+    base = build_sample_brief_data()
+    response = """
+    {
+      "three_things": [
+        "USD/JPY is near the intervention zone after a large rise. So what: keep the long USD/JPY risk tightly monitored.",
+        "Equities opened softer, with risk appetite weaker across regions. So what: EM debt exposure should be treated carefully.",
+        "Gold fell 0.8% as real rates rose. So what: the gold overweight needs tighter risk monitoring."
+      ],
+      "theme_radar": [
+        {
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note says duration risk remains central.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }
+      ],
+      "contrarian_corner": "The simple read is that USD/JPY can keep rising while US yields stay high and the dollar is firm. A trigger that would challenge this view is a direct warning from Japanese officials that forces investors to reassess yen-reversal risk and reduce exposure before the next policy headline."
+    }
+    """
+
+    try:
+        parse_narrative_response(response, base)
+    except ValueError as exc:
+        assert "unsupported market-positioning language" in str(exc)
+    else:
+        raise AssertionError("Expected unsourced open/real-rate validation to fail")
 
 
 def test_dry_run_writes_outputs(tmp_path) -> None:
@@ -325,7 +550,7 @@ def test_live_market_data_replaces_rows_and_logs_fallback(tmp_path) -> None:
     assert row_by_asset["US 10Y yield"].so_what.startswith("Higher Treasury yields pressure gold")
     assert row_by_asset["Japan 10Y yield"].close == "2.671%"
     assert row_by_asset["Japan 10Y yield"].change == "+3 bp"
-    assert row_by_asset["Japan 10Y yield"].so_what == "Higher JGB yields can narrow the US-Japan spread and add risk to long USD/JPY."
+    assert row_by_asset["Japan 10Y yield"].so_what == "Higher JGB yields put Japan-rate pressure on the long USD/JPY view; compare against the US yield move."
     assert row_by_asset["EUR/USD"].close == "1.0900"
     assert row_by_asset["EUR/USD"].change == "+0.9%"
     assert row_by_asset["USD/JPY"].close == "159.00"

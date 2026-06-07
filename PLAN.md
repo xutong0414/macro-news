@@ -2,13 +2,15 @@
 
 ## Current Stage
 
-Market dashboard cleanup is complete. Germany 10Y was removed because it remained a recurring scaffold fallback row without a clean live source. The latest verified dry run (`20260606T153505Z`) renders a 10-row dashboard and reports no scaffold fallback rows.
+Sunday-morning brief quality pass is complete. The latest verified dry run (`20260607T011658Z`) renders the dashboard with a `Reading` column, all 10 market rows from live public sources, cached real-source calendar rows after a Fair Economy 429, live Theme Radar selections, prompt version `gemini_narrative_v24`, and no scaffold market fallback rows.
+
+Measured runtime for that successful run was `27.44s` wall-clock, with 6,134 input tokens, 1,469 output tokens, 7,605 total tokens, and estimated Gemini cost of $0.001201.
 
 ## Whose Turn
 
-Agent turn: wait for user review of the updated dashboard and Source Status.
+Agent turn: checkpoint saved; wait for user review of `outputs/latest/brief.html` and decide the next revision focus.
 
-User turn: review the updated dashboard and Source Status after the next verified output.
+User turn: review the latest brief output, especially the dashboard, Three Things, Theme Radar tone, and whether the Sunday calendar/cache note is acceptable for the assignment story.
 
 ## Locked Setup Choices
 
@@ -30,8 +32,8 @@ User turn: review the updated dashboard and Source Status after the next verifie
 - Market data role: fetch live dashboard rows where available; use cached real-source rows for temporary outages; fall back to sample rows only when neither live nor cached data is available.
 - Calendar data role: fetch live economic-calendar rows where available; target Asia/Europe/US session coverage; use ignored cache and sample fallback if the public feed fails or rate-limits.
 - Theme Radar role: fetch curated RSS sources, rank them against the assumed book/themes, and let Gemini synthesize only selected source facts.
-- LLM validation role: retry once when Gemini output fails strict JSON or word-limit validation.
-- Brief quality role: render source-status notes, keep live/cache/scaffold fallback explicit, and use Gemini prompt v7 for sharper PM-facing narrative and portfolio-logic validation.
+- LLM validation role: retry up to four attempts when Gemini output fails strict JSON, word-limit, market-number, or portfolio-logic validation; retry transient Gemini request failures instead of failing immediately.
+- Brief quality role: render source-status notes, keep live/cache/scaffold fallback explicit, use Gemini prompt v24, validate market-number consistency, reject unsupported market-positioning language in narrative sections, and strip Theme Radar source-mechanics text before rendering.
 - Dashboard note role: document dashboard scope, extraction time, close/prior basis, additional timing information, Frankfurter FX reference-rate convention, BTC rolling 24-hour convention, and linked data-source basis in the brief itself.
 - Three Things link role: render compact item sub-titles, smaller `So what:` support lines, and deterministic Yahoo Finance topic-search links; the LLM does not invent those links.
 - Chart role: use USD/JPY because it is the assumed FX position and the most direct visual support for the intervention-risk item; render the note as bold `Reading:` rather than `Caption:`.
@@ -39,7 +41,7 @@ User turn: review the updated dashboard and Source Status after the next verifie
 ## Next Tasks
 
 1. Keep control files current as the project changes.
-2. Review whether the chart and earlier revised sections are assignment-ready enough to continue to calendar, Theme Radar, and contrarian-corner polishing.
+2. Review the v24 output for evaluator-facing tone and decide whether one more content polish round is needed.
 3. Add a second calendar provider if the free weekly feed remains thin or stale outside weekday windows.
 4. Decide whether to install a permanent weekday MacBook `launchd` schedule or keep it as documented proof only.
 5. Generate final `memo.pdf` from `memo.md`.

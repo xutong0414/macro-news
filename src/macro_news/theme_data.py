@@ -72,9 +72,9 @@ THEME_RULES = [
         book_impact="What this means for our book: keep USD/JPY tied to rate differentials and policy signals.",
     ),
     ThemeRule(
-        label="inflation, real rates, and gold",
+        label="inflation, rates, and gold",
         keywords=("inflation", "pce", "cpi", "energy", "oil", "real rate", "gold", "price stability", "labor cost"),
-        book_impact="What this means for our book: inflation and real-rate evidence can either protect or pressure the gold overweight.",
+        book_impact="What this means for our book: inflation and rate evidence can either protect or pressure the gold overweight.",
     ),
     ThemeRule(
         label="EM debt and dollar funding",
