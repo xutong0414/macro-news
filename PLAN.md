@@ -66,7 +66,7 @@ For an email target time such as 08:30 Hong Kong time, schedule the job to start
 
 ## Current Milestone
 
-Milestone: v0.2 Freshness and Source Breadth.
+Milestone: Freshness and Source Breadth.
 
 Goal:
 

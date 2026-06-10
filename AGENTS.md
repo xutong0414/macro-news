@@ -43,6 +43,15 @@ Prefer small, focused changes. After a functionality change:
 3. Update `PLAN.md` or `DECISIONS.md` only when the public project state or durable policy changes.
 4. Run tests and safety checks before pushing.
 
+## Versioning Rule
+
+Use `pyproject.toml` and git tags as the formal version sources.
+
+- Do not scatter "current version is v..." labels across markdown files.
+- `PLAN.md` should name the active milestone without a version number unless a formal release/tag has been made.
+- `CHANGELOG.md` may mention what a released version added after the version is tagged.
+- When making a formal release, update `pyproject.toml`, add a changelog entry, create a git tag such as `v0.2.0`, and push both the commit and tag.
+
 ## Content Freshness Rule
 
 Theme Radar should avoid repeating links selected before the current run date. The current run date is defined by `BRIEF_TIMEZONE`. Same-day reruns may repeat entries.

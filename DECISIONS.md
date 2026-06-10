@@ -190,3 +190,11 @@ Files:
 - `PLAN.md`: current project status and submission checklist.
 
 Reason: an evaluator or new implementer should be able to understand the project from the tracked documentation alone.
+
+## Versioning
+
+Decision: use `pyproject.toml` and git tags as the formal version sources.
+
+Reason: version labels drift when repeated across several Markdown files. `PLAN.md` should describe the active milestone, while `CHANGELOG.md` records what changed. Formal releases should update `pyproject.toml`, add a changelog entry, and create a git tag such as `v0.2.0`.
+
+Rule: do not label the project as being at a new version in public docs until the package version and git tag are created.

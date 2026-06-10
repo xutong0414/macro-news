@@ -10,6 +10,7 @@ All notable public-facing changes are recorded here. Local run logs, cache files
 - Added Theme Radar recent-link memory under the local `.cache/` tree.
 - Added no-key Google News RSS search queries to broaden Theme Radar candidate discovery.
 - Added trusted-publisher filtering for Google News RSS search results.
+- Added a versioning convention: formal versions live in `pyproject.toml` and git tags, not scattered milestone labels.
 
 ### Changed
 
