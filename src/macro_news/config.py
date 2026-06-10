@@ -52,6 +52,8 @@ class Settings:
     market_data_mode: str
     calendar_mode: str
     theme_source_mode: str
+    theme_history_path: Path
+    theme_recent_days: int
     portfolio_path: Path
     output_dir: Path
     log_dir: Path
@@ -76,6 +78,8 @@ class Settings:
             market_data_mode=os.getenv("MARKET_DATA_MODE", "sample"),
             calendar_mode=os.getenv("CALENDAR_MODE", "sample"),
             theme_source_mode=os.getenv("THEME_SOURCE_MODE", "sample"),
+            theme_history_path=Path(os.getenv("THEME_HISTORY_PATH", ".cache/theme_radar/history.json")),
+            theme_recent_days=int(os.getenv("THEME_RECENT_DAYS", "7")),
             portfolio_path=Path(os.getenv("PORTFOLIO_PATH", "inputs/portfolio/positions.csv")),
             output_dir=Path(os.getenv("OUTPUT_DIR", "outputs")),
             log_dir=Path(os.getenv("LOG_DIR", "logs")),

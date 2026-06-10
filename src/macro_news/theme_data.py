@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import html
+import json
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, replace
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from email.utils import parsedate_to_datetime
+from pathlib import Path
 from typing import Callable
+from urllib.parse import quote_plus
 
 import httpx
 
@@ -17,6 +20,13 @@ from .sample_data import BriefData, ThemeItem
 class ThemeSource:
     name: str
     feed_url: str
+    source_id: str
+
+
+@dataclass(frozen=True)
+class ThemeSearchQuery:
+    label: str
+    query: str
     source_id: str
 
 
@@ -38,6 +48,7 @@ class ThemeCandidate:
     matched_keywords: tuple[str, ...]
     score: int
     source_depth: str
+    source_id: str
 
 
 @dataclass(frozen=True)
@@ -48,6 +59,7 @@ class ThemeDataResult:
     fallback_used: bool
     errors: dict[str, str]
     sources: list[str]
+    recent_repeat_titles: list[str] | None = None
 
 
 THEME_SOURCES = [
@@ -55,6 +67,41 @@ THEME_SOURCES = [
     ThemeSource("Bank Underground", "https://bankunderground.co.uk/feed/", "theme_feed:bank_underground"),
     ThemeSource("FRED Blog", "https://fredblog.stlouisfed.org/feed/", "theme_feed:fred_blog"),
 ]
+DEFAULT_THEME_SEARCH_QUERIES = [
+    ThemeSearchQuery("USD/JPY intervention", "USD JPY intervention yen Japan finance ministry", "theme_search:usd_jpy_intervention"),
+    ThemeSearchQuery("Gold and yields", "gold Treasury yields real rates dollar", "theme_search:gold_yields"),
+    ThemeSearchQuery("EM debt funding", "emerging market debt dollar funding Treasury yields", "theme_search:em_debt_funding"),
+    ThemeSearchQuery("China demand", "China demand commodities property PMI oil", "theme_search:china_demand"),
+]
+DEFAULT_THEME_HISTORY_PATH = Path(".cache") / "theme_radar" / "history.json"
+DEFAULT_THEME_RECENT_DAYS = 7
+TRUSTED_NEWS_SOURCE_NAMES = (
+    "Associated Press",
+    "AP News",
+    "Bank for International Settlements",
+    "BBC",
+    "Bloomberg",
+    "Bloomberg.com",
+    "CNBC",
+    "Caixin Global",
+    "ECB",
+    "European Central Bank",
+    "Federal Reserve",
+    "Financial Times",
+    "IMF",
+    "International Monetary Fund",
+    "Japan Times",
+    "Nikkei Asia",
+    "Reuters",
+    "South China Morning Post",
+    "The Economist",
+    "The Wall Street Journal",
+    "U.S. Bureau of Economic Analysis",
+    "U.S. Bureau of Labor Statistics",
+    "Wall Street Journal",
+    "World Bank",
+    "Yahoo Finance",
+)
 LIBERTY_STREET_HOME = "https://libertystreeteconomics.newyorkfed.org/"
 BANK_UNDERGROUND_HOME = "https://bankunderground.co.uk/"
 
@@ -138,6 +185,20 @@ def _published_at(element: ET.Element) -> datetime | None:
     return parsed.astimezone(timezone.utc)
 
 
+def google_news_search_sources(queries: list[ThemeSearchQuery] | tuple[ThemeSearchQuery, ...]) -> list[ThemeSource]:
+    sources: list[ThemeSource] = []
+    for query in queries:
+        encoded = quote_plus(query.query)
+        sources.append(
+            ThemeSource(
+                f"Google News: {query.label}",
+                f"https://news.google.com/rss/search?q={encoded}&hl=en-US&gl=US&ceid=US:en",
+                query.source_id,
+            )
+        )
+    return sources
+
+
 def _word_count(text: str) -> int:
     return len(re.findall(r"\b\w+(?:'\w+)?\b", text))
 
@@ -205,24 +266,40 @@ def _summary_from_candidate(candidate: ThemeCandidate) -> str:
     return _trim_words(summary, 100)
 
 
+def _is_search_source(source: ThemeSource) -> bool:
+    return source.source_id.startswith("theme_search:")
+
+
+def _is_trusted_search_source(source_name: str) -> bool:
+    normalized = source_name.strip().lower()
+    return any(normalized == trusted.lower() for trusted in TRUSTED_NEWS_SOURCE_NAMES)
+
+
 def _parse_feed_item(item: ET.Element, source: ThemeSource) -> ThemeCandidate | None:
     title = _strip_html(_child_text(item, "title"))
     link = _link_text(item)
     description = _child_text(item, "description", "summary")
-    source_depth = "RSS excerpt"
+    source_depth = "search result snippet" if _is_search_source(source) else "RSS excerpt"
     if _word_count(_strip_html(description)) < 30:
         description = _child_text(item, "content", "encoded")
-        source_depth = "RSS content field"
+        source_depth = "search result snippet" if _is_search_source(source) else "RSS content field"
     text = _strip_html(description)
     if not title or not link or not text:
         return None
+
+    display_source = source.name
+    original_source = _strip_html(_child_text(item, "source"))
+    if _is_search_source(source):
+        if not original_source or not _is_trusted_search_source(original_source):
+            return None
+        display_source = f"{original_source} via Google News"
 
     matched_rule, matched_keywords, score = _best_rule(title, text)
     if score <= 0:
         return None
     return ThemeCandidate(
         title=title,
-        source=source.name,
+        source=display_source,
         link=link,
         text=text,
         published_at=_published_at(item),
@@ -230,6 +307,7 @@ def _parse_feed_item(item: ET.Element, source: ThemeSource) -> ThemeCandidate | 
         matched_keywords=matched_keywords,
         score=score,
         source_depth=source_depth,
+        source_id=source.source_id,
     )
 
 
@@ -266,7 +344,63 @@ def fetch_theme_candidates(
     return candidates, errors, successful_sources
 
 
-def select_theme_candidates(candidates: list[ThemeCandidate], max_items: int = 2) -> list[ThemeCandidate]:
+def _read_theme_history(history_path: Path) -> list[dict[str, str]]:
+    if not history_path.exists():
+        return []
+    try:
+        raw = json.loads(history_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return []
+    if not isinstance(raw, list):
+        return []
+    return [item for item in raw if isinstance(item, dict)]
+
+
+def _write_theme_history(history_path: Path, history: list[dict[str, str]]) -> None:
+    history_path.parent.mkdir(parents=True, exist_ok=True)
+    history_path.write_text(json.dumps(history[-250:], indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _recent_links_before_today(history: list[dict[str, str]], run_date: date, recent_days: int) -> set[str]:
+    recent_links: set[str] = set()
+    for entry in history:
+        link = str(entry.get("link", "")).strip()
+        selected_date_raw = str(entry.get("selected_date", "")).strip()
+        if not link or not selected_date_raw:
+            continue
+        try:
+            selected_date = date.fromisoformat(selected_date_raw)
+        except ValueError:
+            continue
+        if selected_date >= run_date:
+            continue
+        if (run_date - selected_date).days <= recent_days:
+            recent_links.add(link)
+    return recent_links
+
+
+def _append_theme_history(history_path: Path, run_date: date, selected: list[ThemeCandidate]) -> None:
+    history = _read_theme_history(history_path)
+    history.extend(
+        {
+            "selected_date": run_date.isoformat(),
+            "title": candidate.title,
+            "source": candidate.source,
+            "link": candidate.link,
+            "source_depth": candidate.source_depth,
+        }
+        for candidate in selected
+    )
+    _write_theme_history(history_path, history)
+
+
+def select_theme_candidates(
+    candidates: list[ThemeCandidate],
+    max_items: int = 2,
+    *,
+    recent_links: set[str] | None = None,
+) -> list[ThemeCandidate]:
+    recent_links = recent_links or set()
     ranked = sorted(
         candidates,
         key=lambda item: (
@@ -280,12 +414,24 @@ def select_theme_candidates(candidates: list[ThemeCandidate], max_items: int = 2
     seen_links: set[str] = set()
     seen_rules: set[str] = set()
     for candidate in ranked:
-        if candidate.link in seen_links or candidate.source in seen_sources or candidate.matched_rule.label in seen_rules:
+        if (
+            candidate.link in seen_links
+            or candidate.link in recent_links
+            or candidate.source in seen_sources
+            or candidate.matched_rule.label in seen_rules
+        ):
             continue
         selected.append(candidate)
         seen_sources.add(candidate.source)
         seen_links.add(candidate.link)
         seen_rules.add(candidate.matched_rule.label)
+        if len(selected) >= max_items:
+            return selected
+    for candidate in ranked:
+        if candidate.link in seen_links or candidate.link in recent_links:
+            continue
+        selected.append(candidate)
+        seen_links.add(candidate.link)
         if len(selected) >= max_items:
             return selected
     for candidate in ranked:
@@ -312,8 +458,12 @@ def candidate_to_theme_item(candidate: ThemeCandidate) -> ThemeItem:
 def replace_theme_radar_with_live(
     data: BriefData,
     *,
+    run_date: date | None = None,
+    history_path: Path | None = None,
+    recent_days: int = DEFAULT_THEME_RECENT_DAYS,
     client_factory: Callable[[], httpx.Client] | None = None,
     sources: list[ThemeSource] = THEME_SOURCES,
+    search_queries: list[ThemeSearchQuery] | tuple[ThemeSearchQuery, ...] = (),
 ) -> ThemeDataResult:
     client_factory = client_factory or (
         lambda: httpx.Client(
@@ -326,15 +476,19 @@ def replace_theme_radar_with_live(
         )
     )
 
+    all_sources = [*sources, *google_news_search_sources(search_queries)]
     with client_factory() as client:
-        candidates, errors, successful_sources = fetch_theme_candidates(client, sources=sources)
-    selected = select_theme_candidates(candidates)
+        candidates, errors, successful_sources = fetch_theme_candidates(client, sources=all_sources)
+    history = _read_theme_history(history_path) if history_path and run_date else []
+    recent_links = _recent_links_before_today(history, run_date, recent_days) if run_date else set()
+    selected = select_theme_candidates(candidates, recent_links=recent_links)
+    recent_repeat_titles = [candidate.title for candidate in selected if candidate.link in recent_links]
     if not selected:
         blank_note = (
-            "Theme Radar: no verified live RSS candidates available from "
+            "Theme Radar: no verified live RSS/search candidates available from "
             f"[Liberty Street Economics]({LIBERTY_STREET_HOME}), "
             f"[Bank Underground]({BANK_UNDERGROUND_HOME}), or "
-            "FRED Blog; section left blank rather than using scaffold source items."
+            "FRED Blog/search sources; section left blank rather than using scaffold source items."
         )
         blank_data = replace(
             data,
@@ -348,18 +502,25 @@ def replace_theme_radar_with_live(
             fallback_used=True,
             errors=errors or {"theme_sources": "no relevant source candidates found"},
             sources=successful_sources,
+            recent_repeat_titles=[],
         )
 
+    if history_path and run_date:
+        _append_theme_history(history_path, run_date, selected)
+
+    selected_source_names = list(dict.fromkeys(candidate.source for candidate in selected))
     selected_sources = list(dict.fromkeys([*successful_sources, *[f"theme_selected:{candidate.source}" for candidate in selected]]))
     failed_note = ""
     if errors:
-        failed_note = " One configured feed, FRED Blog, failed and is logged."
+        failed_note = f" {len(errors)} configured Theme Radar source(s) failed and are logged."
+    repeat_note = ""
+    if recent_repeat_titles:
+        repeat_note = " Recent-link memory allowed a repeat because too few non-recent candidates were available."
     theme_note = (
         "Theme Radar: selected "
-        f"{len(selected)} items from curated live RSS sources: "
-        f"[Liberty Street Economics]({LIBERTY_STREET_HOME}) and "
-        f"[Bank Underground]({BANK_UNDERGROUND_HOME})."
-        f"{failed_note}"
+        f"{len(selected)} items from live RSS/search sources: "
+        f"{', '.join(selected_source_names)}."
+        f"{failed_note}{repeat_note}"
     )
     updated = replace(
         data,
@@ -370,7 +531,11 @@ def replace_theme_radar_with_live(
                 "Theme Radar live mode uses curated RSS source text when available "
                 f"([Liberty Street Economics]({LIBERTY_STREET_HOME}), "
                 f"[Bank Underground]({BANK_UNDERGROUND_HOME}), "
-                "FRED Blog) and leaves the section blank rather than using scaffold source items when no verified candidates exist."
+                "FRED Blog, and no-key news RSS search) and leaves the section blank rather than using scaffold source items when no verified candidates exist."
+            ),
+            (
+                "Theme Radar recent-link rule: links selected before the current run date are avoided for "
+                f"{recent_days} days when enough alternatives exist; same-day reruns may repeat entries."
             ),
         ],
         data_sources=[*data.data_sources, *selected_sources],
@@ -383,4 +548,5 @@ def replace_theme_radar_with_live(
         fallback_used=False,
         errors=errors,
         sources=selected_sources,
+        recent_repeat_titles=recent_repeat_titles,
     )

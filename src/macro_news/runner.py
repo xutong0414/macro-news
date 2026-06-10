@@ -15,7 +15,7 @@ from .market_data import MarketDataResult, replace_market_rows_with_live
 from .portfolio import apply_portfolio_assumptions
 from .render import render_html, render_markdown, utc_run_id, write_outputs
 from .sample_data import build_sample_brief_data
-from .theme_data import ThemeDataResult, replace_theme_radar_with_live
+from .theme_data import DEFAULT_THEME_SEARCH_QUERIES, ThemeDataResult, replace_theme_radar_with_live
 
 
 @dataclass(frozen=True)
@@ -73,7 +73,11 @@ def run_brief(
     live_calendar: bool = False,
     live_theme_radar: bool = False,
 ) -> RunResult:
-    run_date = run_date or date.today()
+    try:
+        configured_zone = ZoneInfo(settings.timezone)
+    except Exception:  # noqa: BLE001 - config normalization handles common aliases.
+        configured_zone = ZoneInfo("Asia/Hong_Kong")
+    run_date = run_date or datetime.now(configured_zone).date()
     run_id = utc_run_id()
     data = build_sample_brief_data()
     data = apply_portfolio_assumptions(data, run_date=run_date, path=settings.portfolio_path)
@@ -95,7 +99,13 @@ def run_brief(
         data = calendar_data_result.data
 
     if live_theme_radar:
-        theme_data_result = replace_theme_radar_with_live(data)
+        theme_data_result = replace_theme_radar_with_live(
+            data,
+            run_date=run_date,
+            history_path=settings.theme_history_path,
+            recent_days=settings.theme_recent_days,
+            search_queries=DEFAULT_THEME_SEARCH_QUERIES,
+        )
         data = theme_data_result.data
 
     if use_llm:
@@ -109,10 +119,6 @@ def run_brief(
         estimated_llm_cost_usd = synthesis.estimated_cost_usd
         prompt_version = synthesis.prompt_version
 
-    try:
-        report_zone = ZoneInfo(settings.timezone)
-    except Exception:  # noqa: BLE001 - config normalization handles common aliases.
-        report_zone = ZoneInfo("Asia/Hong_Kong")
     data = replace(
         data,
         data_sources=_effective_data_sources(
@@ -121,7 +127,7 @@ def run_brief(
             live_calendar=live_calendar,
             live_theme_radar=live_theme_radar,
         ),
-        report_time=datetime.now(report_zone).strftime("%Y-%m-%d %H:%M %Z"),
+        report_time=datetime.now(configured_zone).strftime("%Y-%m-%d %H:%M %Z"),
     )
 
     output_paths = write_outputs(data, settings.output_dir, run_date)
@@ -177,6 +183,7 @@ def run_brief(
             "selected_titles": theme_data_result.selected_titles,
             "candidate_count": theme_data_result.candidate_count,
             "fallback_used": theme_data_result.fallback_used,
+            "recent_repeat_titles": theme_data_result.recent_repeat_titles or [],
             "errors": theme_data_result.errors,
             "sources": theme_data_result.sources,
         },

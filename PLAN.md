@@ -1,6 +1,6 @@
 # Project Status
 
-This file records the current implementation state and the remaining submission steps.
+This file records the current implementation state and the next public-project milestone.
 
 ## Current State
 
@@ -14,12 +14,15 @@ Implemented:
 - Live market dashboard with source links, freshness labels, and no generated market fallback values.
 - Live economic calendar with source links, consensus values when available, and status labels.
 - Live Theme Radar from curated RSS sources with source-depth labels.
+- Theme Radar recent-link memory and no-key Google News RSS search expansion.
 - USD/JPY chart with roughly three months of history and the latest five observations highlighted.
 - Portfolio assumptions loaded from `inputs/portfolio/positions.csv`.
 - Feedback questionnaire template under `inputs/feedback/`.
 - GitHub Actions workflows for sample dry run, live dry run, and manual confirmed send.
 - Local/server scheduler documentation for macOS `launchd`, Linux `cron`, and cloud scheduler options.
 - Final one-page memo source and PDF.
+- Public project working rules in `AGENTS.md`.
+- Public change history in `CHANGELOG.md`.
 
 ## Latest Verification
 
@@ -61,18 +64,28 @@ Recommended dependable schedulers:
 
 For an email target time such as 08:30 Hong Kong time, schedule the job to start earlier, for example 08:15, unless the intended meaning is explicitly “start work at 08:30.”
 
-## Submission Checklist
+## Current Milestone
 
-Before final submission:
+Milestone: v0.2 Freshness and Source Breadth.
+
+Goal:
+
+- Reduce repeated Theme Radar entries across days.
+- Broaden source discovery without adding paid search/data dependencies.
+- Keep local headline/search history out of GitHub.
+
+## Maintenance Checklist
+
+Before pushing future changes:
 
 1. Push local commits to GitHub.
-2. Decide repository access: public repo or private repo with evaluator/collaborator access.
-3. Review `memo.pdf` if required by the evaluator.
-4. Confirm no secrets, caches, logs, generated outputs, or local assignment PDF are tracked by Git.
+2. Confirm no secrets, caches, logs, generated outputs, headline history, collaboration notes, or local assignment PDF are tracked by Git.
+3. Run `PYTHONPATH=src pytest -q`.
+4. Update `CHANGELOG.md` for public-facing functionality changes.
 
 ## Known Caveats
 
 - Free public market, calendar, and RSS sources can timeout, rate-limit, or lag on weekends and holidays.
-- Theme Radar currently uses RSS-level source text, not full article text.
+- Theme Radar currently uses RSS/search-snippet text, not full article text.
 - A permanent schedule requires an always-on machine or external scheduler.
 - GitHub scheduled workflows are documented but not treated as the dependable scheduler for this prototype.

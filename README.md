@@ -71,6 +71,8 @@ Recommended run settings:
 
 ```bash
 BRIEF_TIMEZONE=Asia/Hong_Kong
+THEME_HISTORY_PATH=.cache/theme_radar/history.json
+THEME_RECENT_DAYS=7
 PORTFOLIO_PATH=inputs/portfolio/positions.csv
 OUTPUT_DIR=outputs
 LOG_DIR=logs
@@ -214,10 +216,12 @@ Current live sources:
 
 - Market dashboard: Yahoo Finance quote/chart data, Japan MOF JGB yield CSV, Frankfurter FX reference rates, and CoinGecko BTC data.
 - Calendar: Fair Economy / Forex Factory weekly calendar feed.
-- Theme Radar: curated RSS feeds from Liberty Street Economics, Bank Underground, and FRED Blog when reachable.
+- Theme Radar: curated RSS feeds from Liberty Street Economics, Bank Underground, FRED Blog, and no-key Google News RSS search queries when reachable.
 - Chart: USD/JPY daily reference-rate history from Frankfurter.
 
 Live mode does not use generated/sample market, calendar, or Theme Radar fallback content. If a live source and cached real row are both unavailable, the relevant value cells or section are left blank rather than filled with invented values.
+
+Theme Radar keeps recent selected links under `.cache/theme_radar/`. Links selected before the current run date are avoided for `THEME_RECENT_DAYS`; same-day reruns may repeat entries. This local headline history is ignored by git. Google News RSS search results are filtered to trusted publisher names before selection.
 
 ## Portfolio And Feedback Inputs
 
@@ -270,6 +274,6 @@ The assignment PDF is intentionally kept local and ignored by git.
 ## Current Caveats
 
 - Free public data sources can timeout, rate-limit, or lag on weekends and holidays.
-- Theme Radar currently uses RSS-level text, not full article text.
+- Theme Radar currently uses RSS/search-snippet text, not full article text.
 - Scheduled delivery requires an always-on machine or external scheduler.
 - GitHub scheduled events are documented but not treated as the dependable production scheduler for this prototype.

@@ -15,7 +15,7 @@ import macro_news.runner as runner_module
 from macro_news.calendar_data import replace_calendar_with_live
 from macro_news.runner import run_brief
 from macro_news.sample_data import build_sample_brief_data
-from macro_news.theme_data import ThemeSource, replace_theme_radar_with_live
+from macro_news.theme_data import ThemeSearchQuery, ThemeSource, replace_theme_radar_with_live
 
 
 def _word_count(text: str) -> int:
@@ -548,6 +548,8 @@ def test_dry_run_writes_outputs(tmp_path) -> None:
         market_data_mode="sample",
         calendar_mode="sample",
         theme_source_mode="sample",
+        theme_history_path=tmp_path / "theme_history.json",
+        theme_recent_days=7,
         portfolio_path=tmp_path / "positions.csv",
         output_dir=tmp_path / "outputs",
         log_dir=tmp_path / "logs",
@@ -584,6 +586,8 @@ def test_dry_run_with_llm_writes_usage_log(tmp_path, monkeypatch) -> None:
         market_data_mode="sample",
         calendar_mode="sample",
         theme_source_mode="sample",
+        theme_history_path=tmp_path / "theme_history.json",
+        theme_recent_days=7,
         portfolio_path=tmp_path / "positions.csv",
         output_dir=tmp_path / "outputs",
         log_dir=tmp_path / "logs",
@@ -943,6 +947,8 @@ def test_dry_run_with_live_calendar_writes_usage_log(tmp_path, monkeypatch) -> N
         market_data_mode="sample",
         calendar_mode="sample",
         theme_source_mode="sample",
+        theme_history_path=tmp_path / "theme_history.json",
+        theme_recent_days=7,
         portfolio_path=tmp_path / "positions.csv",
         output_dir=tmp_path / "outputs",
         log_dir=tmp_path / "logs",
@@ -1009,6 +1015,41 @@ THEME_FEED_TWO = """<?xml version="1.0" encoding="UTF-8"?>
 </rss>
 """
 
+THEME_FEED_THREE = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <item>
+      <title>Under one roof: housing and inflation expectations</title>
+      <link>https://bankunderground.co.uk/example/housing-inflation/</link>
+      <pubDate>Fri, 05 Jun 2026 10:00:00 +0000</pubDate>
+      <description><![CDATA[
+        The post argues that housing costs and inflation expectations can interact through household
+        balance sheets, wage bargaining, and central-bank credibility. It links sticky shelter costs,
+        price stability, and interest rate expectations in a way that matters for gold and duration risk.
+      ]]></description>
+    </item>
+  </channel>
+</rss>
+"""
+
+GOOGLE_NEWS_FEED = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <item>
+      <title>Japan officials warn on yen volatility as USD/JPY rises</title>
+      <link>https://news.google.com/rss/articles/example-yen-warning</link>
+      <pubDate>Fri, 05 Jun 2026 09:00:00 +0000</pubDate>
+      <source url="https://www.reuters.com">Reuters</source>
+      <description><![CDATA[
+        Japanese officials warned that they are watching exchange rate volatility as the yen weakens
+        against the dollar. The article discusses intervention risk, the finance ministry, Bank of Japan
+        policy expectations, and the pressure created by a stronger dollar.
+      ]]></description>
+    </item>
+  </channel>
+</rss>
+"""
+
 
 class FakeThemeClient:
     def __enter__(self):
@@ -1022,6 +1063,10 @@ class FakeThemeClient:
             return FakeResponse(text=THEME_FEED_ONE)
         if "source-two" in url:
             return FakeResponse(text=THEME_FEED_TWO)
+        if "source-three" in url:
+            return FakeResponse(text=THEME_FEED_THREE)
+        if "news.google.com" in url:
+            return FakeResponse(text=GOOGLE_NEWS_FEED)
         raise RuntimeError("unexpected feed")
 
 
@@ -1040,6 +1085,13 @@ def _theme_sources() -> list[ThemeSource]:
     return [
         ThemeSource("FRED Blog", "https://source-one.test/feed/", "theme_feed:test_fred"),
         ThemeSource("Liberty Street Economics", "https://source-two.test/feed/", "theme_feed:test_liberty"),
+    ]
+
+
+def _theme_sources_with_third() -> list[ThemeSource]:
+    return [
+        *_theme_sources(),
+        ThemeSource("Bank Underground", "https://source-three.test/feed/", "theme_feed:test_bank"),
     ]
 
 
@@ -1063,7 +1115,7 @@ def test_live_theme_radar_replaces_sample_sources() -> None:
     assert all(item.source_depth == "RSS excerpt" for item in result.data.theme_radar)
     rendered = render_markdown(result.data)
     assert "[Liberty Street Economics](https://libertystreeteconomics.newyorkfed.org/)" in rendered
-    assert "[Bank Underground](https://bankunderground.co.uk/)" in rendered
+    assert "Theme Radar: selected 2 items from live RSS/search sources: FRED Blog, Liberty Street Economics." in rendered
 
 
 def test_live_theme_radar_leaves_section_blank_when_sources_fail() -> None:
@@ -1080,6 +1132,120 @@ def test_live_theme_radar_leaves_section_blank_when_sources_fail() -> None:
     assert "theme_feed:test_fred" in result.errors
     assert "theme_feed:test_liberty" in result.errors
     assert any("section left blank" in note for note in result.data.source_notes)
+
+
+def test_live_theme_radar_avoids_links_selected_before_today(tmp_path) -> None:
+    history_path = tmp_path / "theme_history.json"
+    history_path.write_text(
+        json.dumps(
+            [
+                {
+                    "selected_date": "2026-06-09",
+                    "title": "Why exclude food and energy from inflation measures?",
+                    "source": "FRED Blog",
+                    "link": "https://fredblog.stlouisfed.org/example/core-pce/",
+                    "source_depth": "RSS excerpt",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = replace_theme_radar_with_live(
+        build_sample_brief_data(),
+        run_date=date(2026, 6, 10),
+        history_path=history_path,
+        client_factory=FakeThemeClient,
+        sources=_theme_sources_with_third(),
+    )
+
+    titles = [item.title for item in result.data.theme_radar]
+
+    assert "Why exclude food and energy from inflation measures?" not in titles
+    assert len(titles) == 2
+    assert result.recent_repeat_titles == []
+
+
+def test_live_theme_radar_allows_same_day_repeats(tmp_path) -> None:
+    history_path = tmp_path / "theme_history.json"
+    history_path.write_text(
+        json.dumps(
+            [
+                {
+                    "selected_date": "2026-06-10",
+                    "title": "Why exclude food and energy from inflation measures?",
+                    "source": "FRED Blog",
+                    "link": "https://fredblog.stlouisfed.org/example/core-pce/",
+                    "source_depth": "RSS excerpt",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = replace_theme_radar_with_live(
+        build_sample_brief_data(),
+        run_date=date(2026, 6, 10),
+        history_path=history_path,
+        client_factory=FakeThemeClient,
+        sources=_theme_sources_with_third(),
+    )
+
+    titles = [item.title for item in result.data.theme_radar]
+
+    assert "Why exclude food and energy from inflation measures?" in titles
+    assert result.recent_repeat_titles == []
+
+
+def test_live_theme_radar_parses_google_news_search_snippets() -> None:
+    result = replace_theme_radar_with_live(
+        build_sample_brief_data(),
+        client_factory=FakeThemeClient,
+        sources=[],
+        search_queries=[
+            ThemeSearchQuery(
+                "USD/JPY intervention",
+                "USD JPY intervention yen Japan finance ministry",
+                "theme_search:test_usdjpy",
+            )
+        ],
+    )
+
+    assert result.data.theme_radar[0].title == "Japan officials warn on yen volatility as USD/JPY rises"
+    assert result.data.theme_radar[0].source == "Reuters via Google News"
+    assert result.data.theme_radar[0].source_depth == "search result snippet"
+    assert "theme_search:test_usdjpy" in result.sources
+
+
+def test_live_theme_radar_filters_untrusted_google_news_sources() -> None:
+    moomoo_feed = GOOGLE_NEWS_FEED.replace("Reuters", "Moomoo")
+
+    class MoomooOnlyClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        def get(self, url):
+            return FakeResponse(text=moomoo_feed)
+
+    result = replace_theme_radar_with_live(
+        build_sample_brief_data(),
+        client_factory=MoomooOnlyClient,
+        sources=[],
+        search_queries=[
+            ThemeSearchQuery(
+                "USD/JPY intervention",
+                "USD JPY intervention yen Japan finance ministry",
+                "theme_search:test_usdjpy",
+            )
+        ],
+    )
+
+    assert result.data.theme_radar == []
+    assert result.fallback_used is True
+    assert result.candidate_count == 0
 
 
 def test_dry_run_with_live_theme_radar_writes_usage_log(tmp_path, monkeypatch) -> None:
@@ -1100,12 +1266,14 @@ def test_dry_run_with_live_theme_radar_writes_usage_log(tmp_path, monkeypatch) -
         market_data_mode="sample",
         calendar_mode="sample",
         theme_source_mode="sample",
+        theme_history_path=tmp_path / "theme_history.json",
+        theme_recent_days=7,
         portfolio_path=tmp_path / "positions.csv",
         output_dir=tmp_path / "outputs",
         log_dir=tmp_path / "logs",
     )
 
-    def fake_replace_theme(data):
+    def fake_replace_theme(data, **_kwargs):
         return replace_theme_radar_with_live(
             data,
             client_factory=FakeThemeClient,

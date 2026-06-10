@@ -99,17 +99,22 @@ Tradeoff: the feed can be thin outside normal market days and can rate-limit rep
 
 ## Theme Radar Sources
 
-Decision: use curated RSS feeds before broad web search.
+Decision: use curated RSS feeds plus no-key Google News RSS search.
 
 Current sources:
 
 - Liberty Street Economics
 - Bank Underground
 - FRED Blog when reachable
+- Google News RSS search queries tied to the assumed book and macro themes
 
-Reason: curated RSS is easier to audit than broad search and reduces the chance of noisy source selection.
+Reason: curated RSS is easy to audit, but the first public feedback showed that a narrow feed set can repeat the same entries across days. Google News RSS broadens discovery without requiring a paid search API.
 
-Tradeoff: Theme Radar currently uses RSS-level text rather than full article text. Full-text reading is a planned v2 feature.
+Tradeoff: Theme Radar currently uses RSS/search-snippet text rather than full article text. Search-derived items must be labeled as snippets, not as full article reading. Full-text reading remains a later feature.
+
+Rule: Theme Radar keeps selected-link history locally under `.cache/theme_radar/`. Links selected before the current run date are avoided for the configured recent-day window when enough alternatives exist. Same-day reruns may repeat entries. The current run date is defined by `BRIEF_TIMEZONE`.
+
+Rule: Google News RSS search results are filtered by trusted publisher name before scoring. Curated research feeds bypass this filter because they are already explicitly selected by the project.
 
 ## Portfolio Input
 
