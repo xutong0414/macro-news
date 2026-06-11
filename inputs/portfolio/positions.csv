@@ -2,3 +2,9 @@ effective_date,asset,position,exposure,quantity,unit,notes
 2026-06-01,USD/JPY,long,high,,,Assignment PDF assumption
 2026-06-01,Gold,overweight,medium,,,Assignment PDF assumption
 2026-06-01,EM debt basket,exposed,medium,,,Assignment PDF assumption
+2026-06-11,US 10Y yield,short duration,medium,,,Fictional macro extension; term premium and rates risk watch
+2026-06-11,EUR/USD,watch,low,,,Fictional macro extension; policy divergence and broad dollar signal
+2026-06-11,S&P 500,underweight,medium,,,Fictional macro extension; risk appetite and equity beta exposure
+2026-06-11,China internet / tech basket,watch,medium,,,Fictional macro extension; China growth and policy sentiment proxy
+2026-06-11,Brent oil,watch,medium,,,Fictional macro extension; inflation and geopolitical risk proxy
+2026-06-11,VIX,watch,low,,,Fictional macro extension; cross-asset risk sentiment indicator

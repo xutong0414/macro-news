@@ -57,9 +57,12 @@ YAHOO_SPECS = [
     YahooSpec("S&P 500", "^GSPC", "", 2, "pct", "yahoo_chart:^GSPC", "US equity risk tone frames the global open."),
     YahooSpec("Euro Stoxx 50", "^STOXX50E", "", 2, "pct", "yahoo_chart:^STOXX50E", "European equities show whether risk appetite is broadening."),
     YahooSpec("US 10Y yield", "^TNX", "%", 2, "bp", "yahoo_chart:^TNX", "Treasury duration pressure drives USD/JPY, gold, and EM debt."),
+    YahooSpec("China internet / tech basket", "KWEB", "$", 2, "pct", "yahoo_chart:KWEB", "China internet and tech sentiment proxy for China growth risk."),
     YahooSpec("DXY", "DX-Y.NYB", "", 2, "pct", "yahoo_chart:DX-Y.NYB", "Dollar direction is central for the assumed FX and EM book."),
     YahooSpec("Gold", "GC=F", "$", 2, "pct", "yahoo_chart:GC=F", "Gold tests whether rate or dollar pressure is biting."),
+    YahooSpec("Brent oil", "BZ=F", "$", 2, "pct", "yahoo_chart:BZ=F", "Brent is a global inflation and geopolitical risk proxy."),
     YahooSpec("WTI oil", "CL=F", "$", 2, "pct", "yahoo_chart:CL=F", "Oil matters for inflation risk and rates pricing."),
+    YahooSpec("VIX", "^VIX", "", 2, "pct", "yahoo_chart:^VIX", "Volatility shows whether defensive hedging demand is rising."),
 ]
 
 
@@ -131,6 +134,12 @@ def _why_it_matters(quote: LiveQuote) -> str:
             "down": "Lower Treasury yields ease pressure on gold and EM duration, and can soften dollar carry.",
             "flat": "Treasuries are not moving the story; watch dollar and commodity signals instead.",
         }[direction]
+    if asset == "China internet / tech basket":
+        return {
+            "up": "China tech strength supports China sentiment and can ease pressure on EM risk appetite.",
+            "down": "China tech weakness flags softer China sentiment and can pressure EM risk appetite.",
+            "flat": "China tech is not adding a fresh signal; macro data and policy headlines matter more.",
+        }[direction]
     if asset == "DXY":
         return {
             "up": "Dollar strength tightens EM financing conditions and is a headwind for gold and commodities.",
@@ -160,6 +169,18 @@ def _why_it_matters(quote: LiveQuote) -> str:
             "up": "Oil strength adds inflation risk and can delay the easing impulse rates want to price.",
             "down": "Lower oil eases inflation pressure and gives duration-sensitive assets some relief.",
             "flat": "Oil is not changing the inflation story today; rates carry the cleaner signal.",
+        }[direction]
+    if asset == "Brent oil":
+        return {
+            "up": "Brent strength adds global inflation risk and keeps geopolitical risk premium in focus.",
+            "down": "Lower Brent eases global inflation pressure and gives duration-sensitive assets some relief.",
+            "flat": "Brent is not changing the inflation story today; rates carry the cleaner signal.",
+        }[direction]
+    if asset == "VIX":
+        return {
+            "up": "Higher volatility signals defensive hedging demand and weaker risk appetite.",
+            "down": "Lower volatility supports risk appetite, but it can also make hedges look underpriced.",
+            "flat": "Volatility is not sending a fresh signal; rely on equities, rates, and FX for direction.",
         }[direction]
     if asset == "BTC":
         return {
@@ -209,7 +230,7 @@ def fetch_yahoo_chart(client: httpx.Client, spec: YahooSpec) -> LiveQuote:
         try:
             response = client.get(
                 f"https://{host}/v8/finance/chart/{spec.symbol}",
-                params={"range": "5d", "interval": "1d"},
+                params={"range": "3mo", "interval": "1d"},
             )
             response.raise_for_status()
             break
@@ -242,6 +263,13 @@ def fetch_yahoo_chart(client: httpx.Client, spec: YahooSpec) -> LiveQuote:
         source=spec.source,
         so_what=spec.so_what,
         as_of=as_of,
+        series=tuple(
+            (
+                datetime.fromtimestamp(timestamp, timezone.utc).date().isoformat(),
+                value,
+            )
+            for timestamp, value in dated_closes
+        ),
     )
 
 
@@ -348,6 +376,8 @@ def fetch_eurusd(client: httpx.Client, run_date: date) -> LiveQuote:
         decimals=4,
         source="frankfurter:EURUSD",
         so_what="The largest FX pair is the cleanest euro-dollar policy divergence read.",
+        include_series=True,
+        history_days=92,
     )
 
 
@@ -441,17 +471,20 @@ def replace_market_rows_with_live(
         "Euro Stoxx 50",
         "US 10Y yield",
         "Japan 10Y yield",
+        "China internet / tech basket",
         "DXY",
         "EUR/USD",
         "USD/JPY",
         "Gold",
+        "Brent oil",
         "WTI oil",
+        "VIX",
         "BTC",
     ]
     cached_quotes = _read_market_cache(cache_path)
     cache_updates = dict(cached_quotes)
     live_rows: dict[str, MarketRow] = {}
-    live_chart_series: list[tuple[str, float]] | None = None
+    live_series_by_asset: dict[str, tuple[tuple[str, float], ...]] = {}
     live_assets: list[str] = []
     cached_assets: list[str] = []
     fallback_assets: list[str] = []
@@ -476,8 +509,8 @@ def replace_market_rows_with_live(
                     live_rows[asset] = quote_to_row(cached_quote, run_date, cached=True)
                     cached_assets.append(asset)
                     sources.append(f"{cached_quote.source}:cache")
-                    if cached_quote.asset == "USD/JPY" and cached_quote.series:
-                        live_chart_series = list(cached_quote.series)
+                    if cached_quote.series:
+                        live_series_by_asset[cached_quote.asset] = cached_quote.series
                     errors[asset] = str(exc)
                 elif asset in fallback_by_asset:
                     fallback_assets.append(asset)
@@ -487,8 +520,8 @@ def replace_market_rows_with_live(
             live_assets.append(asset)
             sources.append(quote.source)
             cache_updates[asset] = quote
-            if quote.asset == "USD/JPY" and quote.series:
-                live_chart_series = list(quote.series)
+            if quote.series:
+                live_series_by_asset[quote.asset] = quote.series
 
     if live_assets:
         _write_market_cache(cache_path, cache_updates)
@@ -543,7 +576,7 @@ def replace_market_rows_with_live(
     reference_now = reference_now or datetime.now(zone)
     extracted_at = reference_now.astimezone(zone).strftime("%Y-%m-%d %H:%M %Z")
     dashboard_notes = [
-        "Dashboard scope: equities (S&P 500, Euro Stoxx 50), rates (US/Japan 10Y), FX (DXY, EUR/USD, USD/JPY), gold, oil, and BTC.",
+        "Dashboard scope: equities (S&P 500, Euro Stoxx 50, China internet/tech proxy), rates (US/Japan 10Y), FX (DXY, EUR/USD, USD/JPY), gold, oil, volatility, and BTC.",
         (
             f"Timing basis: extracted at {extracted_at}; equity/rate/commodity rows use latest source daily close vs prior source daily close; "
             "Frankfurter FX rows use the latest published daily reference rate vs the immediately previous published daily reference rate; "
@@ -552,7 +585,7 @@ def replace_market_rows_with_live(
         "Additional information about timing: around 07:00-08:00 HKT, US/EU cash markets are closed from prior sessions, while FX and BTC are continuous and Asia may already be open.",
         "Status marker basis: asset labels show * when the live source's latest valid date is older than the run date, usually because of weekend, holiday, or publication lag; asset labels show † when cached real-source data was used after a live refresh failed. Rows without a marker refreshed for the run date or query time. If no live or cached real row exists, value cells are left blank rather than filled with scaffold/sample numbers.",
         (
-            "Sources: [Yahoo Finance quote pages](https://finance.yahoo.com/quote/%5ETNX/) for equities/US rates/DXY/gold/oil, "
+            "Sources: [Yahoo Finance quote pages](https://finance.yahoo.com/quote/%5ETNX/) for equities/US rates/DXY/gold/oil/volatility, "
             "[Japan MOF JGB yield CSV](https://www.mof.go.jp/jgbs/reference/interest_rate/jgbcm.csv) for Japan 10Y, "
             "[Frankfurter](https://frankfurter.dev/) for EUR/USD and USD/JPY, "
             "[CoinGecko](https://www.coingecko.com/en/api) for BTC."
@@ -561,7 +594,8 @@ def replace_market_rows_with_live(
     updated = replace(
         data,
         market_rows=merged_rows,
-        chart_series=live_chart_series or data.chart_series,
+        chart_series=list(live_series_by_asset.get("USD/JPY", data.market_series.get("USD/JPY", tuple(data.chart_series)))),
+        market_series={**data.market_series, **live_series_by_asset},
         assumptions=assumptions,
         data_sources=[*data.data_sources, *sources],
         source_notes=[*[note for note in data.source_notes if not note.startswith("Market:")], market_note],

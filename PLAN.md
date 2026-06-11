@@ -14,8 +14,16 @@ Implemented:
 - Live market dashboard with source links, freshness labels, and no generated market fallback values.
 - Live economic calendar with source links, consensus values when available, and status labels.
 - Live Theme Radar from curated RSS sources with source-depth labels.
-- Theme Radar recent-link memory and no-key Google News RSS search expansion.
-- USD/JPY chart with roughly three months of history and the latest five observations highlighted.
+- Theme Radar recent-link memory, near-duplicate topic filtering, and no-key Google News RSS search expansion.
+- Portfolio-aware topic selector for "The 3 Things That Matter Today."
+- Direct portfolio-link preference when candidate topic scores are close.
+- Dynamic chart selection tied to the first selected portfolio topic, with roughly three months of history and the latest five observations highlighted when source history is available.
+- Contrarian Corner constrained to challenge the first selected topic.
+- Run-level quality report with source checks, Gemini validation attempts, repaired validation errors, and a send/no-send decision.
+- Email delivery is blocked when Gemini narrative validation fails after retries.
+- Centralized deterministic narrative rule groups for macro/portfolio validation.
+- Expanded contradiction tests for oil/inflation, gold positioning, dollar pressure, volatility, and EM debt logic.
+- Manual Gemini model-comparison command for checking validation repairs, token use, estimated cost, and runtime on the same structured inputs.
 - Portfolio assumptions loaded from `inputs/portfolio/positions.csv`.
 - Feedback questionnaire template under `inputs/feedback/`.
 - GitHub Actions workflows for sample dry run, live dry run, and manual confirmed send.
@@ -26,29 +34,22 @@ Implemented:
 
 ## Latest Verification
 
-Latest recorded live dry run:
+Latest recorded live dry run after direct-link ranking update:
 
-- Run id: `20260607T132626Z`
+- Run id: `20260611T074941Z`
 - Mode: live market data, live calendar, live Theme Radar, Gemini narrative
 - Delivery: dry run, no email sent
-- Runtime: about 42 seconds
-- Token use: 8,466 input, 1,739 output, 10,205 total
-- Estimated LLM cost: $0.0015422
-- Source result: all 10 dashboard rows refreshed from live public sources; calendar used live Fair Economy / Forex Factory rows; Theme Radar selected two live RSS items
-- Link audit: 17 external links checked, all returned OK
-
-Latest successful email send:
-
-- Run id: `20260607T120308Z`
-- Delivery: sent
-- Runtime: 34.33 seconds
-- Token use: 4,061 input, 907 output, 4,968 total
-- Estimated LLM cost: $0.0007689
+- Token use: 19,335 input, 2,124 output, 21,459 total
+- Estimated LLM cost: $0.0027831
+- Prompt version: `gemini_narrative_v38`
+- Quality verdict: warning; Gemini repaired two validation issues before acceptance; one Theme Radar feed timed out
+- Source result: live public sources refreshed all 13 dashboard rows; calendar used live Fair Economy / Forex Factory rows; Theme Radar selected two live RSS items
+- Topic result: selected `Equity Risk Tone`, `US Inflation Event Risk`, and `EM Debt Conditions`; chart used `S&P 500: 3-Month Trend`; Contrarian Corner challenged equity risk tone
 
 Latest local tests:
 
 - `PYTHONPATH=src pytest -q`
-- Result: 29 passed
+- Result: 59 passed
 
 ## Scheduling Position
 
@@ -66,13 +67,14 @@ For an email target time such as 08:30 Hong Kong time, schedule the job to start
 
 ## Current Milestone
 
-Milestone: Freshness and Source Breadth.
+Milestone: Portfolio-Aware Relevance.
 
 Goal:
 
-- Reduce repeated Theme Radar entries across days.
-- Broaden source discovery without adding paid search/data dependencies.
-- Keep local headline/search history out of GitHub.
+- Make portfolio rows, direct portfolio links, market moves, calendar events, and Theme Radar/news inputs influence the daily topic agenda and chart choice.
+- Keep Gemini constrained to selected topics rather than letting it decide the whole agenda.
+- Keep Contrarian Corner tied to the first selected topic.
+- Preserve the public/private boundary for local run history, headline history, and collaboration notes.
 
 ## Maintenance Checklist
 
@@ -83,9 +85,19 @@ Before pushing future changes:
 3. Run `PYTHONPATH=src pytest -q`.
 4. Update `CHANGELOG.md` for public-facing functionality changes.
 
+## Safety Backlog
+
+Next safety improvements before adding major new content features:
+
+- Add a data-only fallback option for production sends: if narrative validation fails, either send no email or send a clearly labeled data-only failure notice.
+- Improve Theme Radar source depth by fetching article text or abstracts when allowed, while still labeling RSS/search snippets as snippet-level evidence.
+- Add a simple reader-feedback import step so recurring comments can adjust source/topic ranking without fine-tuning the model.
+- Use the model-comparison command across several live mornings before deciding whether to change the default Gemini model.
+
 ## Known Caveats
 
 - Free public market, calendar, and RSS sources can timeout, rate-limit, or lag on weekends and holidays.
 - Theme Radar currently uses RSS/search-snippet text, not full article text.
+- Validation catches known unsafe narrative patterns, but it is not a complete macro-reasoning engine.
 - A permanent schedule requires an always-on machine or external scheduler.
 - GitHub scheduled workflows are documented but not treated as the dependable scheduler for this prototype.

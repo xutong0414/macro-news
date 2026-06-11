@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 from .config import Settings
+from .model_compare import compare_gemini_models
 from .runner import run_brief
 
 
@@ -21,6 +23,17 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--live-calendar", action="store_true", help="Fetch live economic-calendar rows with cached real-source fallback and blank output if unavailable")
     run_parser.add_argument("--live-theme-radar", action="store_true", help="Fetch live Theme Radar source candidates and leave the section blank if unavailable")
     run_parser.add_argument("--date", help="Run date in YYYY-MM-DD format. Defaults to today.")
+
+    compare_parser = subparsers.add_parser("compare-models", help="Compare Gemini models on the same brief inputs without sending email")
+    compare_parser.add_argument(
+        "--models",
+        nargs="+",
+        help="Gemini model names to compare. Defaults to GEMINI_MODEL and gemini-2.5-pro.",
+    )
+    compare_parser.add_argument("--live-market-data", action="store_true", help="Use live market data in the comparison input")
+    compare_parser.add_argument("--live-calendar", action="store_true", help="Use live calendar data in the comparison input")
+    compare_parser.add_argument("--live-theme-radar", action="store_true", help="Use live Theme Radar data in the comparison input")
+    compare_parser.add_argument("--date", help="Run date in YYYY-MM-DD format. Defaults to today.")
     return parser
 
 
@@ -57,10 +70,47 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         print(f"Run id: {result.run_id}")
         print(f"Delivery status: {result.delivery_status}")
+        print(f"Quality verdict: {result.quality_report.get('verdict', 'unknown')}")
         print(f"Markdown: {result.output_paths['latest_markdown']}")
         print(f"HTML: {result.output_paths['latest_html']}")
         print(f"Chart: {result.output_paths['latest_chart']}")
         print(f"Log: {result.log_path}")
+        return 0
+
+    if args.command == "compare-models":
+        settings = Settings.from_env()
+        if not settings.gemini_api_key:
+            parser.error("GEMINI_API_KEY is required for compare-models")
+        run_date = date.fromisoformat(args.date) if args.date else datetime.now(ZoneInfo(settings.timezone)).date()
+        models = args.models or [settings.gemini_model, "gemini-2.5-pro"]
+
+        try:
+            results, log_path = compare_gemini_models(
+                settings,
+                models=models,
+                run_date=run_date,
+                live_market_data=args.live_market_data,
+                live_calendar=args.live_calendar,
+                live_theme_radar=args.live_theme_radar,
+            )
+        except RuntimeError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
+
+        print("Model comparison:")
+        for result in results:
+            cost_label = f"${result.estimated_cost_usd:.8f}"
+            if result.total_tokens and result.estimated_cost_usd == 0.0 and result.model != "gemini-2.5-flash-lite":
+                cost_label = "n/a"
+            print(
+                f"- {result.model}: {result.status}; "
+                f"repairs={result.validation_repair_count}; "
+                f"tokens={result.total_tokens}; "
+                f"cost={cost_label}; "
+                f"elapsed={result.elapsed_seconds:.2f}s"
+                + (f"; error={result.error}" if result.error else "")
+            )
+        print(f"Log: {log_path}")
         return 0
 
     parser.error(f"Unknown command: {args.command}")

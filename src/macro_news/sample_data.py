@@ -50,6 +50,13 @@ class BriefData:
     source_notes: list[str] = field(default_factory=list)
     dashboard_notes: list[str] = field(default_factory=list)
     report_time: str = ""
+    chart_title: str = "USD/JPY: 3-Month Trend"
+    chart_y_label: str = "Spot"
+    chart_source_label: str = "sample USD/JPY series"
+    chart_source_url: str = ""
+    market_series: dict[str, tuple[tuple[str, float], ...]] = field(default_factory=dict)
+    topic_candidates: list[dict[str, object]] = field(default_factory=list)
+    three_thing_titles: list[str] = field(default_factory=list)
 
 
 def build_sample_brief_data() -> BriefData:

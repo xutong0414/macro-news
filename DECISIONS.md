@@ -18,6 +18,8 @@ Reason: the LLM task is narrow: summarize structured inputs into concise narrati
 
 Tradeoff: a stronger model may help later if the system reads longer source texts, handles richer portfolio context, or performs deeper article comparison.
 
+Diagnostic rule: stronger Gemini models can be compared with `compare-models`, but the default delivery model remains Gemini 2.5 Flash-Lite unless repeated validation logs show a clear quality benefit from changing it.
+
 ## LLM Scope
 
 Decision: restrict the LLM to narrative synthesis.
@@ -32,6 +34,7 @@ Code-owned sections:
 
 - Market dashboard values
 - Calendar rows and links
+- Topic agenda selection
 - Chart and chart reading
 - Source status
 - Assumptions
@@ -40,6 +43,12 @@ Code-owned sections:
 - Logs and token accounting
 
 Reason: this reduces hallucination risk. The model receives structured facts and the output is validated before rendering.
+
+Validation rule: narrative output is rejected when it inverts core portfolio or macro direction checks, including USD/JPY long semantics, ECB hawkish/dovish euro direction, and hotter/cooler US inflation versus yield direction.
+
+Implementation rule: macro narrative validation uses centralized deterministic rule groups for portfolio semantics, unsupported claims, market-number consistency, market-direction consistency, and common asset-move contradictions.
+
+Quality-gate rule: each run writes a quality report to the run log. The report records source checks, Gemini validation attempts, validation repairs, repaired validation errors, and whether sending is allowed. If Gemini narrative validation fails after retries, the run writes a failed quality report and blocks email delivery.
 
 ## Data Fallback Policy
 
@@ -61,7 +70,7 @@ Decision: use free/public market sources for the prototype.
 
 Current sources:
 
-- Yahoo Finance chart/quote data for broad equities, US rates, dollar, gold, and oil.
+- Yahoo Finance chart/quote data for broad equities, US rates, China internet/tech proxy, dollar, gold, oil, and volatility.
 - Japan MOF JGB yield CSV for Japan 10Y.
 - Frankfurter for EUR/USD and USD/JPY reference-rate rows.
 - CoinGecko for BTC.
@@ -80,11 +89,14 @@ Current dashboard rows:
 - Euro Stoxx 50
 - US 10Y yield
 - Japan 10Y yield
+- China internet / tech basket
 - DXY
 - EUR/USD
 - USD/JPY
 - Gold
+- Brent oil
 - WTI oil
+- VIX
 - BTC
 
 Reason: this matches the assignment requirement and the assumed macro book. Germany 10Y was removed because a clean free live source was not added in time.
@@ -114,6 +126,8 @@ Tradeoff: Theme Radar currently uses RSS/search-snippet text rather than full ar
 
 Rule: Theme Radar keeps selected-link history locally under `.cache/theme_radar/`. Links selected before the current run date are avoided for the configured recent-day window when enough alternatives exist. Same-day reruns may repeat entries. The current run date is defined by `BRIEF_TIMEZONE`.
 
+Rule: Theme Radar also stores simple headline-topic fingerprints locally and avoids recently selected near-duplicate topics when enough distinct candidates exist.
+
 Rule: Google News RSS search results are filtered by trusted publisher name before scoring. Curated research feeds bypass this filter because they are already explicitly selected by the project.
 
 ## Portfolio Input
@@ -124,6 +138,14 @@ Rule: each row is an effective-date update. If no new row exists for a run date,
 
 Reason: this makes the prototype extendable without hard-coding the book in prompts.
 
+Rule: when Gemini synthesis is enabled, active portfolio rows are scored against live market moves, calendar events, and Theme Radar/news signals before the LLM call. The top selected topics become the required order for "The 3 Things That Matter Today."
+
+Rule: when topic scores are close, direct portfolio links receive a modest ranking preference over broad indirect macro links. For example, an ECB event should attach first to EUR/USD rather than to a high-exposure but indirect USD/JPY position.
+
+Rule: Contrarian Corner must challenge the first selected topic rather than introduce an unrelated risk.
+
+Rule: the run log records selected topics, score components, and selected chart metadata for auditability.
+
 ## Feedback Input
 
 Decision: include a feedback questionnaire and local CSV template.
@@ -132,11 +154,13 @@ Reason: feedback can later improve source ranking and prompt construction. This 
 
 ## Chart Choice
 
-Decision: use USD/JPY as the default chart.
+Decision: select the chart from the top portfolio-aware topic when live history is available.
 
-Reason: the assumed book is long USD/JPY, so the chart directly supports the intervention-risk and yen-reversal discussion.
+Reason: the earlier fixed USD/JPY chart made repeated runs too mechanical once the portfolio file expanded. The chart should support the first selected topic, not force the first topic to be USD/JPY.
 
 Chart rule: line charts should usually show more than one month of history when available; the current chart uses roughly three months and highlights the latest five observations.
+
+Fallback: USD/JPY remains the default chart when no selected topic has a usable live series.
 
 ## Email And Typography
 

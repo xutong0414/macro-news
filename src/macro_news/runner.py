@@ -4,18 +4,20 @@ import json
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timezone
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from .calendar_data import CalendarDataResult, replace_calendar_with_live
 from .config import Settings
 from .costing import ZERO_TOKEN_USAGE
 from .emailer import send_email
-from .llm import synthesize_with_gemini
+from .llm import SynthesisResult, synthesize_with_gemini
 from .market_data import MarketDataResult, replace_market_rows_with_live
 from .portfolio import apply_portfolio_assumptions
 from .render import render_html, render_markdown, utc_run_id, write_outputs
 from .sample_data import build_sample_brief_data
 from .theme_data import DEFAULT_THEME_SEARCH_QUERIES, ThemeDataResult, replace_theme_radar_with_live
+from .topic_selection import select_portfolio_topics
 
 
 @dataclass(frozen=True)
@@ -24,6 +26,7 @@ class RunResult:
     output_paths: dict[str, Path]
     delivery_status: str
     log_path: Path
+    quality_report: dict[str, Any]
 
 
 def _effective_run_mode(
@@ -63,6 +66,180 @@ def _effective_data_sources(
     return [source for source in data_sources if source not in replaced_sources]
 
 
+def _add_quality_check(
+    checks: list[dict[str, str]],
+    warnings: list[str],
+    blockers: list[str],
+    *,
+    name: str,
+    status: str,
+    details: str,
+) -> None:
+    checks.append({"name": name, "status": status, "details": details})
+    if status == "warning":
+        warnings.append(f"{name}: {details}")
+    elif status == "failed":
+        blockers.append(f"{name}: {details}")
+
+
+def _build_quality_report(
+    *,
+    use_llm: bool,
+    synthesis: SynthesisResult | None,
+    llm_error: str | None,
+    live_market_data: bool,
+    live_calendar: bool,
+    live_theme_radar: bool,
+    market_data_result: MarketDataResult,
+    calendar_data_result: CalendarDataResult,
+    theme_data_result: ThemeDataResult,
+) -> dict[str, Any]:
+    checks: list[dict[str, str]] = []
+    warnings: list[str] = []
+    blockers: list[str] = []
+
+    if llm_error:
+        _add_quality_check(
+            checks,
+            warnings,
+            blockers,
+            name="narrative_validation",
+            status="failed",
+            details=f"LLM narrative was not accepted: {llm_error}",
+        )
+    elif use_llm and synthesis is not None:
+        status = "warning" if synthesis.validation_repair_count else "passed"
+        details = (
+            "Gemini narrative passed validation "
+            f"after {synthesis.validation_attempts} attempt(s); "
+            f"repair_count={synthesis.validation_repair_count}."
+        )
+        if synthesis.validation_errors:
+            details += " Earlier validation failures were repaired and are logged."
+        _add_quality_check(
+            checks,
+            warnings,
+            blockers,
+            name="narrative_validation",
+            status=status,
+            details=details,
+        )
+    elif use_llm:
+        _add_quality_check(
+            checks,
+            warnings,
+            blockers,
+            name="narrative_validation",
+            status="failed",
+            details="LLM was requested but no synthesis result was produced.",
+        )
+    else:
+        _add_quality_check(
+            checks,
+            warnings,
+            blockers,
+            name="narrative_validation",
+            status="not_applicable",
+            details="LLM synthesis was not requested; deterministic narrative sections were used.",
+        )
+
+    if live_market_data:
+        market_status = "warning" if market_data_result.cached_assets or market_data_result.fallback_assets else "passed"
+        _add_quality_check(
+            checks,
+            warnings,
+            blockers,
+            name="market_sources",
+            status=market_status,
+            details=(
+                f"live={len(market_data_result.live_assets)}, "
+                f"cached={len(market_data_result.cached_assets)}, "
+                f"blank={len(market_data_result.fallback_assets)}. "
+                "Blank rows are left empty rather than filled with generated values."
+            ),
+        )
+    else:
+        _add_quality_check(
+            checks,
+            warnings,
+            blockers,
+            name="market_sources",
+            status="not_applicable",
+            details="Live market data was not requested.",
+        )
+
+    if live_calendar:
+        calendar_status = "warning" if calendar_data_result.errors or not calendar_data_result.live_events else "passed"
+        _add_quality_check(
+            checks,
+            warnings,
+            blockers,
+            name="calendar_sources",
+            status=calendar_status,
+            details=(
+                f"selected_events={len(calendar_data_result.live_events)}, "
+                f"errors={len(calendar_data_result.errors)}. "
+                "If no verified calendar rows exist, the table is left blank rather than filled with scaffold events."
+            ),
+        )
+    else:
+        _add_quality_check(
+            checks,
+            warnings,
+            blockers,
+            name="calendar_sources",
+            status="not_applicable",
+            details="Live calendar data was not requested.",
+        )
+
+    if live_theme_radar:
+        theme_status = "warning" if theme_data_result.fallback_used or theme_data_result.errors else "passed"
+        _add_quality_check(
+            checks,
+            warnings,
+            blockers,
+            name="theme_sources",
+            status=theme_status,
+            details=(
+                f"selected_items={len(theme_data_result.selected_titles)}, "
+                f"candidate_count={theme_data_result.candidate_count}, "
+                f"errors={len(theme_data_result.errors)}. "
+                "RSS/search snippets are labeled by source depth; no generated replacement items are used."
+            ),
+        )
+    else:
+        _add_quality_check(
+            checks,
+            warnings,
+            blockers,
+            name="theme_sources",
+            status="not_applicable",
+            details="Live Theme Radar was not requested.",
+        )
+
+    verdict = "failed" if blockers else "warning" if warnings else "passed"
+    validation_errors: list[str] = []
+    if llm_error:
+        validation_errors = [llm_error]
+    elif synthesis is not None:
+        validation_errors = list(synthesis.validation_errors)
+    return {
+        "verdict": verdict,
+        "send_allowed": not blockers,
+        "checks": checks,
+        "warnings": warnings,
+        "blockers": blockers,
+        "narrative_validation_errors": validation_errors,
+    }
+
+
+def _write_log_event(settings: Settings, run_id: str, log_event: dict[str, Any]) -> Path:
+    settings.log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = settings.log_dir / f"run-{run_id}.jsonl"
+    log_path.write_text(json.dumps(log_event, indent=2) + "\n", encoding="utf-8")
+    return log_path
+
+
 def run_brief(
     settings: Settings,
     *,
@@ -89,6 +266,7 @@ def run_brief(
     llm_model = "none"
     estimated_llm_cost_usd = 0.0
     prompt_version = "none"
+    synthesis: SynthesisResult | None = None
 
     if live_market_data:
         market_data_result = replace_market_rows_with_live(data, run_date=run_date, timezone_name=settings.timezone)
@@ -109,9 +287,49 @@ def run_brief(
         data = theme_data_result.data
 
     if use_llm:
+        data = select_portfolio_topics(data, run_date=run_date, portfolio_path=settings.portfolio_path)
         if settings.llm_provider != "gemini":
             raise RuntimeError("Only Gemini synthesis is implemented for --use-llm right now")
-        synthesis = synthesize_with_gemini(settings, data)
+        try:
+            synthesis = synthesize_with_gemini(settings, data)
+        except RuntimeError as exc:
+            quality_report = _build_quality_report(
+                use_llm=use_llm,
+                synthesis=None,
+                llm_error=str(exc),
+                live_market_data=live_market_data,
+                live_calendar=live_calendar,
+                live_theme_radar=live_theme_radar,
+                market_data_result=market_data_result,
+                calendar_data_result=calendar_data_result,
+                theme_data_result=theme_data_result,
+            )
+            _write_log_event(
+                settings,
+                run_id,
+                {
+                    "run_id": run_id,
+                    "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+                    "run_date": run_date.isoformat(),
+                    "run_mode": _effective_run_mode(
+                        settings,
+                        live_market_data=live_market_data,
+                        live_calendar=live_calendar,
+                        live_theme_radar=live_theme_radar,
+                    ),
+                    "llm_provider": settings.llm_provider,
+                    "llm_model": settings.gemini_model,
+                    "llm_status": "failed_synthesis",
+                    "prompt_version": "unknown",
+                    "delivery_status": "blocked_quality_gate" if send else "failed_quality_gate",
+                    "quality_report": quality_report,
+                    "delivery_attempted": False,
+                    "data_sources": data.data_sources,
+                    "source_notes": data.source_notes,
+                    "outputs": {},
+                },
+            )
+            raise RuntimeError(f"Quality gate blocked run before delivery: {exc}") from exc
         data = synthesis.data
         token_usage = synthesis.token_usage
         llm_status = "used"
@@ -132,8 +350,47 @@ def run_brief(
 
     output_paths = write_outputs(data, settings.output_dir, run_date)
 
+    quality_report = _build_quality_report(
+        use_llm=use_llm,
+        synthesis=synthesis,
+        llm_error=None,
+        live_market_data=live_market_data,
+        live_calendar=live_calendar,
+        live_theme_radar=live_theme_radar,
+        market_data_result=market_data_result,
+        calendar_data_result=calendar_data_result,
+        theme_data_result=theme_data_result,
+    )
+
     delivery_status = "dry_run"
     if send:
+        if not quality_report["send_allowed"]:
+            delivery_status = "blocked_quality_gate"
+            log_path = _write_log_event(
+                settings,
+                run_id,
+                {
+                    "run_id": run_id,
+                    "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+                    "run_date": run_date.isoformat(),
+                    "run_mode": _effective_run_mode(
+                        settings,
+                        live_market_data=live_market_data,
+                        live_calendar=live_calendar,
+                        live_theme_radar=live_theme_radar,
+                    ),
+                    "llm_provider": settings.llm_provider,
+                    "llm_model": llm_model,
+                    "llm_status": llm_status,
+                    "prompt_version": prompt_version,
+                    "delivery_status": delivery_status,
+                    "quality_report": quality_report,
+                    "delivery_attempted": False,
+                    "outputs": {key: str(value) for key, value in output_paths.items()},
+                },
+            )
+            blockers = "; ".join(str(blocker) for blocker in quality_report["blockers"])
+            raise RuntimeError(f"Quality gate blocked email send: {blockers}. Log: {log_path}") from None
         send_email(
             settings,
             subject=f"Daily Macro Brief - {run_date.isoformat()}",
@@ -143,8 +400,6 @@ def run_brief(
         )
         delivery_status = "sent"
 
-    settings.log_dir.mkdir(parents=True, exist_ok=True)
-    log_path = settings.log_dir / f"run-{run_id}.jsonl"
     log_event = {
         "run_id": run_id,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
@@ -160,6 +415,8 @@ def run_brief(
         "llm_status": llm_status,
         "prompt_version": prompt_version,
         "delivery_status": delivery_status,
+        "quality_report": quality_report,
+        "delivery_attempted": send,
         "data_sources": data.data_sources,
         "source_notes": data.source_notes,
         "dashboard_notes": data.dashboard_notes,
@@ -184,8 +441,18 @@ def run_brief(
             "candidate_count": theme_data_result.candidate_count,
             "fallback_used": theme_data_result.fallback_used,
             "recent_repeat_titles": theme_data_result.recent_repeat_titles or [],
+            "recent_topic_repeat_titles": theme_data_result.recent_topic_repeat_titles or [],
             "errors": theme_data_result.errors,
             "sources": theme_data_result.sources,
+        },
+        "topic_selection": {
+            "selected_titles": data.three_thing_titles,
+            "selected_topics": data.topic_candidates,
+            "selected_chart": {
+                "title": data.chart_title,
+                "source_label": data.chart_source_label,
+                "source_url": data.chart_source_url,
+            },
         },
         "token_usage": {
             "input_tokens": token_usage.input_tokens,
@@ -196,6 +463,12 @@ def run_brief(
         "estimated_llm_cost_usd": estimated_llm_cost_usd,
         "outputs": {key: str(value) for key, value in output_paths.items()},
     }
-    log_path.write_text(json.dumps(log_event, indent=2) + "\n", encoding="utf-8")
+    log_path = _write_log_event(settings, run_id, log_event)
 
-    return RunResult(run_id=run_id, output_paths=output_paths, delivery_status=delivery_status, log_path=log_path)
+    return RunResult(
+        run_id=run_id,
+        output_paths=output_paths,
+        delivery_status=delivery_status,
+        log_path=log_path,
+        quality_report=quality_report,
+    )

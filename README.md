@@ -8,7 +8,9 @@ The brief answers three practical questions:
 - Why does it matter for the assumed book?
 - What should the reader watch next?
 
-The LLM is deliberately constrained. Code owns market data, calendar data, charting, source links, validation, logging, and email delivery. Gemini drafts only the narrative sections from structured inputs.
+The LLM is deliberately constrained. Code owns market data, calendar data, portfolio-aware topic selection, charting, source links, validation, logging, and email delivery. Gemini drafts only the narrative sections from structured inputs.
+
+When `--use-llm` is enabled, the run validates Gemini's narrative before sending. The log includes a quality report with source checks, validation attempts, repaired validation errors, and a send/no-send decision. Failed narrative validation blocks email delivery.
 
 ## What You Need
 
@@ -102,6 +104,7 @@ Expected outcome:
 - No email is sent.
 - The project creates or updates `outputs/latest/brief.md`, `outputs/latest/brief.html`, `outputs/latest/chart.png`, and a run log under `logs/`.
 - The content uses sample data, so this step only checks that the framework runs.
+- Terminal output includes a quality verdict; sample dry runs should normally show `passed`.
 
 ### Step 3.2: Live Dry Run
 
@@ -117,6 +120,7 @@ Expected outcome:
 - Gemini writes the narrative sections from structured inputs.
 - No email is sent.
 - Inspect `outputs/latest/brief.html` and `outputs/latest/brief.md`.
+- The run log records source quality, LLM validation attempts, validation repairs, and the final quality verdict.
 
 ### Step 3.3: Send One Email
 
@@ -130,7 +134,25 @@ Expected outcome:
 
 - One email is sent to `BRIEF_TO_EMAIL`.
 - The same local output files and logs are updated.
+- If Gemini narrative validation fails, the email is not sent and the run log records a failed quality report.
 - If delivery fails, check the Gmail app password, sender email, recipient email, and `.env` spelling.
+
+### Optional: Compare Gemini Models
+
+Run in Terminal after `.env` has a valid Gemini API key:
+
+```bash
+PYTHONPATH=src python -m macro_news compare-models --models gemini-2.5-flash-lite gemini-2.5-pro
+```
+
+Expected outcome:
+
+- No email is sent.
+- The same structured brief input is sent to each listed Gemini model.
+- Terminal output shows validation repairs, token use, estimated cost when the model is in the local cost table, and runtime for each model.
+- A comparison log is written under `logs/model-compare-*.jsonl`.
+
+Add `--live-market-data --live-calendar --live-theme-radar` if you want the comparison to use live inputs instead of sample inputs.
 
 Expected output files:
 
@@ -217,11 +239,11 @@ Current live sources:
 - Market dashboard: Yahoo Finance quote/chart data, Japan MOF JGB yield CSV, Frankfurter FX reference rates, and CoinGecko BTC data.
 - Calendar: Fair Economy / Forex Factory weekly calendar feed.
 - Theme Radar: curated RSS feeds from Liberty Street Economics, Bank Underground, FRED Blog, and no-key Google News RSS search queries when reachable.
-- Chart: USD/JPY daily reference-rate history from Frankfurter.
+- Chart: selected from the portfolio-aware topic selector when live market history is available; common sources include Yahoo Finance chart data and Frankfurter FX reference rates.
 
 Live mode does not use generated/sample market, calendar, or Theme Radar fallback content. If a live source and cached real row are both unavailable, the relevant value cells or section are left blank rather than filled with invented values.
 
-Theme Radar keeps recent selected links under `.cache/theme_radar/`. Links selected before the current run date are avoided for `THEME_RECENT_DAYS`; same-day reruns may repeat entries. This local headline history is ignored by git. Google News RSS search results are filtered to trusted publisher names before selection.
+Theme Radar keeps recent selected links and headline-topic fingerprints under `.cache/theme_radar/`. Links and near-duplicate topics selected before the current run date are avoided for `THEME_RECENT_DAYS` when enough alternatives exist; same-day reruns may repeat entries. This local headline history is ignored by git. Google News RSS search results are filtered to trusted publisher names before selection.
 
 ## Portfolio And Feedback Inputs
 
@@ -231,7 +253,9 @@ Portfolio assumptions live in:
 inputs/portfolio/positions.csv
 ```
 
-Each row is an effective-date update. If there is no new row for a run date, the latest prior row carries forward. See `inputs/portfolio/README.md`.
+Each row is an effective-date update. If there is no new row for a run date, the latest prior row carries forward.
+
+When `--use-llm` is enabled, the portfolio file also affects "The 3 Things That Matter Today," "One Chart Worth Seeing," and "Contrarian Corner." The agent ranks market moves, calendar events, and Theme Radar/news signals against active positions, gives a modest preference to direct portfolio links when scores are close, chooses the top topics, and then asks Gemini to write to those selected topics in order. The run log records the selected topics and score components. See `inputs/portfolio/README.md`.
 
 Human feedback is tracked with:
 

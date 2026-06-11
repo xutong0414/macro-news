@@ -60,6 +60,7 @@ class ThemeDataResult:
     errors: dict[str, str]
     sources: list[str]
     recent_repeat_titles: list[str] | None = None
+    recent_topic_repeat_titles: list[str] | None = None
 
 
 THEME_SOURCES = [
@@ -75,6 +76,36 @@ DEFAULT_THEME_SEARCH_QUERIES = [
 ]
 DEFAULT_THEME_HISTORY_PATH = Path(".cache") / "theme_radar" / "history.json"
 DEFAULT_THEME_RECENT_DAYS = 7
+THEME_TOPIC_SIMILARITY_THRESHOLD = 0.6
+THEME_TOPIC_STOPWORDS = {
+    "about",
+    "after",
+    "again",
+    "against",
+    "always",
+    "among",
+    "because",
+    "before",
+    "being",
+    "between",
+    "could",
+    "does",
+    "from",
+    "have",
+    "into",
+    "more",
+    "over",
+    "that",
+    "their",
+    "this",
+    "through",
+    "under",
+    "when",
+    "where",
+    "which",
+    "while",
+    "with",
+}
 TRUSTED_NEWS_SOURCE_NAMES = (
     "Associated Press",
     "AP News",
@@ -379,6 +410,67 @@ def _recent_links_before_today(history: list[dict[str, str]], run_date: date, re
     return recent_links
 
 
+def _theme_topic_tokens(title: str) -> frozenset[str]:
+    tokens: set[str] = set()
+    for raw_token in re.findall(r"[a-z0-9]+", title.lower()):
+        if len(raw_token) < 4 or raw_token in THEME_TOPIC_STOPWORDS:
+            continue
+        token = raw_token.removesuffix("s")
+        aliases = {
+            "treasurie": "treasury",
+            "yield": "yield",
+            "yields": "yield",
+            "inflationary": "inflation",
+            "japanese": "japan",
+            "official": "official",
+            "officials": "official",
+            "warning": "warn",
+            "warns": "warn",
+            "rates": "rate",
+        }
+        tokens.add(aliases.get(token, token))
+    return frozenset(tokens)
+
+
+def _theme_topic_similarity(left: frozenset[str], right: frozenset[str]) -> float:
+    if not left or not right:
+        return 0.0
+    return len(left & right) / min(len(left), len(right))
+
+
+def _is_near_duplicate_token_set(candidate_tokens: frozenset[str], prior_topic_tokens: list[frozenset[str]]) -> bool:
+    return any(
+        len(candidate_tokens & prior_tokens) >= 3
+        and _theme_topic_similarity(candidate_tokens, prior_tokens) >= THEME_TOPIC_SIMILARITY_THRESHOLD
+        for prior_tokens in prior_topic_tokens
+    )
+
+
+def _is_near_duplicate_topic(candidate: ThemeCandidate, recent_topic_tokens: list[frozenset[str]]) -> bool:
+    candidate_tokens = _theme_topic_tokens(candidate.title)
+    return _is_near_duplicate_token_set(candidate_tokens, recent_topic_tokens)
+
+
+def _recent_topic_tokens_before_today(history: list[dict[str, str]], run_date: date, recent_days: int) -> list[frozenset[str]]:
+    recent_topic_tokens: list[frozenset[str]] = []
+    for entry in history:
+        selected_date_raw = str(entry.get("selected_date", "")).strip()
+        title = str(entry.get("title", "")).strip()
+        if not title or not selected_date_raw:
+            continue
+        try:
+            selected_date = date.fromisoformat(selected_date_raw)
+        except ValueError:
+            continue
+        if selected_date >= run_date:
+            continue
+        if (run_date - selected_date).days <= recent_days:
+            tokens = _theme_topic_tokens(title)
+            if tokens:
+                recent_topic_tokens.append(tokens)
+    return recent_topic_tokens
+
+
 def _append_theme_history(history_path: Path, run_date: date, selected: list[ThemeCandidate]) -> None:
     history = _read_theme_history(history_path)
     history.extend(
@@ -388,6 +480,7 @@ def _append_theme_history(history_path: Path, run_date: date, selected: list[The
             "source": candidate.source,
             "link": candidate.link,
             "source_depth": candidate.source_depth,
+            "topic_tokens": " ".join(sorted(_theme_topic_tokens(candidate.title))),
         }
         for candidate in selected
     )
@@ -399,8 +492,10 @@ def select_theme_candidates(
     max_items: int = 2,
     *,
     recent_links: set[str] | None = None,
+    recent_topic_tokens: list[frozenset[str]] | None = None,
 ) -> list[ThemeCandidate]:
     recent_links = recent_links or set()
+    recent_topic_tokens = recent_topic_tokens or []
     ranked = sorted(
         candidates,
         key=lambda item: (
@@ -413,10 +508,14 @@ def select_theme_candidates(
     seen_sources: set[str] = set()
     seen_links: set[str] = set()
     seen_rules: set[str] = set()
+    selected_topic_tokens: list[frozenset[str]] = []
     for candidate in ranked:
+        candidate_tokens = _theme_topic_tokens(candidate.title)
         if (
             candidate.link in seen_links
             or candidate.link in recent_links
+            or _is_near_duplicate_topic(candidate, recent_topic_tokens)
+            or _is_near_duplicate_token_set(candidate_tokens, selected_topic_tokens)
             or candidate.source in seen_sources
             or candidate.matched_rule.label in seen_rules
         ):
@@ -425,13 +524,23 @@ def select_theme_candidates(
         seen_sources.add(candidate.source)
         seen_links.add(candidate.link)
         seen_rules.add(candidate.matched_rule.label)
+        if candidate_tokens:
+            selected_topic_tokens.append(candidate_tokens)
         if len(selected) >= max_items:
             return selected
     for candidate in ranked:
-        if candidate.link in seen_links or candidate.link in recent_links:
+        candidate_tokens = _theme_topic_tokens(candidate.title)
+        if (
+            candidate.link in seen_links
+            or candidate.link in recent_links
+            or _is_near_duplicate_topic(candidate, recent_topic_tokens)
+            or _is_near_duplicate_token_set(candidate_tokens, selected_topic_tokens)
+        ):
             continue
         selected.append(candidate)
         seen_links.add(candidate.link)
+        if candidate_tokens:
+            selected_topic_tokens.append(candidate_tokens)
         if len(selected) >= max_items:
             return selected
     for candidate in ranked:
@@ -481,8 +590,14 @@ def replace_theme_radar_with_live(
         candidates, errors, successful_sources = fetch_theme_candidates(client, sources=all_sources)
     history = _read_theme_history(history_path) if history_path and run_date else []
     recent_links = _recent_links_before_today(history, run_date, recent_days) if run_date else set()
-    selected = select_theme_candidates(candidates, recent_links=recent_links)
+    recent_topic_tokens = _recent_topic_tokens_before_today(history, run_date, recent_days) if run_date else []
+    selected = select_theme_candidates(candidates, recent_links=recent_links, recent_topic_tokens=recent_topic_tokens)
     recent_repeat_titles = [candidate.title for candidate in selected if candidate.link in recent_links]
+    recent_topic_repeat_titles = [
+        candidate.title
+        for candidate in selected
+        if candidate.link not in recent_links and _is_near_duplicate_topic(candidate, recent_topic_tokens)
+    ]
     if not selected:
         blank_note = (
             "Theme Radar: no verified live RSS/search candidates available from "
@@ -503,6 +618,7 @@ def replace_theme_radar_with_live(
             errors=errors or {"theme_sources": "no relevant source candidates found"},
             sources=successful_sources,
             recent_repeat_titles=[],
+            recent_topic_repeat_titles=[],
         )
 
     if history_path and run_date:
@@ -516,6 +632,8 @@ def replace_theme_radar_with_live(
     repeat_note = ""
     if recent_repeat_titles:
         repeat_note = " Recent-link memory allowed a repeat because too few non-recent candidates were available."
+    if recent_topic_repeat_titles:
+        repeat_note += " Recent-topic memory allowed a similar topic because too few novel candidates were available."
     theme_note = (
         "Theme Radar: selected "
         f"{len(selected)} items from live RSS/search sources: "
@@ -537,6 +655,10 @@ def replace_theme_radar_with_live(
                 "Theme Radar recent-link rule: links selected before the current run date are avoided for "
                 f"{recent_days} days when enough alternatives exist; same-day reruns may repeat entries."
             ),
+            (
+                "Theme Radar near-duplicate rule: recently selected headline topics are avoided when enough distinct candidates exist; "
+                "same-day reruns may still repeat topics."
+            ),
         ],
         data_sources=[*data.data_sources, *selected_sources],
         source_notes=[*[note for note in data.source_notes if not note.startswith("Theme Radar:")], theme_note],
@@ -549,4 +671,5 @@ def replace_theme_radar_with_live(
         errors=errors,
         sources=selected_sources,
         recent_repeat_titles=recent_repeat_titles,
+        recent_topic_repeat_titles=recent_topic_repeat_titles,
     )

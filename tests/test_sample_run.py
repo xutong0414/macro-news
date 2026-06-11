@@ -8,14 +8,17 @@ from zoneinfo import ZoneInfo
 from macro_news.config import Settings, normalize_timezone
 from macro_news.costing import TokenUsage
 from macro_news.llm import SynthesisResult, parse_narrative_response
+import macro_news.model_compare as model_compare_module
+from macro_news.model_compare import compare_gemini_models
 from macro_news.market_data import replace_market_rows_with_live
 from macro_news.portfolio import active_positions, apply_portfolio_assumptions, read_position_entries
 from macro_news.render import render_html, render_markdown
 import macro_news.runner as runner_module
 from macro_news.calendar_data import replace_calendar_with_live
 from macro_news.runner import run_brief
-from macro_news.sample_data import build_sample_brief_data
+from macro_news.sample_data import CalendarEvent, MarketRow, ThemeItem, build_sample_brief_data
 from macro_news.theme_data import ThemeSearchQuery, ThemeSource, replace_theme_radar_with_live
+from macro_news.topic_selection import select_portfolio_topics
 
 
 def _word_count(text: str) -> int:
@@ -24,6 +27,37 @@ def _word_count(text: str) -> int:
 
 def _calendar_reference_now() -> datetime:
     return datetime(2026, 6, 6, 0, 0, tzinfo=ZoneInfo("Asia/Hong_Kong"))
+
+
+def _valid_response_with_first_thing(first_thing: str) -> str:
+    return json.dumps(
+        {
+            "three_things": [
+                first_thing,
+                "USD/JPY is near the intervention zone after a large rise. So what: keep the long USD/JPY risk tightly monitored.",
+                "Equities are softer and the dollar is firmer. So what: EM debt exposure should be treated carefully.",
+            ],
+            "theme_radar": [
+                {
+                    "title": "The term premium refuses to disappear",
+                    "source": "Sample macro research note",
+                    "link": "https://example.com/research/term-premium",
+                    "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. Investors want more compensation for duration risk when supply headlines keep returning, so rallies remain fragile.",
+                    "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring.",
+                }
+            ],
+            "contrarian_corner": "The simple read is that USD/JPY can keep rising while US yields stay high and the dollar is firm. A trigger that would challenge this view is a direct warning from Japanese officials that forces investors to reassess yen-reversal risk and reduce exposure before the next policy headline.",
+        }
+    )
+
+
+def _assert_first_thing_rejected(base, first_thing: str, expected_message: str) -> None:
+    try:
+        parse_narrative_response(_valid_response_with_first_thing(first_thing), base)
+    except ValueError as exc:
+        assert expected_message in str(exc)
+    else:
+        raise AssertionError(f"Expected narrative validation to fail: {expected_message}")
 
 
 def test_timezone_aliases_normalize() -> None:
@@ -223,14 +257,59 @@ def test_parse_narrative_response_rejects_usdjpy_portfolio_logic_error() -> None
         raise AssertionError("Expected USD/JPY portfolio logic validation to fail")
 
 
-def test_parse_narrative_response_requires_first_item_to_support_chart() -> None:
-    base = build_sample_brief_data()
+def test_parse_narrative_response_allows_selected_non_usdjpy_first_topic() -> None:
+    base = replace(
+        build_sample_brief_data(),
+        topic_candidates=[
+            {"title": "Oil And Inflation Risk", "required_terms": ["oil", "brent", "wti"]},
+            {"title": "USD/JPY Intervention Risk", "required_terms": ["usd/jpy", "yen", "intervention"]},
+            {"title": "Gold And Rates Pressure", "required_terms": ["gold", "rates", "yield"]},
+        ],
+        three_thing_titles=["Oil And Inflation Risk", "USD/JPY Intervention Risk", "Gold And Rates Pressure"],
+        chart_title="Brent oil: 3-Month Trend",
+    )
+    response = """
+    {
+      "three_things": [
+        "WTI oil rose 1.7%, adding another inflation signal to the morning tape. So what: EM debt exposure should be treated carefully.",
+        "USD/JPY is near the intervention zone after a large rise. So what: keep the long USD/JPY risk tightly monitored.",
+        "Gold is lower as rates rise. So what: the gold overweight needs tighter risk monitoring."
+      ],
+      "theme_radar": [
+        {
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note says duration risk remains central.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }
+      ],
+      "contrarian_corner": "The simple read is that oil strength keeps inflation pressure alive and delays rate relief. A trigger that would challenge this view is a sharp reversal in Brent and WTI after an inventory or demand report, which would make the inflation impulse look temporary and reduce pressure on EM duration."
+    }
+    """
+
+    generated = parse_narrative_response(response, base)
+
+    assert generated.three_things[0].startswith("WTI oil")
+    assert generated.chart_title == "Brent oil: 3-Month Trend"
+
+
+def test_parse_narrative_response_requires_selected_topic_order() -> None:
+    base = replace(
+        build_sample_brief_data(),
+        topic_candidates=[
+            {"title": "Oil And Inflation Risk", "required_terms": ["oil", "brent", "wti"]},
+            {"title": "USD/JPY Intervention Risk", "required_terms": ["usd/jpy", "yen", "intervention"]},
+            {"title": "Gold And Rates Pressure", "required_terms": ["gold", "rates", "yield"]},
+        ],
+        three_thing_titles=["Oil And Inflation Risk", "USD/JPY Intervention Risk", "Gold And Rates Pressure"],
+    )
     response = """
     {
       "three_things": [
         "Gold is lower as rates rise. So what: the gold overweight needs tighter risk monitoring.",
         "USD/JPY is near the intervention zone after a large rise. So what: keep the long USD/JPY risk tightly monitored.",
-        "Equities are softer and the dollar is firmer. So what: EM debt exposure should be treated carefully."
+        "WTI oil rose 1.7%, adding another inflation signal to the morning tape. So what: EM debt exposure should be treated carefully."
       ],
       "theme_radar": [
         {
@@ -248,9 +327,183 @@ def test_parse_narrative_response_requires_first_item_to_support_chart() -> None
     try:
         parse_narrative_response(response, base)
     except ValueError as exc:
-        assert "chart-support item" in str(exc)
+        assert "selected topic: Oil And Inflation Risk" in str(exc)
     else:
-        raise AssertionError("Expected first-item chart-support validation to fail")
+        raise AssertionError("Expected selected-topic validation to fail")
+
+
+def test_parse_narrative_response_requires_contrarian_to_follow_first_topic() -> None:
+    base = replace(
+        build_sample_brief_data(),
+        topic_candidates=[
+            {"title": "Oil And Inflation Risk", "required_terms": ["oil", "brent", "wti"]},
+            {"title": "USD/JPY Intervention Risk", "required_terms": ["usd/jpy", "yen", "intervention"]},
+            {"title": "Gold And Rates Pressure", "required_terms": ["gold", "rates", "yield"]},
+        ],
+        three_thing_titles=["Oil And Inflation Risk", "USD/JPY Intervention Risk", "Gold And Rates Pressure"],
+    )
+    response = """
+    {
+      "three_things": [
+        "WTI oil rose 1.7%, adding another inflation signal to the morning tape. So what: EM debt exposure should be treated carefully.",
+        "USD/JPY is near the intervention zone after a large rise. So what: keep the long USD/JPY risk tightly monitored.",
+        "Gold is lower as rates rise. So what: the gold overweight needs tighter risk monitoring."
+      ],
+      "theme_radar": [
+        {
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note says duration risk remains central.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }
+      ],
+      "contrarian_corner": "The simple read is that USD/JPY can keep rising while US yields stay high and the dollar is firm. A trigger that would challenge this view is a direct warning from Japanese officials that forces investors to reassess yen-reversal risk and reduce exposure before the next policy headline."
+    }
+    """
+
+    try:
+        parse_narrative_response(response, base)
+    except ValueError as exc:
+        assert "contrarian_corner must challenge the first selected topic" in str(exc)
+    else:
+        raise AssertionError("Expected contrarian topic validation to fail")
+
+
+def test_portfolio_topic_selection_can_change_chart_from_usdjpy(tmp_path) -> None:
+    portfolio_path = tmp_path / "positions.csv"
+    portfolio_path.write_text(
+        "\n".join(
+            [
+                "effective_date,asset,position,exposure,quantity,unit,notes",
+                "2026-06-01,USD/JPY,long,high,,,Assignment assumption",
+                "2026-06-11,Brent oil,watch,medium,,,Inflation proxy",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    data = build_sample_brief_data()
+    data = replace(
+        data,
+        market_rows=[
+            *data.market_rows,
+            MarketRow("Brent oil", "$92.00", "$89.00", "+3.4%", "Brent strength adds global inflation risk and keeps geopolitical risk premium in focus."),
+        ],
+        market_series={
+            "Brent oil": tuple((f"2026-06-{day:02d}", 88.0 + day / 2) for day in range(1, 12)),
+            "USD/JPY": tuple(data.chart_series),
+        },
+    )
+
+    selected = select_portfolio_topics(data, run_date=date(2026, 6, 11), portfolio_path=portfolio_path)
+
+    assert selected.three_thing_titles[0] == "Oil And Inflation Risk"
+    assert selected.chart_title == "Brent oil: 3-Month Trend"
+    assert selected.chart_source_url == "https://finance.yahoo.com/quote/BZ=F/"
+
+
+def test_topic_selection_can_rank_calendar_event_ahead_of_market_move(tmp_path) -> None:
+    portfolio_path = tmp_path / "positions.csv"
+    portfolio_path.write_text(
+        "\n".join(
+            [
+                "effective_date,asset,position,exposure,quantity,unit,notes",
+                "2026-06-01,US 10Y yield,short duration,medium,,,Rates risk",
+                "2026-06-01,Gold,overweight,medium,,,Inflation hedge",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    data = replace(
+        build_sample_brief_data(),
+        market_rows=[
+            MarketRow("US 10Y yield", "4.42%", "4.42%", "+0 bp", "Treasuries are not moving the story; watch dollar and commodity signals instead."),
+            MarketRow("Gold", "$2,352", "$2,351", "+0.0%", "Gold is holding steady; rates and DXY will decide whether the overweight has cover."),
+            MarketRow("DXY", "104.8", "104.8", "+0.0%", "The dollar is not adding a fresh shock; pair-specific FX moves matter more today."),
+        ],
+        calendar=[
+            CalendarEvent("US", "20:30 HKT", "USD Core CPI m/m", "0.3%", "Inflation surprise can reprice rates, dollar direction, and gold.", "2026-06-11", "Live", "https://www.forexfactory.com/calendar?day=jun11.2026"),
+        ],
+    )
+
+    selected = select_portfolio_topics(data, run_date=date(2026, 6, 11), portfolio_path=portfolio_path)
+
+    assert selected.topic_candidates[0]["origin"] == "calendar"
+    assert selected.three_thing_titles[0] == "US Inflation Event Risk"
+
+
+def test_topic_selection_prefers_direct_calendar_portfolio_link(tmp_path) -> None:
+    portfolio_path = tmp_path / "positions.csv"
+    portfolio_path.write_text(
+        "\n".join(
+            [
+                "effective_date,asset,position,exposure,quantity,unit,notes",
+                "2026-06-01,USD/JPY,long,high,,,Assignment assumption",
+                "2026-06-01,EUR/USD,watch,low,,,Policy-divergence monitor",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    data = replace(
+        build_sample_brief_data(),
+        market_rows=[],
+        calendar=[
+            CalendarEvent(
+                "Europe",
+                "20:15 HKT",
+                "EUR Main Refinancing Rate",
+                "2.40%",
+                "High-impact EUR event for rates, FX, and risk appetite.",
+                "2026-06-11",
+                "Live",
+                "https://www.forexfactory.com/calendar?day=jun11.2026",
+            ),
+        ],
+        theme_radar=[],
+    )
+
+    selected = select_portfolio_topics(data, run_date=date(2026, 6, 11), portfolio_path=portfolio_path)
+
+    assert selected.three_thing_titles[0] == "ECB Policy Event Risk"
+    assert selected.topic_candidates[0]["portfolio_asset"] == "EUR/USD"
+    assert selected.topic_candidates[0]["score_components"]["direct_portfolio_link"] > 0
+
+
+def test_topic_selection_can_rank_theme_radar_news_signal(tmp_path) -> None:
+    portfolio_path = tmp_path / "positions.csv"
+    portfolio_path.write_text(
+        "\n".join(
+            [
+                "effective_date,asset,position,exposure,quantity,unit,notes",
+                "2026-06-01,Gold,overweight,medium,,,Inflation hedge",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    data = replace(
+        build_sample_brief_data(),
+        market_rows=[
+            MarketRow("Gold", "$2,352", "$2,351", "+0.0%", "Gold is holding steady; rates and DXY will decide whether the overweight has cover."),
+            MarketRow("US 10Y yield", "4.42%", "4.42%", "+0 bp", "Treasuries are not moving the story; watch dollar and commodity signals instead."),
+            MarketRow("DXY", "104.8", "104.8", "+0.0%", "The dollar is not adding a fresh shock; pair-specific FX moves matter more today."),
+        ],
+        calendar=[],
+        theme_radar=[
+            ThemeItem(
+                "Under one roof: housing and inflation expectations",
+                "Bank Underground",
+                "https://bankunderground.co.uk/example",
+                "Housing costs may influence inflation expectations beyond ordinary consumer prices. The evidence links household inflation views to housing market dynamics and argues that this channel matters for monetary policy.",
+                "What this means for our book: inflation and rate evidence can either protect or pressure the gold overweight.",
+                "RSS excerpt",
+            )
+        ],
+    )
+
+    selected = select_portfolio_topics(data, run_date=date(2026, 6, 11), portfolio_path=portfolio_path)
+
+    assert selected.topic_candidates[0]["origin"] == "theme"
+    assert selected.three_thing_titles[0] == "Inflation Expectations Signal"
 
 
 def test_parse_narrative_response_trims_long_three_things_item() -> None:
@@ -318,6 +571,340 @@ def test_parse_narrative_response_rejects_japan_yield_carry_error() -> None:
         assert "Japan yields" in str(exc)
     else:
         raise AssertionError("Expected Japan yield carry validation to fail")
+
+
+def test_parse_narrative_response_rejects_ecb_hawkish_euro_negative_error() -> None:
+    base = build_sample_brief_data()
+    response = """
+    {
+      "three_things": [
+        "The ECB meeting is the main European event risk. A hawkish ECB surprise could pressure EUR/USD into the close. So what: keep FX exposure hedged.",
+        "Gold is lower as rates rise. So what: the gold overweight needs tighter risk monitoring.",
+        "Equities are softer and the dollar is firmer. So what: EM debt exposure should be treated carefully."
+      ],
+      "theme_radar": [
+        {
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note says duration risk remains central.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }
+      ],
+      "contrarian_corner": "The simple read is that USD/JPY can keep rising while US yields stay high and the dollar is firm. A trigger that would challenge this view is a direct warning from Japanese officials that forces investors to reassess yen-reversal risk and reduce exposure before the next policy headline."
+    }
+    """
+
+    try:
+        parse_narrative_response(response, base)
+    except ValueError as exc:
+        assert "hawkish ECB" in str(exc)
+    else:
+        raise AssertionError("Expected ECB hawkish euro-negative validation to fail")
+
+
+def test_parse_narrative_response_rejects_ecb_dovish_euro_positive_error() -> None:
+    base = build_sample_brief_data()
+    response = """
+    {
+      "three_things": [
+        "The ECB meeting is the main European event risk. A dovish ECB surprise could lead to broad euro strength into the close. So what: keep FX exposure hedged.",
+        "Gold is lower as rates rise. So what: the gold overweight needs tighter risk monitoring.",
+        "Equities are softer and the dollar is firmer. So what: EM debt exposure should be treated carefully."
+      ],
+      "theme_radar": [
+        {
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note says duration risk remains central.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }
+      ],
+      "contrarian_corner": "The simple read is that USD/JPY can keep rising while US yields stay high and the dollar is firm. A trigger that would challenge this view is a direct warning from Japanese officials that forces investors to reassess yen-reversal risk and reduce exposure before the next policy headline."
+    }
+    """
+
+    try:
+        parse_narrative_response(response, base)
+    except ValueError as exc:
+        assert "dovish ECB" in str(exc)
+    else:
+        raise AssertionError("Expected ECB dovish euro-positive validation to fail")
+
+
+def test_parse_narrative_response_rejects_dollar_support_pressure_on_long_usdjpy() -> None:
+    base = build_sample_brief_data()
+    response = """
+    {
+      "three_things": [
+        "A hot US inflation print would likely support the dollar. So what: this could add pressure to our long USD/JPY position.",
+        "Gold is lower as rates rise. So what: the gold overweight needs tighter risk monitoring.",
+        "Equities are softer and the dollar is firmer. So what: EM debt exposure should be treated carefully."
+      ],
+      "theme_radar": [
+        {
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note says duration risk remains central.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }
+      ],
+      "contrarian_corner": "The simple read is that USD/JPY can keep rising while US yields stay high and the dollar is firm. A trigger that would challenge this view is a direct warning from Japanese officials that forces investors to reassess yen-reversal risk and reduce exposure before the next policy headline."
+    }
+    """
+
+    try:
+        parse_narrative_response(response, base)
+    except ValueError as exc:
+        assert "dollar support" in str(exc)
+    else:
+        raise AssertionError("Expected dollar-support pressure validation to fail")
+
+
+def test_parse_narrative_response_rejects_hawkish_fed_pressure_on_long_usdjpy() -> None:
+    base = build_sample_brief_data()
+    response = """
+    {
+      "three_things": [
+        "Elevated inflation prints could pressure the long USD/JPY position by reinforcing hawkish Fed expectations. So what: keep FX exposure hedged.",
+        "Gold is lower as rates rise. So what: the gold overweight needs tighter risk monitoring.",
+        "Equities are softer and the dollar is firmer. So what: EM debt exposure should be treated carefully."
+      ],
+      "theme_radar": [
+        {
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note says duration risk remains central.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }
+      ],
+      "contrarian_corner": "The simple read is that USD/JPY can keep rising while US yields stay high and the dollar is firm. A trigger that would challenge this view is a direct warning from Japanese officials that forces investors to reassess yen-reversal risk and reduce exposure before the next policy headline."
+    }
+    """
+
+    try:
+        parse_narrative_response(response, base)
+    except ValueError as exc:
+        assert "hawkish US rates" in str(exc)
+    else:
+        raise AssertionError("Expected hawkish-Fed pressure validation to fail")
+
+
+def test_parse_narrative_response_rejects_hotter_inflation_lower_yields() -> None:
+    base = build_sample_brief_data()
+    response = """
+    {
+      "three_things": [
+        "A hotter-than-expected US inflation print would likely pressure US 10Y yields lower. So what: keep rates exposure hedged.",
+        "Gold is lower as rates rise. So what: the gold overweight needs tighter risk monitoring.",
+        "Equities are softer and the dollar is firmer. So what: EM debt exposure should be treated carefully."
+      ],
+      "theme_radar": [
+        {
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note says duration risk remains central.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }
+      ],
+      "contrarian_corner": "The simple read is that USD/JPY can keep rising while US yields stay high and the dollar is firm. A trigger that would challenge this view is a direct warning from Japanese officials that forces investors to reassess yen-reversal risk and reduce exposure before the next policy headline."
+    }
+    """
+
+    try:
+        parse_narrative_response(response, base)
+    except ValueError as exc:
+        assert "hotter inflation" in str(exc)
+    else:
+        raise AssertionError("Expected hotter-inflation direction validation to fail")
+
+
+def test_parse_narrative_response_rejects_cooler_inflation_higher_yields() -> None:
+    base = build_sample_brief_data()
+    response = """
+    {
+      "three_things": [
+        "A cooler-than-expected US inflation print would likely send Treasury yields higher. So what: keep rates exposure hedged.",
+        "Gold is lower as rates rise. So what: the gold overweight needs tighter risk monitoring.",
+        "Equities are softer and the dollar is firmer. So what: EM debt exposure should be treated carefully."
+      ],
+      "theme_radar": [
+        {
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note says duration risk remains central.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }
+      ],
+      "contrarian_corner": "The simple read is that USD/JPY can keep rising while US yields stay high and the dollar is firm. A trigger that would challenge this view is a direct warning from Japanese officials that forces investors to reassess yen-reversal risk and reduce exposure before the next policy headline."
+    }
+    """
+
+    try:
+        parse_narrative_response(response, base)
+    except ValueError as exc:
+        assert "cooler inflation" in str(exc)
+    else:
+        raise AssertionError("Expected cooler-inflation direction validation to fail")
+
+
+def test_parse_narrative_response_rejects_us_yield_direction_mismatch() -> None:
+    base = build_sample_brief_data()
+    adjusted_rows = [
+        replace(row, change="-2 bp") if row.asset == "US 10Y yield" else row
+        for row in base.market_rows
+    ]
+    base = replace(base, market_rows=adjusted_rows)
+    response = """
+    {
+      "three_things": [
+        "Rising US yields are pressuring EUR/USD lower and supporting USD/JPY. So what: keep the rates-sensitive book on alert.",
+        "Gold is lower as rates rise. So what: the gold overweight needs tighter risk monitoring.",
+        "Equities are softer and the dollar is firmer. So what: EM debt exposure should be treated carefully."
+      ],
+      "theme_radar": [
+        {
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note says duration risk remains central.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }
+      ],
+      "contrarian_corner": "The simple read is that USD/JPY can keep rising while US yields stay high and the dollar is firm. A trigger that would challenge this view is a direct warning from Japanese officials that forces investors to reassess yen-reversal risk and reduce exposure before the next policy headline."
+    }
+    """
+
+    try:
+        parse_narrative_response(response, base)
+    except ValueError as exc:
+        assert "US yields rose" in str(exc)
+    else:
+        raise AssertionError("Expected US yield direction validation to fail")
+
+
+def test_parse_narrative_response_rejects_oil_up_inflation_easing() -> None:
+    base = build_sample_brief_data()
+
+    _assert_first_thing_rejected(
+        base,
+        "WTI oil rose 1.7%, but oil eased inflation pressure across the book. So what: EM debt exposure should be treated as safer.",
+        "oil_inflation_direction",
+    )
+
+
+def test_parse_narrative_response_rejects_oil_down_inflation_pressure() -> None:
+    base = build_sample_brief_data()
+    adjusted_rows = [
+        replace(row, close="$75.80", prior="$77.10", change="-1.7%") if row.asset == "WTI oil" else row
+        for row in base.market_rows
+    ]
+    base = replace(base, market_rows=adjusted_rows)
+
+    _assert_first_thing_rejected(
+        base,
+        "WTI oil fell 1.7%, adding inflation pressure to the morning tape. So what: EM debt exposure should stay defensive.",
+        "oil_inflation_direction",
+    )
+
+
+def test_parse_narrative_response_rejects_gold_up_overweight_hurt() -> None:
+    base = build_sample_brief_data()
+    adjusted_rows = [
+        replace(row, close="$2,390", prior="$2,371", change="+0.8%") if row.asset == "Gold" else row
+        for row in base.market_rows
+    ]
+    base = replace(base, market_rows=adjusted_rows)
+
+    _assert_first_thing_rejected(
+        base,
+        "Gold rose 0.8%, but this hurts the gold overweight. So what: reduce confidence in the inflation hedge.",
+        "gold_position_direction",
+    )
+
+
+def test_parse_narrative_response_rejects_gold_down_overweight_helped() -> None:
+    base = build_sample_brief_data()
+
+    _assert_first_thing_rejected(
+        base,
+        "Gold fell 0.8%, which helps the gold overweight. So what: keep the inflation hedge as the cleaner expression.",
+        "gold_position_direction",
+    )
+
+
+def test_parse_narrative_response_rejects_dxy_up_dollar_pressure_eased() -> None:
+    base = build_sample_brief_data()
+
+    _assert_first_thing_rejected(
+        base,
+        "DXY rose 0.5%, but dollar pressure eased for the book. So what: EM debt exposure should get relief.",
+        "dollar_direction",
+    )
+
+
+def test_parse_narrative_response_rejects_dxy_down_dollar_pressure_tightened() -> None:
+    base = build_sample_brief_data()
+    adjusted_rows = [
+        replace(row, close="103.8", prior="104.3", change="-0.5%") if row.asset == "DXY" else row
+        for row in base.market_rows
+    ]
+    base = replace(base, market_rows=adjusted_rows)
+
+    _assert_first_thing_rejected(
+        base,
+        "DXY fell 0.5%, but dollar funding pressure tightened. So what: EM debt exposure should stay defensive.",
+        "dollar_direction",
+    )
+
+
+def test_parse_narrative_response_rejects_vix_up_hedging_faded() -> None:
+    base = build_sample_brief_data()
+    base = replace(
+        base,
+        market_rows=[
+            *base.market_rows,
+            MarketRow("VIX", "18.72", "18.00", "+4.0%", "Higher volatility signals defensive hedging demand and weaker risk appetite."),
+        ],
+    )
+
+    _assert_first_thing_rejected(
+        base,
+        "VIX rose 4.0%, but hedging demand faded across risk assets. So what: risk exposure can be treated more calmly.",
+        "volatility_direction",
+    )
+
+
+def test_parse_narrative_response_rejects_vix_down_defensive_stress() -> None:
+    base = build_sample_brief_data()
+    base = replace(
+        base,
+        market_rows=[
+            *base.market_rows,
+            MarketRow("VIX", "17.28", "18.00", "-4.0%", "Lower volatility supports risk appetite, but it can also make hedges look underpriced."),
+        ],
+    )
+
+    _assert_first_thing_rejected(
+        base,
+        "VIX fell 4.0%, but volatility stress increased across the book. So what: keep risk exposure defensive.",
+        "volatility_direction",
+    )
+
+
+def test_parse_narrative_response_rejects_em_debt_helped_by_yields_or_dollar() -> None:
+    base = build_sample_brief_data()
+
+    _assert_first_thing_rejected(
+        base,
+        "EM debt exposure is helped by higher US yields and stronger dollar funding pressure. So what: add duration risk.",
+        "em_debt_macro_direction",
+    )
 
 
 def test_parse_narrative_response_rejects_unsupported_market_pricing_claim() -> None:
@@ -485,7 +1072,7 @@ def test_parse_narrative_response_strips_theme_summary_so_what() -> None:
           "title": "The term premium refuses to disappear",
           "source": "Sample macro research note",
           "link": "https://example.com/research/term-premium",
-          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note adds that duration risk remains central when supply pressure keeps returning. The selector picked it because the feed discusses rates and credit. So what: USD/JPY can keep support, but gold needs close monitoring.",
+          "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note adds that duration risk remains central when supply pressure keeps returning. The selector picked it because the feed discusses rates and credit. Portfolio link: use it as source input for judging whether the assumed book needs attention today. So what: USD/JPY can keep support, but gold needs close monitoring.",
           "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
         }
       ],
@@ -497,6 +1084,8 @@ def test_parse_narrative_response_strips_theme_summary_so_what() -> None:
 
     assert "So what:" not in generated.theme_radar[0].summary
     assert "selector picked" not in generated.theme_radar[0].summary.lower()
+    assert "portfolio link" not in generated.theme_radar[0].summary.lower()
+    assert "source input" not in generated.theme_radar[0].summary.lower()
     assert generated.theme_radar[0].summary.endswith("supply pressure keeps returning.")
 
 
@@ -566,6 +1155,8 @@ def test_dry_run_writes_outputs(tmp_path) -> None:
     assert "Updated as of:" in markdown
     log_event = json.loads(result.log_path.read_text(encoding="utf-8"))
     assert log_event["run_mode"] == "sample"
+    assert log_event["quality_report"]["verdict"] == "passed"
+    assert result.quality_report["send_allowed"] is True
 
 
 def test_dry_run_with_llm_writes_usage_log(tmp_path, monkeypatch) -> None:
@@ -611,6 +1202,176 @@ def test_dry_run_with_llm_writes_usage_log(tmp_path, monkeypatch) -> None:
     assert log_event["llm_status"] == "used"
     assert log_event["token_usage"]["input_tokens"] == 100
     assert log_event["estimated_llm_cost_usd"] == 0.00003
+    assert "topic_selection" in log_event
+    assert "selected_topics" in log_event["topic_selection"]
+    assert "selected_chart" in log_event["topic_selection"]
+    assert log_event["quality_report"]["verdict"] == "passed"
+    assert log_event["quality_report"]["send_allowed"] is True
+
+
+def test_repaired_llm_validation_warning_is_logged(tmp_path, monkeypatch) -> None:
+    settings = Settings(
+        llm_provider="gemini",
+        gemini_api_key="test-key",
+        gemini_model="gemini-2.5-flash-lite",
+        deepseek_api_key=None,
+        deepseek_model="deepseek-v4-flash",
+        smtp_host=None,
+        smtp_port=587,
+        smtp_user=None,
+        smtp_password=None,
+        brief_from_email=None,
+        brief_to_email=None,
+        timezone="Asia/Shanghai",
+        run_mode="sample",
+        market_data_mode="sample",
+        calendar_mode="sample",
+        theme_source_mode="sample",
+        theme_history_path=tmp_path / "theme_history.json",
+        theme_recent_days=7,
+        portfolio_path=tmp_path / "positions.csv",
+        output_dir=tmp_path / "outputs",
+        log_dir=tmp_path / "logs",
+    )
+
+    def fake_synthesize(_settings, data):
+        return SynthesisResult(
+            data=replace(data, data_sources=[*data.data_sources, "gemini_synthesis"]),
+            token_usage=TokenUsage(input_tokens=100, output_tokens=50, total_tokens=150, provider="gemini"),
+            estimated_cost_usd=0.00003,
+            provider="gemini",
+            model="gemini-2.5-flash-lite",
+            prompt_version="test_prompt",
+            validation_attempts=2,
+            validation_repair_count=1,
+            validation_errors=("three_things item 1 inverted US yield direction",),
+        )
+
+    monkeypatch.setattr(runner_module, "synthesize_with_gemini", fake_synthesize)
+
+    result = run_brief(settings, send=False, use_llm=True)
+    log_event = json.loads(result.log_path.read_text(encoding="utf-8"))
+
+    assert log_event["quality_report"]["verdict"] == "warning"
+    assert log_event["quality_report"]["send_allowed"] is True
+    assert log_event["quality_report"]["narrative_validation_errors"] == [
+        "three_things item 1 inverted US yield direction"
+    ]
+
+
+def test_llm_validation_failure_blocks_send_and_writes_quality_log(tmp_path, monkeypatch) -> None:
+    settings = Settings(
+        llm_provider="gemini",
+        gemini_api_key="test-key",
+        gemini_model="gemini-2.5-flash-lite",
+        deepseek_api_key=None,
+        deepseek_model="deepseek-v4-flash",
+        smtp_host="smtp.gmail.com",
+        smtp_port=587,
+        smtp_user="sender@example.com",
+        smtp_password="app-password",
+        brief_from_email="sender@example.com",
+        brief_to_email="reader@example.com",
+        timezone="Asia/Shanghai",
+        run_mode="sample",
+        market_data_mode="sample",
+        calendar_mode="sample",
+        theme_source_mode="sample",
+        theme_history_path=tmp_path / "theme_history.json",
+        theme_recent_days=7,
+        portfolio_path=tmp_path / "positions.csv",
+        output_dir=tmp_path / "outputs",
+        log_dir=tmp_path / "logs",
+    )
+
+    def fake_synthesize(_settings, _data):
+        raise RuntimeError("Gemini response failed validation after retries: bad macro logic")
+
+    def fake_send_email(*_args, **_kwargs):
+        raise AssertionError("send_email must not be called after narrative validation failure")
+
+    monkeypatch.setattr(runner_module, "synthesize_with_gemini", fake_synthesize)
+    monkeypatch.setattr(runner_module, "send_email", fake_send_email)
+
+    try:
+        run_brief(settings, send=True, use_llm=True)
+    except RuntimeError as exc:
+        assert "Quality gate blocked run before delivery" in str(exc)
+    else:
+        raise AssertionError("Expected LLM validation failure to block the run")
+
+    logs = list((tmp_path / "logs").glob("run-*.jsonl"))
+    assert len(logs) == 1
+    log_event = json.loads(logs[0].read_text(encoding="utf-8"))
+    assert log_event["delivery_status"] == "blocked_quality_gate"
+    assert log_event["delivery_attempted"] is False
+    assert log_event["quality_report"]["verdict"] == "failed"
+    assert log_event["quality_report"]["send_allowed"] is False
+
+
+def test_compare_gemini_models_logs_each_model_result(tmp_path, monkeypatch) -> None:
+    settings = Settings(
+        llm_provider="gemini",
+        gemini_api_key="test-key",
+        gemini_model="gemini-2.5-flash-lite",
+        deepseek_api_key=None,
+        deepseek_model="deepseek-v4-flash",
+        smtp_host=None,
+        smtp_port=587,
+        smtp_user=None,
+        smtp_password=None,
+        brief_from_email=None,
+        brief_to_email=None,
+        timezone="Asia/Hong_Kong",
+        run_mode="sample",
+        market_data_mode="sample",
+        calendar_mode="sample",
+        theme_source_mode="sample",
+        theme_history_path=tmp_path / "theme_history.json",
+        theme_recent_days=7,
+        portfolio_path=tmp_path / "positions.csv",
+        output_dir=tmp_path / "outputs",
+        log_dir=tmp_path / "logs",
+    )
+
+    def fake_synthesize(model_settings, data):
+        if model_settings.gemini_model == "gemini-2.5-pro":
+            return SynthesisResult(
+                data=data,
+                token_usage=TokenUsage(input_tokens=200, output_tokens=80, total_tokens=280, provider="gemini"),
+                estimated_cost_usd=0.001,
+                provider="gemini",
+                model=model_settings.gemini_model,
+                prompt_version="test_prompt",
+                validation_attempts=2,
+                validation_repair_count=1,
+                validation_errors=("repair needed",),
+            )
+        return SynthesisResult(
+            data=data,
+            token_usage=TokenUsage(input_tokens=100, output_tokens=50, total_tokens=150, provider="gemini"),
+            estimated_cost_usd=0.00003,
+            provider="gemini",
+            model=model_settings.gemini_model,
+            prompt_version="test_prompt",
+        )
+
+    monkeypatch.setattr(model_compare_module, "synthesize_with_gemini", fake_synthesize)
+
+    results, log_path = compare_gemini_models(
+        settings,
+        models=["gemini-2.5-flash-lite", "gemini-2.5-pro"],
+        run_date=date(2026, 6, 11),
+    )
+
+    assert [result.model for result in results] == ["gemini-2.5-flash-lite", "gemini-2.5-pro"]
+    assert [result.status for result in results] == ["passed", "warning"]
+    assert results[1].validation_repair_count == 1
+    log_event = json.loads(log_path.read_text(encoding="utf-8"))
+    assert log_event["models"] == ["gemini-2.5-flash-lite", "gemini-2.5-pro"]
+    assert "Cost is estimated only" in log_event["cost_estimate_note"]
+    assert log_event["results"][0]["total_tokens"] == 150
+    assert log_event["results"][1]["validation_repair_count"] == 1
 
 
 class FakeResponse:
@@ -1050,6 +1811,23 @@ GOOGLE_NEWS_FEED = """<?xml version="1.0" encoding="UTF-8"?>
 </rss>
 """
 
+THEME_FEED_SIMILAR_YEN = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <item>
+      <title>Japan finance ministry warns again on yen volatility</title>
+      <link>https://example.com/yen-warning-new</link>
+      <pubDate>Fri, 05 Jun 2026 12:00:00 +0000</pubDate>
+      <description><![CDATA[
+        Japanese officials warned that they are monitoring exchange rate volatility as the yen weakens
+        against the dollar. The article discusses intervention risk, the finance ministry, Bank of Japan
+        policy expectations, and pressure from a stronger dollar.
+      ]]></description>
+    </item>
+  </channel>
+</rss>
+"""
+
 
 class FakeThemeClient:
     def __enter__(self):
@@ -1079,6 +1857,23 @@ class FailingThemeClient:
 
     def get(self, url):
         raise RuntimeError(f"simulated feed outage: {url}")
+
+
+class SimilarThemeClient:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        return None
+
+    def get(self, url):
+        if "similar-yen" in url:
+            return FakeResponse(text=THEME_FEED_SIMILAR_YEN)
+        if "source-one" in url:
+            return FakeResponse(text=THEME_FEED_ONE)
+        if "source-two" in url:
+            return FakeResponse(text=THEME_FEED_TWO)
+        raise RuntimeError("unexpected feed")
 
 
 def _theme_sources() -> list[ThemeSource]:
@@ -1164,6 +1959,43 @@ def test_live_theme_radar_avoids_links_selected_before_today(tmp_path) -> None:
     assert "Why exclude food and energy from inflation measures?" not in titles
     assert len(titles) == 2
     assert result.recent_repeat_titles == []
+    assert result.recent_topic_repeat_titles == []
+
+
+def test_live_theme_radar_avoids_recent_near_duplicate_topics(tmp_path) -> None:
+    history_path = tmp_path / "theme_history.json"
+    history_path.write_text(
+        json.dumps(
+            [
+                {
+                    "selected_date": "2026-06-09",
+                    "title": "Japan officials warn on yen volatility as USD/JPY rises",
+                    "source": "Reuters via Google News",
+                    "link": "https://news.google.com/rss/articles/example-yen-warning",
+                    "source_depth": "search result snippet",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = replace_theme_radar_with_live(
+        build_sample_brief_data(),
+        run_date=date(2026, 6, 10),
+        history_path=history_path,
+        client_factory=SimilarThemeClient,
+        sources=[
+            ThemeSource("Japan FX Source", "https://similar-yen.test/feed/", "theme_feed:test_similar_yen"),
+            *_theme_sources(),
+        ],
+    )
+
+    titles = [item.title for item in result.data.theme_radar]
+
+    assert "Japan finance ministry warns again on yen volatility" not in titles
+    assert "Why exclude food and energy from inflation measures?" in titles
+    assert "Why Does the U.S. Always Run a Trade Deficit?" in titles
+    assert result.recent_topic_repeat_titles == []
 
 
 def test_live_theme_radar_allows_same_day_repeats(tmp_path) -> None:

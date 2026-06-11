@@ -10,9 +10,8 @@ from .sample_data import BriefData
 
 
 CONTRARIAN_READING_LINKS = [
-    ("Yahoo Finance currencies", "https://finance.yahoo.com/markets/currencies/"),
-    ("Japan MOF intervention data", "https://www.mof.go.jp/english/policy/international_policy/reference/feio/quarter/index.html"),
-    ("BOJ international finance", "https://www.boj.or.jp/en/intl_finance/index.htm"),
+    ("Yahoo Finance market overview", "https://finance.yahoo.com/markets/"),
+    ("Yahoo Finance US 10Y", "https://finance.yahoo.com/quote/%5ETNX/"),
 ]
 
 
@@ -55,6 +54,14 @@ def _three_thing_read_more(item: str) -> tuple[str, str]:
     lowered = item.lower()
     if any(term in lowered for term in ("usd/jpy", "intervention", "yen reversal", "yen appreciation")):
         return ("Yahoo Finance currencies", "https://finance.yahoo.com/markets/currencies/")
+    if "vix" in lowered or "volatility" in lowered:
+        return ("Yahoo Finance VIX", "https://finance.yahoo.com/quote/%5EVIX/")
+    if any(term in lowered for term in ("china tech", "china internet", "kweb")):
+        return ("Yahoo Finance KWEB", "https://finance.yahoo.com/quote/KWEB/")
+    if "brent" in lowered:
+        return ("Yahoo Finance Brent oil", "https://finance.yahoo.com/quote/BZ=F/")
+    if "eur/usd" in lowered or "euro" in lowered:
+        return ("Yahoo Finance currencies", "https://finance.yahoo.com/markets/currencies/")
     if any(term in lowered for term in ("em debt", "em duration", "em financing", "emerging market")) and any(
         term in lowered for term in ("s&p", "equities", "risk-off", "risk aversion", "risk assets")
     ):
@@ -80,6 +87,14 @@ def _three_thing_title(item: str) -> str:
     lowered = item.lower()
     if any(term in lowered for term in ("usd/jpy", "intervention", "yen reversal", "yen appreciation")):
         return "USD/JPY Intervention Risk"
+    if "vix" in lowered or "volatility" in lowered:
+        return "Volatility Regime Watch"
+    if any(term in lowered for term in ("china tech", "china internet", "kweb")):
+        return "China Tech Sentiment"
+    if "brent" in lowered:
+        return "Oil And Inflation Risk"
+    if "eur/usd" in lowered or "euro" in lowered:
+        return "EUR/USD And Dollar Mix"
     if any(term in lowered for term in ("s&p", "equities", "risk-off", "risk aversion", "risk assets")):
         return "Risk Tone Turns Defensive"
     if "gold" in lowered:
@@ -115,8 +130,61 @@ def _theme_book_impact(text: str) -> str:
     return f"**For Our Book:** {stripped}"
 
 
-def _contrarian_further_reading() -> str:
-    links = ", ".join(f"[{label}]({url})" for label, url in CONTRARIAN_READING_LINKS)
+def _topic_reading_links(data: BriefData) -> list[tuple[str, str]]:
+    links: list[tuple[str, str]] = []
+    if data.topic_candidates:
+        first = data.topic_candidates[0]
+        link = str(first.get("link", "")).strip()
+        source_label = str(first.get("source_label", "")).strip()
+        if link:
+            links.append((source_label or "Selected source", link))
+        topic_text = " ".join(
+            [
+                str(first.get("title", "")),
+                " ".join(str(term) for term in first.get("required_terms", []) if isinstance(first.get("required_terms", []), list)),
+            ]
+        ).lower()
+        if any(term in topic_text for term in ("s&p", "equity", "equities", "risk", "vix", "volatility")):
+            links.extend(
+                [
+                    ("Yahoo Finance S&P 500", "https://finance.yahoo.com/quote/%5EGSPC/"),
+                    ("Yahoo Finance VIX", "https://finance.yahoo.com/quote/%5EVIX/"),
+                ]
+            )
+        if any(term in topic_text for term in ("oil", "brent", "wti", "inflation")):
+            links.extend(
+                [
+                    ("Yahoo Finance Brent oil", "https://finance.yahoo.com/quote/BZ=F/"),
+                    ("Yahoo Finance WTI oil", "https://finance.yahoo.com/quote/CL=F/"),
+                ]
+            )
+        if any(term in topic_text for term in ("usd/jpy", "yen", "japan", "intervention")):
+            links.extend(
+                [
+                    ("Yahoo Finance currencies", "https://finance.yahoo.com/markets/currencies/"),
+                    ("Japan MOF intervention data", "https://www.mof.go.jp/english/policy/international_policy/reference/feio/quarter/index.html"),
+                ]
+            )
+        if any(term in topic_text for term in ("rates", "yield", "treasury", "duration", "ppi", "cpi", "pce")):
+            links.append(("Yahoo Finance US 10Y", "https://finance.yahoo.com/quote/%5ETNX/"))
+        if any(term in topic_text for term in ("china", "cny", "kweb")):
+            links.append(("Yahoo Finance KWEB", "https://finance.yahoo.com/quote/KWEB/"))
+    if data.chart_source_url:
+        links.append((data.chart_source_label, data.chart_source_url))
+    links.extend(CONTRARIAN_READING_LINKS)
+
+    seen: set[str] = set()
+    deduped: list[tuple[str, str]] = []
+    for label, url in links:
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        deduped.append((label, url))
+    return deduped[:3]
+
+
+def _contrarian_further_reading(data: BriefData) -> str:
+    links = ", ".join(f"[{label}]({url})" for label, url in _topic_reading_links(data))
     return f"**Further reading:** {links}"
 
 
@@ -147,7 +215,7 @@ def _categorized_assumptions(items: list[str]) -> str:
 
     for item in items:
         lowered = item.lower()
-        if any(key in lowered for key in ("portfolio file", "position carry-forward", "assignment pdf assumption", "assumed book", "portfolio file is connected")):
+        if any(key in lowered for key in ("portfolio file", "position carry-forward", "assignment pdf assumption", "assumed book", "portfolio file is connected", "; exposure=", "; quantity=")):
             portfolio.append(item)
         elif any(key in lowered for key in ("market dashboard", "calendar", "theme radar", "live mode", "scaffold", "blank")):
             data_handling.append(item)
@@ -172,9 +240,12 @@ def _categorized_assumptions(items: list[str]) -> str:
 def _feedback_rows(data: BriefData) -> list[tuple[str, str]]:
     rows: list[tuple[str, str]] = []
     rows.append(("Dashboard", "Overnight market dashboard"))
-    rows.extend((f"Three Things #{idx}", _three_thing_title(item)) for idx, item in enumerate(data.three_things, 1))
+    rows.extend(
+        (f"Three Things #{idx}", data.three_thing_titles[idx - 1] if idx - 1 < len(data.three_thing_titles) else _three_thing_title(item))
+        for idx, item in enumerate(data.three_things, 1)
+    )
     rows.extend(("Calendar", event.event) for event in data.calendar)
-    rows.append(("Chart", "USD/JPY: 3-Month Trend"))
+    rows.append(("Chart", data.chart_title))
     rows.extend(("Theme Radar", item.title) for item in data.theme_radar)
     rows.append(("Contrarian Corner", "Main argument and trigger"))
     return rows
@@ -191,11 +262,12 @@ Please paste this compact format into Excel/CSV and share your feedback with Ton
 {rows}"""
 
 
-def _render_three_things_markdown(items: list[str]) -> str:
+def _render_three_things_markdown(items: list[str], titles: list[str] | None = None) -> str:
     blocks: list[str] = []
     for idx, item in enumerate(items, 1):
         main, so_what = _split_so_what(item)
-        parts = [f"### {idx}. {_three_thing_title(item)}", main]
+        title = titles[idx - 1] if titles and idx - 1 < len(titles) else _three_thing_title(item)
+        parts = [f"### {idx}. {title}", main]
         if so_what:
             implication = so_what.removeprefix("So what:").strip()
             parts.append(f"**So what:** {implication}")
@@ -212,9 +284,11 @@ def _chart_reading(data: BriefData) -> str:
 
 
 def _chart_source_note(data: BriefData) -> str:
+    if data.chart_source_url:
+        return f"**Data source:** [{data.chart_source_label}]({data.chart_source_url})"
     if any(source.startswith("frankfurter:USDJPY") for source in data.data_sources):
         return "**Data source:** [Frankfurter USD/JPY daily reference rates](https://frankfurter.dev/)"
-    return "**Data source:** sample USD/JPY series"
+    return f"**Data source:** {data.chart_source_label}"
 
 
 def render_markdown(data: BriefData, run_date: date | None = None) -> str:
@@ -227,7 +301,7 @@ def render_markdown(data: BriefData, run_date: date | None = None) -> str:
         ["Session", "Event date", "Time", "Event", "Consensus", "Status", "Why it matters"],
         [[e.session, e.event_date, e.time, _event_markdown(e.event, e.link), e.consensus, e.status, e.why_it_matters] for e in data.calendar],
     )
-    three = _render_three_things_markdown(data.three_things)
+    three = _render_three_things_markdown(data.three_things, data.three_thing_titles)
     themes = "\n\n".join(
         (
             f"### {item.title}\n"
@@ -271,7 +345,7 @@ Dashboard notes:
 
 ## One Chart Worth Seeing
 
-![USD/JPY: 3-Month Trend](chart.png)
+![{data.chart_title}](chart.png)
 
 **Reading:** {_chart_reading(data)}
 
@@ -285,7 +359,7 @@ Dashboard notes:
 
 {data.contrarian_corner}
 
-{_contrarian_further_reading()}
+{_contrarian_further_reading(data)}
 
 {_feedback_questionnaire(data)}
 {source_status_section}
@@ -356,7 +430,7 @@ def render_html(data: BriefData, run_date: date | None = None) -> str:
         elif line.startswith("### "):
             html_lines.append(f"<h3>{_inline_markdown_to_html(line[4:])}</h3>")
         elif line.startswith("!["):
-            html_lines.append('<img src="chart.png" alt="USD/JPY: 3-Month Trend">')
+            html_lines.append(f'<img src="chart.png" alt="{html.escape(data.chart_title, quote=True)}">')
         elif line.startswith("**Reading:"):
             html_lines.append(f'<p class="reading">{_bold_label_to_html(line)}</p>')
         elif line.startswith("Reading:"):
@@ -415,8 +489,8 @@ def write_chart(data: BriefData, chart_path: Path) -> None:
     fig, ax = plt.subplots(figsize=(7.2, 3.4))
     ax.plot(x_values, values, linewidth=1.8, color="#9ca3af", label="Full history")
     ax.plot(x_values[recent_start:], values[recent_start:], marker="o", linewidth=2.4, color="#2563eb", label="Latest 5 observations")
-    ax.set_title("USD/JPY: 3-Month Trend")
-    ax.set_ylabel("Spot")
+    ax.set_title(data.chart_title)
+    ax.set_ylabel(data.chart_y_label)
     ax.grid(True, alpha=0.25)
     ax.legend(frameon=False, loc="best", fontsize=8)
     if parsed_dates:
