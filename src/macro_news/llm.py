@@ -17,7 +17,7 @@ from .narrative_rules import (
 )
 from .sample_data import BriefData, ThemeItem
 
-PROMPT_VERSION = "gemini_narrative_v40"
+PROMPT_VERSION = "gemini_narrative_v43"
 
 
 @dataclass(frozen=True)
@@ -31,6 +31,23 @@ class SynthesisResult:
     validation_attempts: int = 1
     validation_repair_count: int = 0
     validation_errors: tuple[str, ...] = ()
+
+
+class NarrativeValidationFailure(RuntimeError):
+    def __init__(
+        self,
+        message: str,
+        *,
+        validation_errors: tuple[str, ...],
+        failed_responses: tuple[str, ...],
+        prompt_version: str,
+        token_usage: TokenUsage,
+    ) -> None:
+        super().__init__(message)
+        self.validation_errors = validation_errors
+        self.failed_responses = failed_responses
+        self.prompt_version = prompt_version
+        self.token_usage = token_usage
 
 
 def word_count(text: str) -> int:
@@ -155,6 +172,10 @@ def _strip_theme_source_mechanics(summary: str) -> str:
 def _rewrite_common_theme_openers(summary: str) -> str:
     rewritten = re.sub(r"\bthis article explores\b", "This article shows", summary, flags=re.IGNORECASE)
     rewritten = re.sub(r"\bthis piece explores\b", "This piece argues", rewritten, flags=re.IGNORECASE)
+    rewritten = re.sub(r"\bthis article examines\b", "This article shows", rewritten, flags=re.IGNORECASE)
+    rewritten = re.sub(r"\bthis piece examines\b", "This piece shows", rewritten, flags=re.IGNORECASE)
+    rewritten = re.sub(r"\bthis analysis examines\b", "The analysis shows", rewritten, flags=re.IGNORECASE)
+    rewritten = re.sub(r"\bthis report examines\b", "The report shows", rewritten, flags=re.IGNORECASE)
     return rewritten
 
 
@@ -204,6 +225,26 @@ def _require_contrarian_alignment(contrarian_corner: str, base_data: BriefData) 
         raise ValueError(f"contrarian_corner must challenge the first selected topic: {title}")
 
 
+def _prompt_guardrail_summary(topic_candidates: list[dict[str, object]]) -> str:
+    lines: list[str] = []
+    for idx, candidate in enumerate(topic_candidates, 1):
+        guidance = str(candidate.get("narrative_guidance", "")).strip()
+        avoid_claims = candidate.get("avoid_claims", [])
+        if not guidance and not avoid_claims:
+            continue
+        title = str(candidate.get("title", f"topic {idx}")).strip()
+        lines.append(f"{idx}. {title}")
+        if guidance:
+            lines.append(f"   Guidance: {guidance}")
+        if isinstance(avoid_claims, list) and avoid_claims:
+            claims = " ".join(str(claim).strip() for claim in avoid_claims if str(claim).strip())
+            if claims:
+                lines.append(f"   Avoid: {claims}")
+    if not lines:
+        return "None."
+    return "\n".join(lines)
+
+
 def build_narrative_prompt(data: BriefData) -> str:
     facts = {
         "market_dashboard": [asdict(row) for row in data.market_rows],
@@ -219,6 +260,7 @@ def build_narrative_prompt(data: BriefData) -> str:
         },
         "assumptions": data.assumptions,
     }
+    guardrail_summary = _prompt_guardrail_summary(data.topic_candidates)
 
     return (
         "You are writing a Daily Macro Brief for a time-poor macro portfolio manager.\n"
@@ -227,6 +269,7 @@ def build_narrative_prompt(data: BriefData) -> str:
         "Do not move a number from one dashboard row to another.\n"
         "Do not add generic risk factors unless they appear in the facts.\n"
         "Do not claim market pricing, safe-haven flows, crowded positioning, yen shorts, carry trades, or central-bank stances unless those facts appear below.\n"
+        "Do not use the phrases 'pricing in', 'priced in', 'market is pricing', or 'market pricing' in Three Things or Contrarian Corner.\n"
         "Do not say the US-Japan spread narrowed or widened unless the facts provide a calculated spread; mention the US and Japan yield moves separately.\n"
         "Do not say markets opened higher/lower/softer/firmer unless the facts explicitly provide opening data; use closed lower, traded lower, or were softer.\n"
         "Do not mention real rates unless the facts provide real-yield data; use US yields or rates instead.\n"
@@ -235,10 +278,14 @@ def build_narrative_prompt(data: BriefData) -> str:
         "Do not use record-high or historical-extreme language unless the facts explicitly provide that history; use 'elevated' if that is all the facts support.\n"
         "Keep the tone concise, investment-oriented, and opinionated.\n"
         "Write like a PM-facing morning note: catalyst first, portfolio read-through second, no filler.\n\n"
+        "Critical code guardrails, checked before delivery:\n"
+        f"{guardrail_summary}\n\n"
         "Topic agenda:\n"
         "- selected_topics is code-ranked before this prompt from market moves, calendar events, Theme Radar/news signals, source/event importance, freshness, and portfolio relevance.\n"
         "- If selected_topics is non-empty, write three_things in exactly that order.\n"
         "- Each item must clearly address the corresponding selected topic and use its evidence.\n"
+        "- Each selected topic may include narrative_guidance and avoid_claims. Treat narrative_guidance as code-generated logic guidance, and do not contradict it.\n"
+        "- Never make a claim listed in a selected topic's avoid_claims.\n"
         "- Do not force USD/JPY into the first item unless selected_topics puts it first.\n"
         "- selected_chart is code-selected to support the first selected topic; do not mention charts directly in the narrative.\n\n"
         "Contrarian Corner:\n"
@@ -375,6 +422,7 @@ def synthesize_with_gemini(settings: Settings, data: BriefData) -> SynthesisResu
     last_validation_error: ValueError | None = None
     last_request_error: RuntimeError | None = None
     validation_errors: list[str] = []
+    failed_responses: list[str] = []
     attempts_made = 0
 
     max_attempts = 4
@@ -426,6 +474,7 @@ def synthesize_with_gemini(settings: Settings, data: BriefData) -> SynthesisResu
         except ValueError as exc:
             last_validation_error = exc
             validation_errors.append(str(exc))
+            failed_responses.append(text)
             if attempt == max_attempts - 1:
                 break
             prompt = (
@@ -440,8 +489,10 @@ def synthesize_with_gemini(settings: Settings, data: BriefData) -> SynthesisResu
                 " Return the full JSON object again. Be especially careful that every theme_radar summary is 45-100 words."
                 " Also ensure Theme Radar book_impact lines are source-specific and not repeated."
                 " Do not mention selector mechanics, ranking, matching keywords, or why a Theme Radar source was picked."
+                " Use each selected topic's narrative_guidance and avoid_claims as binding guardrails."
                 " Avoid generic phrases such as 'this piece examines', 'this piece explores', 'this article explores', 'this analysis explores', 'this analysis examines', or 'it posits'."
                 " Do not use the word 'posits'."
+                " Do not use the phrases 'pricing in', 'priced in', 'market is pricing', or 'market pricing'."
                 " Do not mention chart captions, JSON fields, prompts, source mechanics, market pricing, positioning, or safe-haven flows."
                 " If you mention an asset move, copy that asset's dashboard Change value exactly."
                 " Do not use record-high or historical-extreme language; use 'elevated' if the facts only show a high current level."
@@ -463,7 +514,14 @@ def synthesize_with_gemini(settings: Settings, data: BriefData) -> SynthesisResu
     if generated_data is None:
         if last_request_error is not None and last_validation_error is None:
             raise last_request_error
-        raise RuntimeError(f"Gemini response failed validation after retries: {last_validation_error}") from last_validation_error
+        message = f"Gemini response failed validation after retries: {last_validation_error}"
+        raise NarrativeValidationFailure(
+            message,
+            validation_errors=tuple(validation_errors),
+            failed_responses=tuple(failed_responses),
+            prompt_version=PROMPT_VERSION,
+            token_usage=total_usage,
+        ) from last_validation_error
 
     usage = total_usage
     estimated_cost = estimate_llm_cost_usd("gemini", settings.gemini_model, usage)

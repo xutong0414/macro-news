@@ -10,7 +10,7 @@ The brief answers three practical questions:
 
 The LLM is deliberately constrained. Code owns market data, calendar data, portfolio-aware topic selection, charting, source links, validation, logging, and email delivery. Gemini drafts only the narrative sections from structured inputs.
 
-When `--use-llm` is enabled, the run validates Gemini's narrative before sending. The log includes a quality report with source checks, validation attempts, repaired validation errors, and a send/no-send decision. By default, failed narrative validation blocks email delivery. Users can opt into a clearly labeled data-only fallback with `LLM_FAILURE_MODE=data_only`.
+When `--use-llm` is enabled, the run validates Gemini's narrative before sending. The log includes a quality report with source checks, validation attempts, repaired validation errors, and a send/no-send decision. If validation fails after retries, the ignored local log also records the failed drafts for debugging. By default, failed narrative validation blocks email delivery. Users can opt into a clearly labeled data-only fallback with `LLM_FAILURE_MODE=data_only`.
 
 ## What You Need
 
@@ -263,7 +263,7 @@ inputs/portfolio/positions.csv
 
 Each row is an effective-date update. If there is no new row for a run date, the latest prior row carries forward.
 
-When `--use-llm` is enabled, the portfolio file also affects "The 3 Things That Matter Today," "One Chart Worth Seeing," and "Contrarian Corner." The agent ranks market moves, calendar events, and Theme Radar/news signals against active positions, gives a modest preference to direct portfolio links when scores are close, chooses the top topics, and then asks Gemini to write to those selected topics in order. The run log records the selected topics and score components. See `inputs/portfolio/README.md`.
+When `--use-llm` is enabled, the portfolio file also affects "The 3 Things That Matter Today," "One Chart Worth Seeing," and "Contrarian Corner." The agent ranks market moves, calendar events, and Theme Radar/news signals against active positions, gives a modest preference to direct portfolio links when scores are close, chooses the top topics, adds code-generated topic and dashboard guardrails, and then asks Gemini to write to those selected topics in order. The run log records the selected topics, score components, guidance, and avoid-claims. See `inputs/portfolio/README.md`.
 
 Human feedback is tracked with:
 

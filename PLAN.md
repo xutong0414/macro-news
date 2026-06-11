@@ -17,10 +17,12 @@ Implemented:
 - Theme Radar recent-link memory, near-duplicate topic scoring penalties, and no-key Google News RSS search expansion.
 - Portfolio-aware topic selector for "The 3 Things That Matter Today."
 - Direct portfolio-link preference when candidate topic scores are close.
+- Code-generated topic and global dashboard narrative guardrails, so Gemini receives safe read-through guidance and explicit claims to avoid before drafting.
 - Local reader-feedback CSV import that nudges topic ranking up or down without fine-tuning the model.
 - Dynamic chart selection tied to the first selected portfolio topic, with roughly three months of history and the latest five observations highlighted when source history is available.
 - Contrarian Corner constrained to challenge the first selected topic.
 - Run-level quality report with source checks, Gemini validation attempts, repaired validation errors, and a send/no-send decision.
+- Local failed-validation diagnostics in ignored run logs, so blocked drafts can be inspected without committing local run history.
 - Email delivery is blocked when Gemini narrative validation fails after retries.
 - Optional data-only fallback mode for failed Gemini validation, controlled by `LLM_FAILURE_MODE=data_only`.
 - Centralized deterministic narrative rule groups for macro/portfolio validation.
@@ -37,23 +39,22 @@ Implemented:
 
 ## Latest Verification
 
-Latest recorded live send after the Theme Radar metadata and soft-novelty pass:
+Latest recorded live dry run after the narrative stability pass:
 
-- Run id: `20260611T150357Z`
+- Run id: `20260611T161327Z`
 - Mode: live market data, live calendar, live Theme Radar, Gemini narrative
-- Delivery: sent
-- Token use: 20,904 input, 2,886 output, 23,790 total
-- Estimated LLM cost: $0.0032448
-- Prompt version: `gemini_narrative_v40`
-- Quality verdict: warning; Gemini repaired two validation issues before acceptance; one Theme Radar feed timed out
-- Source result: all 13 dashboard rows refreshed from live public sources; calendar used six live Fair Economy / Forex Factory rows; Theme Radar selected one Google News RSS item and one Liberty Street Economics item enriched with article metadata
-- Topic result: selected `Equity Risk Tone`, `EM Debt Conditions`, and `US Inflation Event Risk`; chart used `S&P 500: 3-Month Trend`; Contrarian Corner challenged equity risk tone
-- Safety note: a prior normal send attempt was blocked by the quality gate after Gemini inverted DXY/dollar-pressure logic; the prompt was tightened and the later v40 run sent only after validation repaired the same risk class.
+- Delivery: dry run only
+- Token use: 25,437 input, 2,889 output, 28,326 total
+- Estimated LLM cost: $0.0036993
+- Prompt version: `gemini_narrative_v43`
+- Quality verdict: warning; Gemini narrative passed after three attempts with two repairs; the rejected drafts included a market-number mismatch and an underweight-S&P direction error, both caught before rendering the final brief
+- Source result: 10 dashboard rows refreshed from live public sources, three rows used cached real-source data, and no generated market fallback rows were used; calendar used six live Fair Economy / Forex Factory rows; Theme Radar selected one Google News RSS item and one Liberty Street Economics item, with one configured Theme Radar source timing out
+- Topic result: selected `EM Debt Conditions`, `Equity Risk Tone`, and `US Inflation Event Risk`; chart used `US 10Y yield: 3-Month Trend`; Contrarian Corner challenged EM debt conditions
 
 Latest local tests:
 
 - `PYTHONPATH=src pytest -q`
-- Result: 65 passed
+- Result: 76 passed
 
 Latest model comparison:
 
@@ -81,13 +82,13 @@ For an email target time such as 08:30 Hong Kong time, schedule the job to start
 
 ## Current Milestone
 
-Milestone: Portfolio-Aware Relevance.
+Milestone: Narrative Stability.
 
 Goal:
 
-- Make portfolio rows, direct portfolio links, market moves, calendar events, and Theme Radar/news inputs influence the daily topic agenda and chart choice.
-- Keep Gemini constrained to selected topics rather than letting it decide the whole agenda.
-- Keep Contrarian Corner tied to the first selected topic.
+- Reduce Gemini validation repairs by moving high-risk market-direction and portfolio read-through guidance into code-generated selected-topic fields.
+- Keep Gemini constrained to selected topics, code-generated guardrails, and explicit avoid-claims.
+- Keep Contrarian Corner tied to the first selected topic and validated before delivery.
 - Preserve the public/private boundary for local run history, headline history, and collaboration notes.
 
 ## Maintenance Checklist

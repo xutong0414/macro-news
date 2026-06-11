@@ -25,6 +25,8 @@ class TopicCandidate:
     source_label: str = ""
     link: str = ""
     score_components: tuple[tuple[str, float], ...] = ()
+    narrative_guidance: str = ""
+    avoid_claims: tuple[str, ...] = ()
 
 
 CHART_SOURCE_BY_ASSET = {
@@ -342,6 +344,196 @@ def _shorten(text: str, limit: int = 220) -> str:
     return compact[: limit - 1].rstrip(" ,;:") + "."
 
 
+def _direction_from_change(value: str) -> str:
+    normalized = value.strip().lower().replace("−", "-")
+    match = re.search(r"([+-]?\d+(?:\.\d+)?)\s*(bp|%)?", normalized)
+    if match is None:
+        return ""
+    try:
+        amount = float(match.group(1))
+    except ValueError:
+        return ""
+    unit = match.group(2) or ""
+    flat_threshold = 0.5 if unit == "bp" else 0.05
+    if abs(amount) <= flat_threshold:
+        return "flat"
+    return "up" if amount > 0 else "down"
+
+
+def _evidence_direction(evidence: tuple[str, ...], asset: str) -> str:
+    prefix = f"{asset}:"
+    for item in evidence:
+        if not item.startswith(prefix):
+            continue
+        change_text = item.removeprefix(prefix).split(";", 1)[0].split(" as of ", 1)[0]
+        return _direction_from_change(change_text)
+    return ""
+
+
+def _direction_phrase(asset: str, direction: str) -> str:
+    if direction == "up":
+        return f"{asset} is up"
+    if direction == "down":
+        return f"{asset} is down"
+    if direction == "flat":
+        return f"{asset} is roughly flat"
+    return ""
+
+
+def _row_direction(rows_by_asset: dict[str, MarketRow], asset: str) -> str:
+    row = rows_by_asset.get(asset)
+    if row is None:
+        return ""
+    return _direction_from_change(row.change)
+
+
+def _global_dashboard_guardrails(rows_by_asset: dict[str, MarketRow]) -> tuple[str, tuple[str, ...]]:
+    guidance: list[str] = []
+    avoid: list[str] = []
+
+    dxy_direction = _row_direction(rows_by_asset, "DXY")
+    if dxy_direction == "up":
+        guidance.append("Global dashboard guardrail: DXY is up, so broad dollar pressure is firmer, not easier.")
+        avoid.append("Do not say broad dollar pressure eased, dollar pressure softened, or dollar funding conditions loosened.")
+    elif dxy_direction == "down":
+        guidance.append("Global dashboard guardrail: DXY is down, so broad dollar pressure is softer, not tighter.")
+        avoid.append("Do not say broad dollar pressure tightened because of DXY.")
+
+    vix_direction = _row_direction(rows_by_asset, "VIX")
+    if vix_direction == "up":
+        guidance.append("Global dashboard guardrail: VIX is up, so volatility or hedging stress is firmer.")
+        avoid.append("Do not say hedging stress faded or volatility eased because of VIX.")
+    elif vix_direction == "down":
+        guidance.append("Global dashboard guardrail: VIX is down, so volatility stress has eased.")
+        avoid.append("Do not say volatility or defensive stress increased because of VIX.")
+
+    oil_directions = tuple(
+        direction
+        for direction in (_row_direction(rows_by_asset, "Brent oil"), _row_direction(rows_by_asset, "WTI oil"))
+        if direction
+    )
+    if "up" in oil_directions:
+        guidance.append("Global dashboard guardrail: cited oil is up, so oil is not easing inflation pressure.")
+        avoid.append("Do not say oil eased inflation pressure when the cited oil row is up.")
+    elif oil_directions and all(direction == "down" for direction in oil_directions):
+        guidance.append("Global dashboard guardrail: cited oil is down, so oil is easing inflation pressure.")
+        avoid.append("Do not say oil increased inflation pressure when the cited oil row is down.")
+
+    return " ".join(dict.fromkeys(guidance)), tuple(dict.fromkeys(avoid))
+
+
+def _candidate_narrative_guardrails(
+    candidate: TopicCandidate,
+    rows_by_asset: dict[str, MarketRow] | None = None,
+) -> tuple[str, tuple[str, ...]]:
+    rows_by_asset = rows_by_asset or {}
+    directions = {
+        asset: _evidence_direction(candidate.evidence, asset)
+        for asset in candidate.related_assets
+    }
+    guidance: list[str] = []
+    avoid: list[str] = []
+    title_key = _clean_key(candidate.title)
+    portfolio_key = _clean_key(candidate.portfolio_asset)
+    position_key = _clean_key(candidate.position)
+
+    dxy_direction = directions.get("DXY", "") or _row_direction(rows_by_asset, "DXY")
+    us_yield_direction = directions.get("US 10Y yield", "") or _row_direction(rows_by_asset, "US 10Y yield")
+    jpy_direction = directions.get("USD/JPY", "") or _row_direction(rows_by_asset, "USD/JPY")
+    japan_yield_direction = directions.get("Japan 10Y yield", "") or _row_direction(rows_by_asset, "Japan 10Y yield")
+    gold_direction = directions.get("Gold", "") or _row_direction(rows_by_asset, "Gold")
+    vix_direction = directions.get("VIX", "") or _row_direction(rows_by_asset, "VIX")
+    spx_direction = directions.get("S&P 500", "") or _row_direction(rows_by_asset, "S&P 500")
+    brent_direction = directions.get("Brent oil", "") or _row_direction(rows_by_asset, "Brent oil")
+    wti_direction = directions.get("WTI oil", "") or _row_direction(rows_by_asset, "WTI oil")
+
+    if "em debt" in title_key or "em debt" in portfolio_key or "emerging market" in title_key:
+        if dxy_direction == "up":
+            guidance.append("DXY is up, so treat dollar pressure as tighter funding for EM debt.")
+            avoid.append("Do not say stronger DXY eases dollar pressure or helps EM debt.")
+        elif dxy_direction == "down":
+            guidance.append("DXY is down, so dollar pressure is easing for EM debt unless another fact offsets it.")
+            avoid.append("Do not say dollar funding pressure tightened because of DXY.")
+        if us_yield_direction == "up":
+            guidance.append("US 10Y yield is up, which pressures EM duration.")
+            avoid.append("Do not say higher US yields help EM debt.")
+        elif us_yield_direction == "down":
+            guidance.append("US 10Y yield is down, which gives EM duration some relief.")
+        if spx_direction == "down":
+            guidance.append("S&P 500 is down, so risk tone is a headwind for EM debt.")
+        elif spx_direction == "up":
+            guidance.append("S&P 500 is up, so equity tone is a partial support for EM debt.")
+
+    if "usd jpy" in title_key or "usd jpy" in portfolio_key:
+        if jpy_direction == "up":
+            guidance.append("USD/JPY is up, so the long USD/JPY position is working, but intervention or yen-reversal risk should be monitored.")
+            avoid.append("Do not frame USD/JPY gains, stronger DXY, or higher US yields as direct pressure on a long USD/JPY position.")
+        elif jpy_direction == "down":
+            guidance.append("USD/JPY is down, so the long USD/JPY position is under pressure.")
+        if japan_yield_direction == "up":
+            guidance.append("Japan 10Y yield is up; mention Japan-rate pressure separately and do not infer carry or spread direction.")
+            avoid.append("Do not say higher Japanese yields reinforce carry unless a carry or spread calculation is provided.")
+
+    if "gold" in title_key or "gold" in portfolio_key:
+        if gold_direction == "up":
+            guidance.append("Gold is up, so the gold overweight is supported by the price move.")
+        elif gold_direction == "down":
+            guidance.append("Gold is down, so the gold overweight is pressured by the price move.")
+            avoid.append("Do not say a falling gold price helps the gold overweight.")
+        if dxy_direction == "up":
+            guidance.append("DXY is up, which is a headwind for gold.")
+            avoid.append("Do not say dollar pressure eased when DXY is up.")
+        elif dxy_direction == "down":
+            guidance.append("DXY is down, which gives gold some dollar relief.")
+        if us_yield_direction == "up":
+            guidance.append("US 10Y yield is up, which is rate pressure on gold.")
+        elif us_yield_direction == "down":
+            guidance.append("US 10Y yield is down, which eases rate pressure on gold.")
+
+    if "dollar" in title_key or "eur usd" in title_key:
+        if dxy_direction == "up":
+            guidance.append("DXY is up, so broad dollar pressure is firmer.")
+            avoid.append("Do not say broad dollar pressure eased or dollar funding loosened.")
+        elif dxy_direction == "down":
+            guidance.append("DXY is down, so broad dollar pressure is softer.")
+            avoid.append("Do not say broad dollar pressure tightened because of DXY.")
+
+    if "oil" in title_key or "inflation" in title_key:
+        oil_directions = tuple(direction for direction in (brent_direction, wti_direction) if direction)
+        if "up" in oil_directions:
+            guidance.append("Oil is up in the provided evidence, so oil is adding to inflation pressure.")
+            avoid.append("Do not say oil eased inflation pressure when the cited oil row is up.")
+        elif oil_directions and all(direction == "down" for direction in oil_directions):
+            guidance.append("Oil is down in the provided evidence, so oil is easing inflation pressure.")
+            avoid.append("Do not say oil increased inflation pressure when the cited oil row is down.")
+
+    if "volatility" in title_key or "risk tone" in title_key or "equity" in title_key:
+        if vix_direction == "up":
+            guidance.append("VIX is up, so hedging stress or volatility demand is firmer.")
+            avoid.append("Do not say hedging stress faded when VIX is up.")
+        elif vix_direction == "down":
+            guidance.append("VIX is down, so volatility stress has eased.")
+            avoid.append("Do not say defensive stress increased because of VIX.")
+        if spx_direction == "up":
+            guidance.append("S&P 500 is up, so US equity tone is supportive unless another fact offsets it.")
+        elif spx_direction == "down":
+            guidance.append("S&P 500 is down, so US equity tone is defensive.")
+    if "s p 500" in portfolio_key and "underweight" in position_key:
+        if spx_direction == "up":
+            guidance.append("Because the book is underweight S&P 500, a rising S&P 500 is a headwind for that position even if it supports broad risk appetite.")
+            avoid.append("Do not say a rising S&P 500 is a tailwind, benefit, or support for the underweight S&P 500 position.")
+        elif spx_direction == "down":
+            guidance.append("Because the book is underweight S&P 500, a falling S&P 500 supports that position even though it signals weaker risk tone.")
+
+    if candidate.origin == "calendar" and ("event risk" in title_key or "policy event" in title_key):
+        guidance.append("This is an event-risk topic; unless the evidence states the actual outcome, frame the effect as a catalyst to watch rather than a realized market reaction.")
+        avoid.append("Do not infer the event outcome or market reaction beyond the calendar facts.")
+
+    compact_guidance = " ".join(dict.fromkeys(item for item in guidance if item))
+    compact_avoid = tuple(dict.fromkeys(item for item in avoid if item))
+    return compact_guidance, compact_avoid
+
+
 def _theme_candidates(data: BriefData, positions: list[PositionEntry]) -> list[TopicCandidate]:
     candidates: list[TopicCandidate] = []
     for item in data.theme_radar:
@@ -382,7 +574,17 @@ def _theme_candidates(data: BriefData, positions: list[PositionEntry]) -> list[T
     return candidates
 
 
-def _candidate_to_prompt_dict(candidate: TopicCandidate) -> dict[str, object]:
+def _candidate_to_prompt_dict(
+    candidate: TopicCandidate,
+    rows_by_asset: dict[str, MarketRow] | None = None,
+) -> dict[str, object]:
+    specific_guidance, specific_avoid_claims = _candidate_narrative_guardrails(candidate, rows_by_asset)
+    narrative_guidance = " ".join(
+        item
+        for item in (candidate.narrative_guidance, specific_guidance)
+        if item
+    )
+    avoid_claims = tuple(dict.fromkeys((*candidate.avoid_claims, *specific_avoid_claims)))
     return {
         "title": candidate.title,
         "origin": candidate.origin,
@@ -395,6 +597,8 @@ def _candidate_to_prompt_dict(candidate: TopicCandidate) -> dict[str, object]:
         "link": candidate.link,
         "score": round(candidate.score, 3),
         "score_components": {name: round(value, 3) for name, value in candidate.score_components},
+        "narrative_guidance": narrative_guidance,
+        "avoid_claims": list(avoid_claims),
     }
 
 
@@ -534,6 +738,16 @@ def select_portfolio_topics(
             if len(selected) == limit:
                 break
 
+    global_guidance, global_avoid_claims = _global_dashboard_guardrails(rows_by_asset)
+    selected_with_guardrails = [
+        replace(
+            candidate,
+            narrative_guidance=global_guidance,
+            avoid_claims=global_avoid_claims,
+        )
+        for candidate in selected
+    ]
+
     chart_asset = _select_chart_asset(selected[0], data)
     if chart_asset and chart_asset in data.market_series:
         chart_series = list(data.market_series[chart_asset])
@@ -562,7 +776,7 @@ def select_portfolio_topics(
         chart_caption=_chart_caption(chart_asset, rows_by_asset, selected[0].title),
         chart_source_label=chart_source_label,
         chart_source_url=chart_source_url,
-        topic_candidates=[_candidate_to_prompt_dict(candidate) for candidate in selected],
+        topic_candidates=[_candidate_to_prompt_dict(candidate, rows_by_asset) for candidate in selected_with_guardrails],
         three_thing_titles=[candidate.title for candidate in selected],
         assumptions=[*data.assumptions, selection_note, *([feedback_note] if feedback_note else [])],
         data_sources=[*data.data_sources, "portfolio_topic_selection", *(["reader_feedback"] if feedback_match_count else [])],

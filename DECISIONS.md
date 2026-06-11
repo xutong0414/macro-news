@@ -54,6 +54,8 @@ Implementation rule: Gemini returns each "Three Things" item as structured `body
 
 Quality-gate rule: each run writes a quality report to the run log. The report records source checks, Gemini validation attempts, validation repairs, repaired validation errors, and whether sending is allowed. If Gemini narrative validation fails after retries, the run writes a failed quality report and blocks email delivery.
 
+Diagnostic rule: failed Gemini validation drafts are recorded only in ignored local run logs, not in public docs or committed outputs. This makes blocked quality-gate failures debuggable while preserving the public/local boundary.
+
 Fallback rule: `LLM_FAILURE_MODE=block` remains the safest default. `LLM_FAILURE_MODE=data_only` allows a clearly labeled data-only fallback when Gemini narrative validation fails; the fallback withholds LLM-written interpretation and keeps the failure visible in the quality report.
 
 Diagnostic rule: model-comparison logs record exact validation errors per model, not only repair counts, so model changes can be judged by failure type as well as cost and speed.
@@ -149,6 +151,8 @@ Rule: each row is an effective-date update. If no new row exists for a run date,
 Reason: this makes the prototype extendable without hard-coding the book in prompts.
 
 Rule: when Gemini synthesis is enabled, active portfolio rows are scored against live market moves, calendar events, and Theme Radar/news signals before the LLM call. The top selected topics become the required order for "The 3 Things That Matter Today."
+
+Rule: selected topics include code-generated `narrative_guidance` and `avoid_claims` for high-risk logic such as DXY direction, EM debt funding pressure, USD/JPY long semantics, gold/rates, oil/inflation, volatility, and event-risk framing. Global dashboard guardrails are also attached to every selected topic when cross-cutting rows such as DXY, VIX, or oil move. Gemini may polish the prose, but it must not contradict those guardrails.
 
 Rule: when topic scores are close, direct portfolio links receive a modest ranking preference over broad indirect macro links. For example, an ECB event should attach first to EUR/USD rather than to a high-exposure but indirect USD/JPY position.
 

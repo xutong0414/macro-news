@@ -279,17 +279,68 @@ def validate_asset_move_contradictions(text: str, rows: list[MarketRow], label: 
     if _has_row_direction(rows, ("Gold",), "down") and re.search(r"\bgold\b.{0,80}\b(help|helps|support|supports|benefit|benefits|cushion)\b.{0,40}\b(overweight|book)", lowered):
         raise ValueError(f"{label} violates gold_position_direction: gold is down but the narrative says the gold overweight is helped")
 
-    if _has_row_direction(rows, ("DXY",), "up") and re.search(r"\b(dxy|dollar)\b.{0,80}\b(ease|eases|eased|soften|softens|softened|relief|less pressure)", lowered):
+    underweight_equity = r"\bunderweight\b.{0,45}\b(s&p|s & p|spx|equity|equities)"
+    supportive_terms = r"(tailwind|benefit|benefits|help|helps|support|supports|positive)"
+    direct_underweight_support = r"(benefits|benefited|is supported|gets support|is helped|tailwind)"
+    if _has_row_direction(rows, ("S&P 500",), "up") and (
+        re.search(rf"\b{supportive_terms}\b.{{0,90}}{underweight_equity}", lowered)
+        or re.search(rf"{underweight_equity}.{{0,45}}\b(position|book)\b.{{0,25}}\b{direct_underweight_support}\b", lowered)
+    ):
+        raise ValueError(f"{label} violates equity_underweight_direction: S&P 500 is up but the narrative says the underweight position benefits")
+    pressure_terms = r"(headwind|hurt|hurts|pressure|pressures|challenge|challenges|negative)"
+    if _has_row_direction(rows, ("S&P 500",), "down") and (
+        re.search(rf"\b{pressure_terms}\b.{{0,90}}{underweight_equity}", lowered)
+        or re.search(rf"{underweight_equity}.{{0,90}}\b{pressure_terms}\b", lowered)
+    ):
+        raise ValueError(f"{label} violates equity_underweight_direction: S&P 500 is down but the narrative says the underweight position is hurt")
+
+    if _has_row_direction(rows, ("DXY",), "up") and (
+        re.search(
+            r"\bdollar\s+(funding\s+|financing\s+)?(pressure|conditions|stress)\b.{0,50}\b(ease|eases|eased|soften|softens|softened|loosen|loosens|loosened|relief|less pressure)",
+            lowered,
+        )
+        or re.search(
+            r"\b(ease|eases|eased|soften|softens|softened|loosen|loosens|loosened|relief|less pressure)\b.{0,50}\bdollar\s+(funding\s+|financing\s+)?(pressure|conditions|stress)\b",
+            lowered,
+        )
+        or re.search(r"\bdxy\s+(is\s+|was\s+|has\s+|had\s+)?(easing|eases|eased|softening|softens|softened|fell|falls|falling|lower)\b", lowered)
+    ):
         raise ValueError(f"{label} violates dollar_direction: DXY is up but the narrative says dollar pressure eased")
-    if _has_row_direction(rows, ("DXY",), "down") and re.search(r"\b(dxy|dollar)\b.{0,80}\b(tighten|tightens|tightened|funding pressure|financing pressure|stress)\b", lowered):
+    if _has_row_direction(rows, ("DXY",), "down") and (
+        re.search(
+            r"\bdollar\s+(funding\s+|financing\s+)?(pressure|conditions|stress)\b.{0,50}\b(tighten|tightens|tightened|firmer|higher|stress|stressed)",
+            lowered,
+        )
+        or re.search(
+            r"\b(tighten|tightens|tightened|firmer|higher|stress|stressed)\b.{0,50}\bdollar\s+(funding\s+|financing\s+)?(pressure|conditions|stress)\b",
+            lowered,
+        )
+        or re.search(r"\bdxy\s+(is\s+|was\s+|has\s+|had\s+)?(rising|rises|rose|firmer|higher|strengthening|strengthens|strengthened)\b", lowered)
+    ):
         raise ValueError(f"{label} violates dollar_direction: DXY is down but the narrative says dollar pressure tightened")
 
     if _has_row_direction(rows, ("VIX",), "up") and re.search(r"\b(vix|volatility|hedging)\b.{0,80}\b(fade|fades|faded|calm|calmer|relief|eased)\b", lowered):
         raise ValueError(f"{label} violates volatility_direction: VIX is up but the narrative says hedging stress faded")
-    if _has_row_direction(rows, ("VIX",), "down") and re.search(r"\b(vix|volatility|hedging)\b.{0,80}\b(rise|rises|rose|increase|increases|increased|stress|defensive)\b", lowered):
+    if _has_row_direction(rows, ("VIX",), "down") and (
+        re.search(r"\b(vix|volatility)\b.{0,80}\b(rise|rises|rose|rising|increase|increases|increased|higher|firmer)\b", lowered)
+        or re.search(
+            r"\b(volatility|hedging|defensive)\s+(stress|demand)\b.{0,40}\b(rise|rises|rose|rising|increase|increases|increased|higher|firmer)\b",
+            lowered,
+        )
+        or re.search(
+            r"\b(rise|rises|rose|rising|increase|increases|increased|higher|firmer)\b.{0,40}\b(volatility|hedging|defensive)\s+(stress|demand)\b",
+            lowered,
+        )
+    ):
         raise ValueError(f"{label} violates volatility_direction: VIX is down but the narrative says defensive stress increased")
 
-    if re.search(r"\bem debt\b.{0,80}\b(help|helps|helped|support|supports|supported|benefit|benefits|benefited|relief|constructive)\b", lowered) and re.search(
-        r"\b(higher us yields|higher treasury yields|stronger dollar|dollar strength)\b", lowered
+    macro_headwind = r"(higher us yields|higher treasury yields|stronger dollar|dollar strength)"
+    helpful_terms = r"(help|helps|support|supports|benefit|benefits|relief|constructive)"
+    if re.search(
+        rf"\bem debt\b.{{0,80}}\b(helped|supported|benefited)\b.{{0,25}}\b(by|from|because of|due to|on)\b.{{0,30}}\b{macro_headwind}\b",
+        lowered,
+    ) or re.search(
+        rf"\b{macro_headwind}\b.{{0,80}}\b{helpful_terms}\b.{{0,50}}\bem debt\b",
+        lowered,
     ):
         raise ValueError(f"{label} violates em_debt_macro_direction: EM debt is described as helped by higher US yields or stronger dollar")

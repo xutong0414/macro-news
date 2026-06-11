@@ -22,6 +22,10 @@ All notable public-facing changes are recorded here. Local run logs, cache files
 - Added optional `LLM_FAILURE_MODE=data_only` support so failed Gemini narrative validation can produce a clearly labeled data-only fallback instead of an interpreted brief.
 - Added local reader-feedback CSV import so recurring comments can nudge topic ranking without fine-tuning the model.
 - Added best-effort Theme Radar article-metadata enrichment for selected RSS candidates.
+- Added code-generated narrative guardrails and avoid-claims to selected topics before Gemini drafts the brief.
+- Added global dashboard guardrails so cross-cutting DXY, VIX, and oil direction checks are attached to every selected topic.
+- Added validation for underweight S&P 500 direction, so rising S&P is not described as helping an underweight position.
+- Added ignored local diagnostics for failed Gemini validation drafts, including prompt version, token usage, validation errors, and failed responses.
 
 ### Changed
 
@@ -37,6 +41,9 @@ All notable public-facing changes are recorded here. Local run logs, cache files
 - Theme Radar now uses richer feed-provided content fields when available, while search-derived items remain labeled as snippets.
 - Theme Radar recent-link and near-duplicate memory now applies score penalties rather than hard restrictions, so highly important repeated stories can still be selected.
 - Gemini narrative prompt direction checks now explicitly cover DXY and oil moves after a blocked send exposed a recurring dollar-direction failure.
+- Gemini now receives selected-topic guardrails for common repair-prone logic such as EM debt under stronger dollar pressure and USD/JPY long semantics.
+- Narrative validation now distinguishes true contradictions from nearby but separate claims, such as lower-yield relief versus firmer-dollar pressure.
+- Theme Radar generic "examines" openers are normalized before validation, reducing avoidable style-only quality-gate failures.
 
 ## 2026-06-10
 

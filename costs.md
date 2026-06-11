@@ -41,6 +41,26 @@ Takeaway: this single comparison does not support switching the default model to
 
 ## Runtime Accounting
 
+Latest successful live dry run after the narrative stability pass: `20260611T161327Z`, run on Friday at 00:14 HKT.
+
+- Runtime: about one minute in the local validation shell.
+- Token use: 25,437 input, 2,889 output, 28,326 total.
+- Estimated LLM cost: $0.0036993.
+- Prompt version: `gemini_narrative_v43`.
+- Source result: 10 market dashboard rows refreshed from live public sources, three rows used cached real-source data, and no sample fallback rows were used. Calendar used the live Fair Economy weekly feed with six rows. Theme Radar selected one Google News RSS item and one Liberty Street Economics item, with one configured Theme Radar source timing out.
+- Ranking result: selected EM Debt Conditions, Equity Risk Tone, and US Inflation Event Risk; chart used US 10Y yield; Contrarian Corner challenged the first selected topic.
+- Safety note: Gemini narrative validation passed after three attempts with two repairs. The quality gate caught a market-number mismatch and an underweight-S&P direction error before accepting the final brief.
+
+Earlier clean live dry run after the narrative stability pass: `20260611T155900Z`, run on Thursday at 23:59 HKT.
+
+- Runtime: about one minute in the local validation shell.
+- Token use: 7,541 input, 978 output, 8,519 total.
+- Estimated LLM cost: $0.0011453.
+- Prompt version: `gemini_narrative_v43`.
+- Source result: all 13 market dashboard rows refreshed from live public sources; no sample fallback rows were used. Calendar used the live Fair Economy weekly feed with six rows. Theme Radar selected one Google News RSS item and one Liberty Street Economics item, with one configured Theme Radar source timing out.
+- Ranking result: selected EM Debt Conditions, Equity Risk Tone, and US Inflation Event Risk; chart used US 10Y yield; Contrarian Corner challenged the first selected topic.
+- Safety note: Gemini narrative validation passed on the first attempt with zero repairs after the narrative guardrail and validator-precision pass.
+
 Latest successful live send after the Theme Radar metadata and soft-novelty pass: `20260611T150357Z`, run on Thursday at 23:03 HKT.
 
 - Runtime: about 47 seconds in the local validation shell.
@@ -108,6 +128,8 @@ These rows are enough to estimate daily operating cost. The development process 
 | 2026-06-11 | `20260611T074941Z` | Direct-link ranking live dry run | about 50s | 19,335 | 2,124 | $0.0027831 | Not sent |
 | 2026-06-11 | `20260611T120030Z` | Safety fallback / feedback live dry run | about 104s | 13,249 | 2,212 | $0.0022097 | Not sent |
 | 2026-06-11 | `20260611T120459Z` | Safety fallback / feedback live email validation | about 87s | 13,254 | 2,066 | $0.0021518 | Sent |
+| 2026-06-11 | `20260611T155900Z` | Narrative stability live dry run | about 1m | 7,541 | 978 | $0.0011453 | Not sent |
+| 2026-06-12 | `20260611T161327Z` | Narrative stability guardrail dry run | about 1m | 25,437 | 2,889 | $0.0036993 | Not sent |
 
 ## Daily Cost Takeaway
 

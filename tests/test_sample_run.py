@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 from macro_news.config import Settings, normalize_timezone
 from macro_news.costing import TokenUsage
-from macro_news.llm import SynthesisResult, parse_narrative_response
+from macro_news.llm import SynthesisResult, build_narrative_prompt, parse_narrative_response
 import macro_news.model_compare as model_compare_module
 from macro_news.model_compare import compare_gemini_models
 from macro_news.market_data import replace_market_rows_with_live
@@ -517,6 +517,173 @@ def test_topic_selection_prefers_direct_calendar_portfolio_link(tmp_path) -> Non
     assert selected.topic_candidates[0]["score_components"]["direct_portfolio_link"] > 0
 
 
+def test_topic_selection_adds_em_debt_dxy_guardrails(tmp_path) -> None:
+    portfolio_path = tmp_path / "positions.csv"
+    portfolio_path.write_text(
+        "\n".join(
+            [
+                "effective_date,asset,position,exposure,quantity,unit,notes",
+                "2026-06-01,EM debt basket,exposed,medium,,,Assignment assumption",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    data = replace(
+        build_sample_brief_data(),
+        market_rows=[
+            MarketRow("US 10Y yield", "4.52%", "4.54%", "-2 bp", "Lower Treasury yields ease pressure on EM duration."),
+            MarketRow("DXY", "100.22", "99.95", "+0.3%", "Dollar strength tightens EM financing conditions."),
+            MarketRow("S&P 500", "7,269", "7,266", "+0.1%", "US equities give little direction; rates and FX are the cleaner signal."),
+            MarketRow("China internet / tech basket", "$26.04", "$26.44", "-1.5%", "China tech weakness flags softer China sentiment."),
+        ],
+        calendar=[],
+        theme_radar=[],
+    )
+
+    selected = select_portfolio_topics(data, run_date=date(2026, 6, 11), portfolio_path=portfolio_path)
+    topic = selected.topic_candidates[0]
+
+    assert topic["title"] == "EM Debt Conditions"
+    assert "DXY is up" in topic["narrative_guidance"]
+    assert "tighter funding for EM debt" in topic["narrative_guidance"]
+    assert "Do not say stronger DXY eases dollar pressure or helps EM debt." in topic["avoid_claims"]
+
+
+def test_topic_selection_adds_global_dxy_guardrail_to_unrelated_topic(tmp_path) -> None:
+    portfolio_path = tmp_path / "positions.csv"
+    portfolio_path.write_text(
+        "\n".join(
+            [
+                "effective_date,asset,position,exposure,quantity,unit,notes",
+                "2026-06-01,S&P 500,underweight,medium,,,Equity beta watch",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    data = replace(
+        build_sample_brief_data(),
+        market_rows=[
+            MarketRow("S&P 500", "7,269", "7,250", "+0.3%", "US equities are firmer, a partial support for risk appetite."),
+            MarketRow("Euro Stoxx 50", "6,067", "6,010", "+1.0%", "Eurozone risk appetite is firming."),
+            MarketRow("VIX", "21.2", "22.2", "-4.6%", "Lower volatility supports risk appetite."),
+            MarketRow("DXY", "100.22", "99.95", "+0.3%", "Dollar strength tightens EM financing conditions."),
+        ],
+        calendar=[],
+        theme_radar=[],
+    )
+
+    selected = select_portfolio_topics(data, run_date=date(2026, 6, 11), portfolio_path=portfolio_path)
+    topic = selected.topic_candidates[0]
+
+    assert topic["title"] == "Equity Risk Tone"
+    assert "Global dashboard guardrail: DXY is up" in topic["narrative_guidance"]
+    assert "rising S&P 500 is a headwind" in topic["narrative_guidance"]
+    assert any("Do not say broad dollar pressure eased" in claim for claim in topic["avoid_claims"])
+    assert any("rising S&P 500 is a tailwind" in claim for claim in topic["avoid_claims"])
+
+
+def test_theme_topic_gets_underweight_spx_guardrail_from_dashboard(tmp_path) -> None:
+    portfolio_path = tmp_path / "positions.csv"
+    portfolio_path.write_text(
+        "\n".join(
+            [
+                "effective_date,asset,position,exposure,quantity,unit,notes",
+                "2026-06-01,S&P 500,underweight,medium,,,Equity beta watch",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    data = replace(
+        build_sample_brief_data(),
+        market_rows=[
+            MarketRow("S&P 500", "7,269", "7,250", "+0.3%", "US equities are firmer, a partial support for risk appetite."),
+            MarketRow("DXY", "100.22", "99.95", "+0.3%", "Dollar strength tightens EM financing conditions."),
+        ],
+        calendar=[],
+        theme_radar=[
+            ThemeItem(
+                "Credit rationing for risky borrowers",
+                "Liberty Street Economics",
+                "https://example.com/credit",
+                "The note says tighter credit availability for riskier borrowers can weigh on risk appetite and financial plumbing.",
+                "What this means for our book: credit caution matters for equity beta.",
+                "RSS content field + article metadata",
+            )
+        ],
+    )
+
+    selected = select_portfolio_topics(data, run_date=date(2026, 6, 11), portfolio_path=portfolio_path)
+    credit_topic = next(topic for topic in selected.topic_candidates if topic["title"] == "Credit Conditions Signal")
+
+    assert "rising S&P 500 is a headwind" in credit_topic["narrative_guidance"]
+    assert any("underweight S&P 500" in claim for claim in credit_topic["avoid_claims"])
+
+
+def test_topic_selection_adds_usdjpy_long_guardrails(tmp_path) -> None:
+    portfolio_path = tmp_path / "positions.csv"
+    portfolio_path.write_text(
+        "\n".join(
+            [
+                "effective_date,asset,position,exposure,quantity,unit,notes",
+                "2026-06-01,USD/JPY,long,high,,,Assignment assumption",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    data = replace(
+        build_sample_brief_data(),
+        market_rows=[
+            MarketRow("USD/JPY", "157.20", "156.10", "+0.7%", "The long is working, but extension raises intervention risk."),
+            MarketRow("Japan 10Y yield", "2.67%", "2.65%", "+2 bp", "Higher JGB yields put Japan-rate pressure on the long USD/JPY view."),
+            MarketRow("US 10Y yield", "4.42%", "4.36%", "+6 bp", "Higher Treasury yields keep dollar carry supported."),
+            MarketRow("DXY", "104.8", "104.3", "+0.5%", "Dollar strength tightens EM financing conditions."),
+        ],
+        calendar=[],
+        theme_radar=[],
+    )
+
+    selected = select_portfolio_topics(data, run_date=date(2026, 6, 11), portfolio_path=portfolio_path)
+    topic = selected.topic_candidates[0]
+
+    assert topic["title"] == "USD/JPY Intervention Risk"
+    assert "long USD/JPY position is working" in topic["narrative_guidance"]
+    assert "Japan-rate pressure separately" in topic["narrative_guidance"]
+    assert any("Do not frame USD/JPY gains" in claim for claim in topic["avoid_claims"])
+
+
+def test_narrative_prompt_includes_selected_topic_guardrails(tmp_path) -> None:
+    portfolio_path = tmp_path / "positions.csv"
+    portfolio_path.write_text(
+        "\n".join(
+            [
+                "effective_date,asset,position,exposure,quantity,unit,notes",
+                "2026-06-01,EM debt basket,exposed,medium,,,Assignment assumption",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    data = replace(
+        build_sample_brief_data(),
+        market_rows=[
+            MarketRow("US 10Y yield", "4.52%", "4.54%", "-2 bp", "Lower Treasury yields ease pressure on EM duration."),
+            MarketRow("DXY", "100.22", "99.95", "+0.3%", "Dollar strength tightens EM financing conditions."),
+            MarketRow("S&P 500", "7,269", "7,266", "+0.1%", "US equities give little direction; rates and FX are the cleaner signal."),
+        ],
+        calendar=[],
+        theme_radar=[],
+    )
+    selected = select_portfolio_topics(data, run_date=date(2026, 6, 11), portfolio_path=portfolio_path)
+
+    prompt = build_narrative_prompt(selected)
+
+    assert "narrative_guidance" in prompt
+    assert "avoid_claims" in prompt
+    assert "Critical code guardrails, checked before delivery" in prompt
+    assert "Treat narrative_guidance as code-generated logic guidance" in prompt
+    assert "Do not use the phrases 'pricing in'" in prompt
+    assert "DXY is up, so treat dollar pressure as tighter funding for EM debt." in prompt
+
+
 def test_topic_selection_can_rank_theme_radar_news_signal(tmp_path) -> None:
     portfolio_path = tmp_path / "positions.csv"
     portfolio_path.write_text(
@@ -938,6 +1105,29 @@ def test_parse_narrative_response_rejects_gold_down_overweight_helped() -> None:
     )
 
 
+def test_parse_narrative_response_rejects_spx_up_underweight_tailwind() -> None:
+    base = build_sample_brief_data()
+
+    _assert_first_thing_rejected(
+        base,
+        "S&P 500 rose 0.4%, which is a tailwind for our underweight S&P 500 position. So what: keep the equity underweight unchanged.",
+        "equity_underweight_direction",
+    )
+
+
+def test_parse_narrative_response_allows_spx_up_but_underweight_hurt() -> None:
+    base = build_sample_brief_data()
+
+    generated = parse_narrative_response(
+        _valid_response_with_first_thing(
+            "S&P 500 rose 0.4%, which hurts the underweight S&P 500 position but supports broad risk appetite. So what: keep the underweight under review."
+        ),
+        base,
+    )
+
+    assert "hurts the underweight" in generated.three_things[0]
+
+
 def test_parse_narrative_response_rejects_dxy_up_dollar_pressure_eased() -> None:
     base = build_sample_brief_data()
 
@@ -961,6 +1151,24 @@ def test_parse_narrative_response_rejects_dxy_down_dollar_pressure_tightened() -
         "DXY fell 0.5%, but dollar funding pressure tightened. So what: EM debt exposure should stay defensive.",
         "dollar_direction",
     )
+
+
+def test_parse_narrative_response_allows_dxy_up_with_yield_pressure_relief() -> None:
+    base = build_sample_brief_data()
+    adjusted_rows = [
+        replace(row, change="-2 bp") if row.asset == "US 10Y yield" else row
+        for row in base.market_rows
+    ]
+    base = replace(base, market_rows=adjusted_rows)
+
+    generated = parse_narrative_response(
+        _valid_response_with_first_thing(
+            "DXY rose 0.5%, while lower US yields eased duration pressure. So what: EM debt still faces dollar headwinds, but rate relief helps the duration leg."
+        ),
+        base,
+    )
+
+    assert "rate relief" in generated.three_things[0]
 
 
 def test_parse_narrative_response_rejects_vix_up_hedging_faded() -> None:
@@ -997,6 +1205,26 @@ def test_parse_narrative_response_rejects_vix_down_defensive_stress() -> None:
     )
 
 
+def test_parse_narrative_response_allows_vix_down_defensive_hedge_context() -> None:
+    base = build_sample_brief_data()
+    base = replace(
+        base,
+        market_rows=[
+            *base.market_rows,
+            MarketRow("VIX", "17.28", "18.00", "-4.0%", "Lower volatility supports risk appetite, but it can also make hedges look underpriced."),
+        ],
+    )
+
+    generated = parse_narrative_response(
+        _valid_response_with_first_thing(
+            "VIX fell 4.0%, so volatility stress eased and defensive hedges look less urgent. So what: equity beta has support, but cheap hedges can still be useful."
+        ),
+        base,
+    )
+
+    assert "defensive hedges" in generated.three_things[0]
+
+
 def test_parse_narrative_response_rejects_em_debt_helped_by_yields_or_dollar() -> None:
     base = build_sample_brief_data()
 
@@ -1005,6 +1233,19 @@ def test_parse_narrative_response_rejects_em_debt_helped_by_yields_or_dollar() -
         "EM debt exposure is helped by higher US yields and stronger dollar funding pressure. So what: add duration risk.",
         "em_debt_macro_direction",
     )
+
+
+def test_parse_narrative_response_allows_em_debt_supported_by_equities_despite_dollar() -> None:
+    base = build_sample_brief_data()
+
+    generated = parse_narrative_response(
+        _valid_response_with_first_thing(
+            "EM debt faces mixed signals. Equities provide partial support for EM beta, but dollar strength remains a funding headwind. So what: keep EM exposure selective."
+        ),
+        base,
+    )
+
+    assert "funding headwind" in generated.three_things[0]
 
 
 def test_parse_narrative_response_rejects_unsupported_market_pricing_claim() -> None:
@@ -1156,6 +1397,33 @@ def test_parse_narrative_response_rejects_generic_theme_openers() -> None:
         assert "generic phrasing" in str(exc)
     else:
         raise AssertionError("Expected generic Theme Radar opener validation to fail")
+
+
+def test_parse_narrative_response_rewrites_theme_examines_openers() -> None:
+    base = build_sample_brief_data()
+    response = """
+    {
+      "three_things": [
+        "USD/JPY is near the intervention zone after a large rise. So what: keep the long USD/JPY risk tightly monitored.",
+        "WTI oil rose 1.7%, adding another inflation signal to the morning tape. So what: EM debt exposure should be treated carefully.",
+        "Gold is lower as rates rise. So what: the gold overweight needs tighter risk monitoring."
+      ],
+      "theme_radar": [
+        {
+          "title": "The term premium refuses to disappear",
+          "source": "Sample macro research note",
+          "link": "https://example.com/research/term-premium",
+          "summary": "This analysis examines how fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. The point is not that growth is suddenly stronger, but that investors want more compensation for duration risk when supply headlines keep returning. The note says duration risk remains central.",
+          "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring."
+        }
+      ],
+      "contrarian_corner": "The simple read is that USD/JPY can keep rising while US yields stay high and the dollar is firm. A trigger that would challenge this view is a direct warning from Japanese officials that forces investors to reassess yen-reversal risk and reduce exposure before the next policy headline."
+    }
+    """
+
+    generated = parse_narrative_response(response, base)
+
+    assert generated.theme_radar[0].summary.startswith("The analysis shows")
 
 
 def test_parse_narrative_response_strips_theme_summary_so_what() -> None:

@@ -11,7 +11,7 @@ from .calendar_data import CalendarDataResult, replace_calendar_with_live
 from .config import Settings
 from .costing import ZERO_TOKEN_USAGE
 from .emailer import send_email
-from .llm import SynthesisResult, synthesize_with_gemini
+from .llm import NarrativeValidationFailure, SynthesisResult, synthesize_with_gemini
 from .market_data import MarketDataResult, replace_market_rows_with_live
 from .portfolio import apply_portfolio_assumptions
 from .render import render_html, render_markdown, utc_run_id, write_outputs
@@ -313,6 +313,7 @@ def run_brief(
     synthesis: SynthesisResult | None = None
     llm_error: str | None = None
     llm_fallback_used = False
+    llm_failure_diagnostics: dict[str, Any] = {}
 
     if live_market_data:
         market_data_result = replace_market_rows_with_live(data, run_date=run_date, timezone_name=settings.timezone)
@@ -346,11 +347,26 @@ def run_brief(
             synthesis = synthesize_with_gemini(settings, data)
         except RuntimeError as exc:
             llm_error = str(exc)
+            if isinstance(exc, NarrativeValidationFailure):
+                token_usage = exc.token_usage
+                prompt_version = exc.prompt_version
+                llm_failure_diagnostics = {
+                    "prompt_version": exc.prompt_version,
+                    "token_usage": {
+                        "input_tokens": exc.token_usage.input_tokens,
+                        "output_tokens": exc.token_usage.output_tokens,
+                        "total_tokens": exc.token_usage.total_tokens,
+                        "provider": exc.token_usage.provider,
+                    },
+                    "validation_errors": list(exc.validation_errors),
+                    "failed_responses": list(exc.failed_responses),
+                }
             if llm_failure_mode == "data_only":
                 data = _data_only_fallback(data, llm_error)
                 llm_status = "data_only_fallback"
                 llm_model = settings.gemini_model
-                prompt_version = "unknown"
+                if not prompt_version or prompt_version == "none":
+                    prompt_version = "unknown"
                 llm_fallback_used = True
             else:
                 quality_report = _build_quality_report(
@@ -382,9 +398,10 @@ def run_brief(
                         "llm_provider": settings.llm_provider,
                         "llm_model": settings.gemini_model,
                         "llm_status": "failed_synthesis",
-                        "prompt_version": "unknown",
+                        "prompt_version": prompt_version if prompt_version != "none" else "unknown",
                         "delivery_status": "blocked_quality_gate" if send else "failed_quality_gate",
                         "quality_report": quality_report,
+                        "llm_failure_diagnostics": llm_failure_diagnostics,
                         "delivery_attempted": False,
                         "data_sources": data.data_sources,
                         "source_notes": data.source_notes,
