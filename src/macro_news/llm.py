@@ -17,7 +17,7 @@ from .narrative_rules import (
 )
 from .sample_data import BriefData, ThemeItem
 
-PROMPT_VERSION = "gemini_narrative_v38"
+PROMPT_VERSION = "gemini_narrative_v39"
 
 
 @dataclass(frozen=True)
@@ -99,6 +99,18 @@ def _normalize_market_text_spacing(text: str) -> str:
     normalized = re.sub(r"(?<=\d)\.\s+(?=\d)", ".", normalized)
     normalized = re.sub(r"(?<=\d)\s+%", "%", normalized)
     return normalized
+
+
+def _normalize_three_thing_item(item: object, idx: int) -> str:
+    if isinstance(item, dict):
+        body = _normalize_market_text_spacing(str(item.get("body", "")).strip())
+        so_what = _normalize_market_text_spacing(str(item.get("so_what", "")).strip())
+        if not body or not so_what:
+            raise ValueError(f"three_things item {idx} must include body and so_what")
+        body = re.sub(r"\s*\bSo what:\s*", " ", body, flags=re.IGNORECASE).strip()
+        so_what = re.sub(r"^\s*So what:\s*", "", so_what, flags=re.IGNORECASE).strip()
+        return _trim_three_thing(f"{body} So what: {so_what}")
+    return _trim_three_thing(_normalize_market_text_spacing(str(item).strip()))
 
 
 def _extract_json(text: str) -> dict:
@@ -246,14 +258,20 @@ def build_narrative_prompt(data: BriefData) -> str:
         "- EM debt exposure is usually pressured by higher US yields, stronger dollar funding stress, or weaker China demand.\n\n"
         "Return only valid JSON with this exact shape:\n"
         "{\n"
-        '  "three_things": ["string", "string", "string"],\n'
+        '  "three_things": [\n'
+        '    {"body": "string", "so_what": "string"},\n'
+        '    {"body": "string", "so_what": "string"},\n'
+        '    {"body": "string", "so_what": "string"}\n'
+        "  ],\n"
         '  "theme_radar": [\n'
         '    {"title": "string", "source": "string", "link": "string", "summary": "string", "book_impact": "string"}\n'
         "  ],\n"
         '  "contrarian_corner": "string"\n'
         "}\n\n"
         "Constraints:\n"
-        "- Each item in three_things should target 70 words or fewer and must be 80 words or fewer; include a clear 'So what:' clause tied to the assumed book.\n"
+        "- Each item in three_things must be an object with body and so_what.\n"
+        "- Do not write the words 'So what:' inside body or so_what; the application will render that label.\n"
+        "- Each rendered three_things item should target 70 words or fewer and must be 80 words or fewer; so_what must be tied to the assumed book.\n"
         "- If selected_topics is provided, each three_things item must follow the matching selected topic in order.\n"
         "- theme_radar must contain 1-3 items and reuse the provided title, source, and link values.\n"
         "- Each theme_radar summary must be 45-100 words, start with the thesis directly, and explain the author's thesis and evidence without generic openers like 'this piece examines', 'this piece explores', 'this article explores', 'this analysis explores', or 'this analysis examines'.\n"
@@ -272,7 +290,7 @@ def parse_narrative_response(text: str, base_data: BriefData) -> BriefData:
     three_things = payload.get("three_things")
     if not isinstance(three_things, list) or len(three_things) != 3:
         raise ValueError("Gemini response must include exactly three items in three_things")
-    three_things = [_trim_three_thing(_normalize_market_text_spacing(str(item).strip())) for item in three_things]
+    three_things = [_normalize_three_thing_item(item, idx) for idx, item in enumerate(three_things, 1)]
     _require_selected_topic_alignment(three_things, base_data)
     for idx, item in enumerate(three_things, 1):
         if "so what:" not in item.lower():
@@ -410,7 +428,9 @@ def synthesize_with_gemini(settings: Settings, data: BriefData) -> SynthesisResu
                 f"{prompt}\n\n"
                 "Validation repair instruction:\n"
                 f"The previous JSON failed validation because: {exc}.\n"
-                " Keep every three_things item at 70 words or fewer so it safely passes the 80-word limit."
+                " Return each three_things item as an object with body and so_what."
+                " Do not write the literal label 'So what:' inside either field; the application renders that label."
+                " Keep every rendered three_things item at 70 words or fewer so it safely passes the 80-word limit."
                 " Follow selected_topics exactly in order when selected_topics is provided."
                 " Make contrarian_corner challenge the first selected topic when selected_topics is provided."
                 " Return the full JSON object again. Be especially careful that every theme_radar summary is 45-100 words."

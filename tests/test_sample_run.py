@@ -17,7 +17,7 @@ import macro_news.runner as runner_module
 from macro_news.calendar_data import replace_calendar_with_live
 from macro_news.runner import run_brief
 from macro_news.sample_data import CalendarEvent, MarketRow, ThemeItem, build_sample_brief_data
-from macro_news.theme_data import ThemeSearchQuery, ThemeSource, replace_theme_radar_with_live
+from macro_news.theme_data import ThemeSearchQuery, ThemeSource, parse_feed, replace_theme_radar_with_live
 from macro_news.topic_selection import select_portfolio_topics
 
 
@@ -225,6 +225,46 @@ def test_parse_narrative_response_replaces_narrative_sections() -> None:
     assert generated.theme_radar[0].summary.startswith("The author argues")
     assert generated.contrarian_corner.startswith("The market may be")
     assert "gemini_synthesis" in generated.data_sources
+
+
+def test_parse_narrative_response_accepts_structured_three_things() -> None:
+    base = build_sample_brief_data()
+    response = json.dumps(
+        {
+            "three_things": [
+                {
+                    "body": "USD/JPY is near the intervention zone after a large rise.",
+                    "so_what": "keep the long USD/JPY risk tightly monitored.",
+                },
+                {
+                    "body": "WTI oil rose 1.7%, adding another inflation signal to the morning tape.",
+                    "so_what": "EM debt exposure should be treated carefully.",
+                },
+                {
+                    "body": "Gold is lower as rates rise.",
+                    "so_what": "the gold overweight needs tighter risk monitoring.",
+                },
+            ],
+            "theme_radar": [
+                {
+                    "title": "The term premium refuses to disappear",
+                    "source": "Sample macro research note",
+                    "link": "https://example.com/research/term-premium",
+                    "summary": "The author argues that fiscal supply and reduced central-bank balance-sheet support are keeping the long end vulnerable. The evidence is auction tails, dealer balance-sheet limits, and resilient breakevens. Investors want more compensation for duration risk when supply headlines keep returning, so rallies remain fragile.",
+                    "book_impact": "What this means for our book: USD/JPY can keep support, but gold needs close monitoring.",
+                }
+            ],
+            "contrarian_corner": "The simple read is that USD/JPY can keep rising while US yields stay high and the dollar is firm. A trigger that would challenge this view is a direct warning from Japanese officials that forces investors to reassess yen-reversal risk and reduce exposure before the next policy headline.",
+        }
+    )
+
+    generated = parse_narrative_response(response, base)
+
+    assert generated.three_things[0] == (
+        "USD/JPY is near the intervention zone after a large rise. "
+        "So what: keep the long USD/JPY risk tightly monitored."
+    )
+    assert generated.three_things[0].count("So what:") == 1
 
 
 def test_parse_narrative_response_rejects_usdjpy_portfolio_logic_error() -> None:
@@ -504,6 +544,58 @@ def test_topic_selection_can_rank_theme_radar_news_signal(tmp_path) -> None:
 
     assert selected.topic_candidates[0]["origin"] == "theme"
     assert selected.three_thing_titles[0] == "Inflation Expectations Signal"
+
+
+def test_topic_selection_applies_reader_feedback_adjustment(tmp_path) -> None:
+    portfolio_path = tmp_path / "positions.csv"
+    portfolio_path.write_text(
+        "\n".join(
+            [
+                "effective_date,asset,position,exposure,quantity,unit,notes",
+                "2026-06-01,Gold,overweight,medium,,,Inflation hedge",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    feedback_path = tmp_path / "daily_feedback.local.csv"
+    feedback_path.write_text(
+        "\n".join(
+            [
+                "date,section,item,usefulness,comment",
+                "2026-06-10,Theme Radar,Under one roof,2,Too generic for today's book",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    data = replace(
+        build_sample_brief_data(),
+        market_rows=[
+            MarketRow("Gold", "$2,352", "$2,351", "+0.0%", "Gold is holding steady; rates and DXY will decide whether the overweight has cover."),
+            MarketRow("US 10Y yield", "4.42%", "4.42%", "+0 bp", "Treasuries are not moving the story; watch dollar and commodity signals instead."),
+            MarketRow("DXY", "104.8", "104.8", "+0.0%", "The dollar is not adding a fresh shock; pair-specific FX moves matter more today."),
+        ],
+        calendar=[],
+        theme_radar=[
+            ThemeItem(
+                "Under one roof: housing and inflation expectations",
+                "Bank Underground",
+                "https://bankunderground.co.uk/example",
+                "Housing costs may influence inflation expectations beyond ordinary consumer prices. The evidence links household inflation views to housing market dynamics and argues that this channel matters for monetary policy.",
+                "What this means for our book: inflation and rate evidence can either protect or pressure the gold overweight.",
+                "RSS excerpt",
+            )
+        ],
+    )
+
+    selected = select_portfolio_topics(
+        data,
+        run_date=date(2026, 6, 11),
+        portfolio_path=portfolio_path,
+        feedback_path=feedback_path,
+    )
+
+    assert selected.topic_candidates[0]["score_components"]["reader_feedback"] < 0
+    assert "reader_feedback" in selected.data_sources
 
 
 def test_parse_narrative_response_trims_long_three_things_item() -> None:
@@ -1309,6 +1401,49 @@ def test_llm_validation_failure_blocks_send_and_writes_quality_log(tmp_path, mon
     assert log_event["quality_report"]["send_allowed"] is False
 
 
+def test_llm_validation_failure_can_write_data_only_fallback(tmp_path, monkeypatch) -> None:
+    settings = Settings(
+        llm_provider="gemini",
+        gemini_api_key="test-key",
+        gemini_model="gemini-2.5-flash-lite",
+        deepseek_api_key=None,
+        deepseek_model="deepseek-v4-flash",
+        smtp_host=None,
+        smtp_port=587,
+        smtp_user=None,
+        smtp_password=None,
+        brief_from_email=None,
+        brief_to_email=None,
+        timezone="Asia/Shanghai",
+        run_mode="sample",
+        market_data_mode="sample",
+        calendar_mode="sample",
+        theme_source_mode="sample",
+        theme_history_path=tmp_path / "theme_history.json",
+        theme_recent_days=7,
+        portfolio_path=tmp_path / "positions.csv",
+        output_dir=tmp_path / "outputs",
+        log_dir=tmp_path / "logs",
+    )
+
+    def fake_synthesize(_settings, _data):
+        raise RuntimeError("Gemini response failed validation after retries: bad macro logic")
+
+    monkeypatch.setattr(runner_module, "synthesize_with_gemini", fake_synthesize)
+
+    result = run_brief(settings, send=False, use_llm=True, llm_failure_mode="data_only")
+    log_event = json.loads(result.log_path.read_text(encoding="utf-8"))
+    markdown = result.output_paths["latest_markdown"].read_text(encoding="utf-8")
+
+    assert result.delivery_status == "dry_run_data_only"
+    assert log_event["llm_status"] == "data_only_fallback"
+    assert log_event["quality_report"]["verdict"] == "warning"
+    assert log_event["quality_report"]["send_allowed"] is True
+    assert log_event["quality_report"]["llm_fallback_used"] is True
+    assert "Data-only fallback" in markdown
+    assert "data_only_llm_failure_fallback" in log_event["data_sources"]
+
+
 def test_compare_gemini_models_logs_each_model_result(tmp_path, monkeypatch) -> None:
     settings = Settings(
         llm_provider="gemini",
@@ -1372,6 +1507,7 @@ def test_compare_gemini_models_logs_each_model_result(tmp_path, monkeypatch) -> 
     assert "Cost is estimated only" in log_event["cost_estimate_note"]
     assert log_event["results"][0]["total_tokens"] == 150
     assert log_event["results"][1]["validation_repair_count"] == 1
+    assert log_event["results"][1]["validation_errors"] == ["repair needed"]
 
 
 class FakeResponse:
@@ -1888,6 +2024,33 @@ def _theme_sources_with_third() -> list[ThemeSource]:
         *_theme_sources(),
         ThemeSource("Bank Underground", "https://source-three.test/feed/", "theme_feed:test_bank"),
     ]
+
+
+def test_theme_feed_parser_uses_richer_content_field_when_available() -> None:
+    feed = """<?xml version="1.0" encoding="UTF-8"?>
+    <rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+      <channel>
+        <item>
+          <title>Gold investors watch Treasury yields and inflation expectations</title>
+          <link>https://example.com/gold-yields</link>
+          <pubDate>Thu, 04 Jun 2026 13:00:00 +0000</pubDate>
+          <description>Short gold note.</description>
+          <content:encoded><![CDATA[
+            Gold investors are watching Treasury yields, inflation expectations, and the dollar because
+            each can change the opportunity cost of holding the metal. The longer feed content explains
+            how rate-sensitive gold positions react when nominal yields rise but inflation expectations
+            remain sticky, and why this matters for portfolio hedges.
+          ]]></content:encoded>
+        </item>
+      </channel>
+    </rss>
+    """
+
+    candidates = parse_feed(feed, ThemeSource("Bank Underground", "https://example.com/feed", "theme_feed:test"))
+
+    assert len(candidates) == 1
+    assert candidates[0].source_depth == "RSS content field"
+    assert "longer feed content" in candidates[0].text
 
 
 def test_live_theme_radar_replaces_sample_sources() -> None:

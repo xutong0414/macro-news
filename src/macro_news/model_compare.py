@@ -23,6 +23,7 @@ class ModelComparisonResult:
     status: str
     validation_attempts: int
     validation_repair_count: int
+    validation_errors: tuple[str, ...]
     input_tokens: int
     output_tokens: int
     total_tokens: int
@@ -53,7 +54,12 @@ def build_comparison_input(
             recent_days=settings.theme_recent_days,
             search_queries=DEFAULT_THEME_SEARCH_QUERIES,
         ).data
-    return select_portfolio_topics(data, run_date=run_date, portfolio_path=settings.portfolio_path)
+    return select_portfolio_topics(
+        data,
+        run_date=run_date,
+        portfolio_path=settings.portfolio_path,
+        feedback_path=settings.feedback_path,
+    )
 
 
 def compare_gemini_models(
@@ -91,6 +97,7 @@ def compare_gemini_models(
                     status="failed",
                     validation_attempts=0,
                     validation_repair_count=0,
+                    validation_errors=(str(exc),),
                     input_tokens=0,
                     output_tokens=0,
                     total_tokens=0,
@@ -108,6 +115,7 @@ def compare_gemini_models(
                 status=status,
                 validation_attempts=synthesis.validation_attempts,
                 validation_repair_count=synthesis.validation_repair_count,
+                validation_errors=synthesis.validation_errors,
                 input_tokens=synthesis.token_usage.input_tokens,
                 output_tokens=synthesis.token_usage.output_tokens,
                 total_tokens=synthesis.token_usage.total_tokens,

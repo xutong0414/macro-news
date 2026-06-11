@@ -5,6 +5,7 @@ from dataclasses import dataclass, replace
 from datetime import date
 from pathlib import Path
 
+from .feedback import feedback_adjustment_for_text, read_feedback_adjustments
 from .portfolio import PositionEntry, active_positions, read_position_entries
 from .sample_data import BriefData, CalendarEvent, MarketRow, ThemeItem
 
@@ -397,6 +398,46 @@ def _candidate_to_prompt_dict(candidate: TopicCandidate) -> dict[str, object]:
     }
 
 
+def _candidate_feedback_text(candidate: TopicCandidate) -> str:
+    return " ".join(
+        [
+            candidate.title,
+            candidate.origin,
+            candidate.portfolio_asset,
+            candidate.position,
+            candidate.exposure,
+            candidate.source_label,
+            " ".join(candidate.related_assets),
+            " ".join(candidate.evidence),
+        ]
+    )
+
+
+def _apply_reader_feedback(candidates: list[TopicCandidate], feedback_path: Path) -> tuple[list[TopicCandidate], int]:
+    adjustments = read_feedback_adjustments(feedback_path)
+    if not adjustments:
+        return candidates, 0
+    adjusted: list[TopicCandidate] = []
+    matched_count = 0
+    for candidate in candidates:
+        adjustment, matched_items = feedback_adjustment_for_text(_candidate_feedback_text(candidate), adjustments)
+        if adjustment == 0:
+            adjusted.append(candidate)
+            continue
+        matched_count += len(matched_items)
+        adjusted.append(
+            replace(
+                candidate,
+                score=max(candidate.score + adjustment, 0.0),
+                score_components=(
+                    *candidate.score_components,
+                    ("reader_feedback", adjustment),
+                ),
+            )
+        )
+    return adjusted, matched_count
+
+
 def _select_chart_asset(candidate: TopicCandidate, data: BriefData) -> str | None:
     for asset in candidate.related_assets:
         if asset in data.market_series and len(data.market_series[asset]) >= 5:
@@ -423,7 +464,14 @@ def _chart_caption(asset: str, rows_by_asset: dict[str, MarketRow], topic_title:
     return row.so_what
 
 
-def select_portfolio_topics(data: BriefData, *, run_date: date, portfolio_path: Path, limit: int = 3) -> BriefData:
+def select_portfolio_topics(
+    data: BriefData,
+    *,
+    run_date: date,
+    portfolio_path: Path,
+    feedback_path: Path | None = None,
+    limit: int = 3,
+) -> BriefData:
     entries = read_position_entries(portfolio_path)
     positions = active_positions(entries, run_date)
     if not positions:
@@ -462,6 +510,9 @@ def select_portfolio_topics(data: BriefData, *, run_date: date, portfolio_path: 
 
     candidates.extend(_calendar_candidates(data, positions))
     candidates.extend(_theme_candidates(data, positions))
+    feedback_match_count = 0
+    if feedback_path is not None:
+        candidates, feedback_match_count = _apply_reader_feedback(candidates, feedback_path)
 
     if not candidates:
         return data
@@ -498,6 +549,11 @@ def select_portfolio_topics(data: BriefData, *, run_date: date, portfolio_path: 
         "Topic selection ranks market moves, calendar events, and Theme Radar/news signals using active portfolio rows, "
         "direct portfolio links, exposure labels, source/event importance, freshness, and simple diversification rules before Gemini writes the narrative."
     )
+    feedback_note = (
+        "Reader feedback input adjusted topic scores from the local feedback CSV; this is local preference memory, not model fine-tuning."
+        if feedback_match_count
+        else ""
+    )
     return replace(
         data,
         chart_series=chart_series,
@@ -508,6 +564,6 @@ def select_portfolio_topics(data: BriefData, *, run_date: date, portfolio_path: 
         chart_source_url=chart_source_url,
         topic_candidates=[_candidate_to_prompt_dict(candidate) for candidate in selected],
         three_thing_titles=[candidate.title for candidate in selected],
-        assumptions=[*data.assumptions, selection_note],
-        data_sources=[*data.data_sources, "portfolio_topic_selection"],
+        assumptions=[*data.assumptions, selection_note, *([feedback_note] if feedback_note else [])],
+        data_sources=[*data.data_sources, "portfolio_topic_selection", *(["reader_feedback"] if feedback_match_count else [])],
     )

@@ -2,7 +2,21 @@
 
 This folder defines the human feedback format used by the project.
 
-In this submission, feedback is recorded as a CSV template. A future version can load this file before source ranking and prompt construction.
+The tracked file `daily_feedback.example.csv` is only a template.
+
+For real use, copy it to a local ignored file:
+
+```bash
+cp inputs/feedback/daily_feedback.example.csv inputs/feedback/daily_feedback.local.csv
+```
+
+Then set this in `.env`:
+
+```bash
+FEEDBACK_PATH=inputs/feedback/daily_feedback.local.csv
+```
+
+The agent reads this local CSV before topic ranking. It does not train the model. It only nudges code-ranked candidate scores up or down when the feedback item matches a future topic, source, asset, or evidence line.
 
 Suggested questionnaire after each brief:
 
@@ -20,9 +34,9 @@ CSV columns:
 - `usefulness`: 1-5 usefulness score.
 - `comment`: short human note.
 
-Future incorporation rule:
+Current incorporation rule:
 
 - High-rated repeated patterns increase ranking weight.
-- Low-rated patterns reduce ranking weight or trigger prompt warnings.
-- Comments that ask to avoid or rewrite a pattern become explicit avoid/rewrite rules after reviewer confirmation.
+- Low-rated repeated patterns reduce ranking weight.
+- Comments that include wording such as "avoid", "too generic", "not useful", or "irrelevant" are treated as negative signals.
 - Feedback remains local project memory; it is not model fine-tuning.

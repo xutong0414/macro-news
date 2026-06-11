@@ -20,6 +20,8 @@ Tradeoff: a stronger model may help later if the system reads longer source text
 
 Diagnostic rule: stronger Gemini models can be compared with `compare-models`, but the default delivery model remains Gemini 2.5 Flash-Lite unless repeated validation logs show a clear quality benefit from changing it.
 
+First comparison result: a live comparison on 2026-06-11 showed both Gemini 2.5 Flash-Lite and Gemini 2.5 Pro still needed one validation repair. Pro was much slower in that run, so this does not justify changing the default model. The next safety focus is fallback/template design rather than simply using a larger model.
+
 ## LLM Scope
 
 Decision: restrict the LLM to narrative synthesis.
@@ -48,7 +50,13 @@ Validation rule: narrative output is rejected when it inverts core portfolio or 
 
 Implementation rule: macro narrative validation uses centralized deterministic rule groups for portfolio semantics, unsupported claims, market-number consistency, market-direction consistency, and common asset-move contradictions.
 
+Implementation rule: Gemini returns each "Three Things" item as structured `body` and `so_what` fields. The application renders the `So what:` label itself, so a missing label is no longer left to model formatting.
+
 Quality-gate rule: each run writes a quality report to the run log. The report records source checks, Gemini validation attempts, validation repairs, repaired validation errors, and whether sending is allowed. If Gemini narrative validation fails after retries, the run writes a failed quality report and blocks email delivery.
+
+Fallback rule: `LLM_FAILURE_MODE=block` remains the safest default. `LLM_FAILURE_MODE=data_only` allows a clearly labeled data-only fallback when Gemini narrative validation fails; the fallback withholds LLM-written interpretation and keeps the failure visible in the quality report.
+
+Diagnostic rule: model-comparison logs record exact validation errors per model, not only repair counts, so model changes can be judged by failure type as well as cost and speed.
 
 ## Data Fallback Policy
 
@@ -124,6 +132,8 @@ Reason: curated RSS is easy to audit, but the first public feedback showed that 
 
 Tradeoff: Theme Radar currently uses RSS/search-snippet text rather than full article text. Search-derived items must be labeled as snippets, not as full article reading. Full-text reading remains a later feature.
 
+Rule: for curated RSS/Atom feeds, the parser uses richer feed-provided content fields when they are meaningfully longer than short descriptions. Search-derived items remain labeled as snippets.
+
 Rule: Theme Radar keeps selected-link history locally under `.cache/theme_radar/`. Links selected before the current run date are avoided for the configured recent-day window when enough alternatives exist. Same-day reruns may repeat entries. The current run date is defined by `BRIEF_TIMEZONE`.
 
 Rule: Theme Radar also stores simple headline-topic fingerprints locally and avoids recently selected near-duplicate topics when enough distinct candidates exist.
@@ -150,7 +160,9 @@ Rule: the run log records selected topics, score components, and selected chart 
 
 Decision: include a feedback questionnaire and local CSV template.
 
-Reason: feedback can later improve source ranking and prompt construction. This is local preference memory, not model fine-tuning.
+Reason: feedback can improve source/topic ranking without model fine-tuning.
+
+Rule: `FEEDBACK_PATH` points to a local ignored CSV. Matching high-rated items nudge future topic candidates up, matching low-rated or "too generic" items nudge them down, and the adjustment is recorded in topic score components.
 
 ## Chart Choice
 

@@ -306,15 +306,26 @@ def _is_trusted_search_source(source_name: str) -> bool:
     return any(normalized == trusted.lower() for trusted in TRUSTED_NEWS_SOURCE_NAMES)
 
 
+def _feed_text_and_depth(item: ET.Element, source: ThemeSource) -> tuple[str, str]:
+    description_text = _strip_html(_child_text(item, "description", "summary"))
+    content_text = _strip_html(_child_text(item, "content", "encoded"))
+    if _is_search_source(source):
+        return description_text or content_text, "search result snippet"
+    description_words = _word_count(description_text)
+    content_words = _word_count(content_text)
+    if content_words >= 30 and content_words >= description_words + 10:
+        return content_text, "RSS content field"
+    if description_text:
+        return description_text, "RSS excerpt"
+    if content_text:
+        return content_text, "RSS content field"
+    return "", "RSS excerpt"
+
+
 def _parse_feed_item(item: ET.Element, source: ThemeSource) -> ThemeCandidate | None:
     title = _strip_html(_child_text(item, "title"))
     link = _link_text(item)
-    description = _child_text(item, "description", "summary")
-    source_depth = "search result snippet" if _is_search_source(source) else "RSS excerpt"
-    if _word_count(_strip_html(description)) < 30:
-        description = _child_text(item, "content", "encoded")
-        source_depth = "search result snippet" if _is_search_source(source) else "RSS content field"
-    text = _strip_html(description)
+    text, source_depth = _feed_text_and_depth(item, source)
     if not title or not link or not text:
         return None
 

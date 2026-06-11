@@ -22,6 +22,11 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--live-market-data", action="store_true", help="Fetch live market dashboard data with cached real-source fallback and blank rows for unavailable data")
     run_parser.add_argument("--live-calendar", action="store_true", help="Fetch live economic-calendar rows with cached real-source fallback and blank output if unavailable")
     run_parser.add_argument("--live-theme-radar", action="store_true", help="Fetch live Theme Radar source candidates and leave the section blank if unavailable")
+    run_parser.add_argument(
+        "--llm-failure-mode",
+        choices=["block", "data_only"],
+        help="When --use-llm validation fails: block the run, or emit a clearly labeled data-only fallback.",
+    )
     run_parser.add_argument("--date", help="Run date in YYYY-MM-DD format. Defaults to today.")
 
     compare_parser = subparsers.add_parser("compare-models", help="Compare Gemini models on the same brief inputs without sending email")
@@ -64,6 +69,7 @@ def main(argv: list[str] | None = None) -> int:
                 live_market_data=live_market_data,
                 live_calendar=live_calendar,
                 live_theme_radar=live_theme_radar,
+                llm_failure_mode=args.llm_failure_mode,
             )
         except RuntimeError as exc:
             print(f"Error: {exc}", file=sys.stderr)

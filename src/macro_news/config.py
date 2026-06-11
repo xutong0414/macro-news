@@ -19,6 +19,19 @@ def normalize_timezone(value: str) -> str:
     return normalized
 
 
+def normalize_llm_failure_mode(value: str) -> str:
+    normalized = value.strip().lower().replace("-", "_")
+    aliases = {
+        "block": "block",
+        "fail": "block",
+        "strict": "block",
+        "data_only": "data_only",
+        "dataonly": "data_only",
+        "fallback": "data_only",
+    }
+    return aliases.get(normalized, "block")
+
+
 def load_dotenv(path: Path = Path(".env")) -> None:
     """Small .env loader so dry runs work before optional dependencies are installed."""
     if not path.exists():
@@ -57,6 +70,8 @@ class Settings:
     portfolio_path: Path
     output_dir: Path
     log_dir: Path
+    feedback_path: Path = Path("inputs/feedback/daily_feedback.local.csv")
+    llm_failure_mode: str = "block"
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -81,6 +96,8 @@ class Settings:
             theme_history_path=Path(os.getenv("THEME_HISTORY_PATH", ".cache/theme_radar/history.json")),
             theme_recent_days=int(os.getenv("THEME_RECENT_DAYS", "7")),
             portfolio_path=Path(os.getenv("PORTFOLIO_PATH", "inputs/portfolio/positions.csv")),
+            feedback_path=Path(os.getenv("FEEDBACK_PATH", "inputs/feedback/daily_feedback.local.csv")),
+            llm_failure_mode=normalize_llm_failure_mode(os.getenv("LLM_FAILURE_MODE", "block")),
             output_dir=Path(os.getenv("OUTPUT_DIR", "outputs")),
             log_dir=Path(os.getenv("LOG_DIR", "logs")),
         )

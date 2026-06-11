@@ -18,6 +18,9 @@ All notable public-facing changes are recorded here. Local run logs, cache files
 - Added contradiction tests for oil/inflation, gold positioning, dollar pressure, volatility, and EM debt logic.
 - Added Theme Radar near-duplicate topic filtering using ignored local headline history.
 - Added a `compare-models` CLI command for checking Gemini model repairs, token use, estimated cost, and runtime on the same structured inputs.
+- Added exact validation-error capture to `compare-models` logs so model warnings can be diagnosed by failure type.
+- Added optional `LLM_FAILURE_MODE=data_only` support so failed Gemini narrative validation can produce a clearly labeled data-only fallback instead of an interpreted brief.
+- Added local reader-feedback CSV import so recurring comments can nudge topic ranking without fine-tuning the model.
 
 ### Changed
 
@@ -29,6 +32,8 @@ All notable public-facing changes are recorded here. Local run logs, cache files
 - Topic ranking now gives close-score preference to direct portfolio links over broad indirect macro links.
 - CLI output now includes the run quality verdict.
 - Macro narrative validation now lives in a dedicated rule module instead of being embedded directly in the Gemini parser.
+- Gemini now returns "Three Things" items as structured `body` and `so_what` fields; the application renders the `So what:` label consistently.
+- Theme Radar now uses richer feed-provided content fields when available, while search-derived items remain labeled as snippets.
 
 ## 2026-06-10
 

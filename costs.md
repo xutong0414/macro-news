@@ -17,6 +17,7 @@ Status: Gemini synthesis, Gmail delivery, live market rows, live calendar rows, 
 | Market data | Yahoo / Japan MOF / Frankfurter / CoinGecko | $0 initially | Current live dashboard sources are free/public, with cached real-source fallback and blank rows when no verified data exists. |
 | Calendar data | Forex Factory / Fair Economy | $0 initially | Free weekly feed with local cache; can rate-limit during repeated tests, and live mode leaves output blank if no verified rows exist. |
 | Theme sources | Liberty Street / Bank Underground / FRED Blog | $0 initially | Curated RSS feeds with source-depth labels; live mode leaves Theme Radar blank if no verified candidates exist. |
+| Reader feedback | Local CSV | $0 | Optional local preference memory from `FEEDBACK_PATH`; it changes code ranking, not model training. |
 | Hosting | Local Mac/server for validation | $0 expected | Production should use an always-on Mac/workstation/VPS if precise scheduled delivery is required. |
 
 ## Token Accounting
@@ -25,25 +26,39 @@ The runner logs token usage and estimated LLM cost for `--use-llm` runs.
 
 Plain sample mode records zero actual LLM tokens.
 
-The optional `compare-models` command makes one Gemini call per listed model and writes a separate comparison log under `logs/`; use it deliberately because each extra model comparison is an extra paid LLM call. Cost estimates are shown only for models present in the local cost table, so unsupported model prices may appear as `n/a` in terminal output.
+The optional `compare-models` command makes one Gemini call per listed model and writes a separate comparison log under `logs/`; use it deliberately because each extra model comparison is an extra paid LLM call. The log records validation errors per model, not only repair counts. Cost estimates are shown only for models present in the local cost table, so unsupported model prices may appear as `n/a` in terminal output.
+
+If `LLM_FAILURE_MODE=data_only` is used, a failed Gemini validation may still consume tokens before the data-only fallback is rendered. The fallback itself does not make a second LLM call.
+
+Latest live model comparison: `model-compare-20260611T113020Z`.
+
+| Model | Status | Repairs | Total tokens | Estimated cost | Elapsed |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Gemini 2.5 Flash-Lite | warning | 1 | 14,109 | $0.0018783 | 10.00s |
+| Gemini 2.5 Pro | warning | 1 | 18,459 | n/a | 170.32s |
+
+Takeaway: this single comparison does not support switching the default model to Pro. Pro was much slower and still needed one validation repair, so the next reliability gains should come from stricter templates, clearer validation logging, and fallback behavior.
 
 ## Runtime Accounting
 
-Latest live dry run after direct-link ranking update: `20260611T074941Z`, run on Thursday at 15:49 HKT.
+Latest live dry run after the safety fallback and feedback pass: `20260611T120030Z`, run on Thursday at 20:02 HKT.
 
-- Token use: 19,335 input, 2,124 output, 21,459 total.
-- Estimated LLM cost: $0.0027831.
-- Prompt version: `gemini_narrative_v38`.
-- Source result: all 13 market dashboard rows refreshed from live public sources; no sample fallback rows were used. Calendar used the live Fair Economy weekly feed with six live-source rows. Theme Radar selected two live RSS items, with the FRED Blog RSS feed timing out.
-- Ranking result: selected Equity Risk Tone, US Inflation Event Risk, and EM Debt Conditions; chart used S&P 500; Contrarian Corner challenged the first selected topic.
+- Runtime: about 104 seconds in the local validation shell.
+- Token use: 13,249 input, 2,212 output, 15,461 total.
+- Estimated LLM cost: $0.0022097.
+- Prompt version: `gemini_narrative_v39`.
+- Source result: live public sources refreshed 9/13 market dashboard rows; cached real-source rows covered four rows; no sample fallback rows were used. Calendar used the live Fair Economy weekly feed with six live-source rows. Theme Radar selected two live Google News RSS items, with the FRED Blog RSS feed timing out.
+- Ranking result: selected EM Debt Conditions, Equity Risk Tone, and US Inflation Event Risk; chart used US 10Y yield; Contrarian Corner challenged the first selected topic.
 
-Latest successful live send: `20260611T073855Z`, run on Thursday at 15:38 HKT.
+Latest successful live send after the safety fallback and feedback pass: `20260611T120459Z`, run on Thursday at 20:06 HKT.
 
-- Token use: 12,195 input, 1,407 output, 13,602 total.
-- Estimated LLM cost: $0.0017823.
-- Prompt version: `gemini_narrative_v38`.
-- Source result: all 13 market dashboard rows refreshed from live public sources; no sample fallback rows were used. Calendar used the live Fair Economy weekly feed with six live-source rows. Theme Radar selected two live RSS items, with the FRED Blog RSS feed timing out.
-- Ranking result: selected Equity Risk Tone, ECB Policy Event Risk, and US Inflation Event Risk; chart used S&P 500; Contrarian Corner challenged the first selected topic.
+- Runtime: about 87 seconds in the local validation shell.
+- Token use: 13,254 input, 2,066 output, 15,320 total.
+- Estimated LLM cost: $0.0021518.
+- Prompt version: `gemini_narrative_v39`.
+- Source result: live public sources refreshed 11/13 market dashboard rows; cached real-source rows covered two rows; no sample fallback rows were used. Calendar used the live Fair Economy weekly feed with six live-source rows. Theme Radar selected two live Google News RSS items, with the FRED Blog RSS feed timing out.
+- Ranking result: selected Equity Risk Tone, EM Debt Conditions, and US Inflation Event Risk; chart used S&P 500; Contrarian Corner challenged the first selected topic.
+- Safety note: a prior normal send attempt was blocked by the quality gate after Gemini failed validation; the later fallback-enabled run sent a validated normal brief, not a data-only fallback.
 
 Earlier successful timed live send: `20260611T063208Z`, run on Thursday at 14:32 HKT.
 
@@ -80,6 +95,8 @@ These rows are enough to estimate daily operating cost. The development process 
 | 2026-06-11 | `20260611T063208Z` | Portfolio-aware live email validation | 33.64s | 5,838 | 791 | $0.0009002 | Sent |
 | 2026-06-11 | `20260611T073855Z` | Portfolio-aware live email validation | about 45s | 12,195 | 1,407 | $0.0017823 | Sent |
 | 2026-06-11 | `20260611T074941Z` | Direct-link ranking live dry run | about 50s | 19,335 | 2,124 | $0.0027831 | Not sent |
+| 2026-06-11 | `20260611T120030Z` | Safety fallback / feedback live dry run | about 104s | 13,249 | 2,212 | $0.0022097 | Not sent |
+| 2026-06-11 | `20260611T120459Z` | Safety fallback / feedback live email validation | about 87s | 13,254 | 2,066 | $0.0021518 | Sent |
 
 ## Daily Cost Takeaway
 

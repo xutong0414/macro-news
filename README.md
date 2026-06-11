@@ -10,7 +10,7 @@ The brief answers three practical questions:
 
 The LLM is deliberately constrained. Code owns market data, calendar data, portfolio-aware topic selection, charting, source links, validation, logging, and email delivery. Gemini drafts only the narrative sections from structured inputs.
 
-When `--use-llm` is enabled, the run validates Gemini's narrative before sending. The log includes a quality report with source checks, validation attempts, repaired validation errors, and a send/no-send decision. Failed narrative validation blocks email delivery.
+When `--use-llm` is enabled, the run validates Gemini's narrative before sending. The log includes a quality report with source checks, validation attempts, repaired validation errors, and a send/no-send decision. By default, failed narrative validation blocks email delivery. Users can opt into a clearly labeled data-only fallback with `LLM_FAILURE_MODE=data_only`.
 
 ## What You Need
 
@@ -56,6 +56,7 @@ Minimum values for Gemini narrative synthesis:
 LLM_PROVIDER=gemini
 GEMINI_API_KEY=your_gemini_api_key
 GEMINI_MODEL=gemini-2.5-flash-lite
+LLM_FAILURE_MODE=block
 ```
 
 Minimum values for Gmail delivery:
@@ -76,6 +77,7 @@ BRIEF_TIMEZONE=Asia/Hong_Kong
 THEME_HISTORY_PATH=.cache/theme_radar/history.json
 THEME_RECENT_DAYS=7
 PORTFOLIO_PATH=inputs/portfolio/positions.csv
+FEEDBACK_PATH=inputs/feedback/daily_feedback.local.csv
 OUTPUT_DIR=outputs
 LOG_DIR=logs
 ```
@@ -85,6 +87,8 @@ Notes:
 - For Gmail, use an app password, not the normal Google login password.
 - Gmail app passwords are usually shown in groups of four characters; remove spaces in `.env`.
 - Keep optional providers such as DeepSeek blank unless you add provider support.
+- Keep `LLM_FAILURE_MODE=block` for the safest default. Use `data_only` only if you prefer receiving a clearly labeled data checkpoint when Gemini narrative validation fails.
+- `FEEDBACK_PATH` should usually point to a local ignored file such as `inputs/feedback/daily_feedback.local.csv`.
 
 ## 3. Run Locally
 
@@ -134,7 +138,8 @@ Expected outcome:
 
 - One email is sent to `BRIEF_TO_EMAIL`.
 - The same local output files and logs are updated.
-- If Gemini narrative validation fails, the email is not sent and the run log records a failed quality report.
+- If Gemini narrative validation fails and `LLM_FAILURE_MODE=block`, the email is not sent and the run log records a failed quality report.
+- If `LLM_FAILURE_MODE=data_only`, the run can send a clearly labeled data-only fallback instead of an interpreted PM note.
 - If delivery fails, check the Gmail app password, sender email, recipient email, and `.env` spelling.
 
 ### Optional: Compare Gemini Models
@@ -150,6 +155,7 @@ Expected outcome:
 - No email is sent.
 - The same structured brief input is sent to each listed Gemini model.
 - Terminal output shows validation repairs, token use, estimated cost when the model is in the local cost table, and runtime for each model.
+- The comparison log records the exact validation errors for each model so warnings can be diagnosed by failure type.
 - A comparison log is written under `logs/model-compare-*.jsonl`.
 
 Add `--live-market-data --live-calendar --live-theme-radar` if you want the comparison to use live inputs instead of sample inputs.
@@ -243,7 +249,7 @@ Current live sources:
 
 Live mode does not use generated/sample market, calendar, or Theme Radar fallback content. If a live source and cached real row are both unavailable, the relevant value cells or section are left blank rather than filled with invented values.
 
-Theme Radar keeps recent selected links and headline-topic fingerprints under `.cache/theme_radar/`. Links and near-duplicate topics selected before the current run date are avoided for `THEME_RECENT_DAYS` when enough alternatives exist; same-day reruns may repeat entries. This local headline history is ignored by git. Google News RSS search results are filtered to trusted publisher names before selection.
+Theme Radar uses feed-provided RSS excerpts or content fields when available. Google News RSS search rows remain labeled as search snippets. Theme Radar keeps recent selected links and headline-topic fingerprints under `.cache/theme_radar/`. Links and near-duplicate topics selected before the current run date are avoided for `THEME_RECENT_DAYS` when enough alternatives exist; same-day reruns may repeat entries. This local headline history is ignored by git. Google News RSS search results are filtered to trusted publisher names before selection.
 
 ## Portfolio And Feedback Inputs
 
@@ -263,7 +269,7 @@ Human feedback is tracked with:
 inputs/feedback/daily_feedback.example.csv
 ```
 
-The current feedback loop is local preference memory, not model fine-tuning. See `inputs/feedback/README.md`.
+To use it, copy the example to the local ignored path configured by `FEEDBACK_PATH`, then edit the ratings/comments there. The topic selector reads this local CSV before ranking candidates. High-rated matching items nudge similar future topics up; low-rated matching items nudge them down. This is local preference memory, not model fine-tuning. See `inputs/feedback/README.md`.
 
 ## GitHub Actions
 
@@ -298,6 +304,6 @@ The assignment PDF is intentionally kept local and ignored by git.
 ## Current Caveats
 
 - Free public data sources can timeout, rate-limit, or lag on weekends and holidays.
-- Theme Radar currently uses RSS/search-snippet text, not full article text.
+- Theme Radar uses RSS excerpts/content fields and search snippets, not guaranteed full article text.
 - Scheduled delivery requires an always-on machine or external scheduler.
 - GitHub scheduled events are documented but not treated as the dependable production scheduler for this prototype.

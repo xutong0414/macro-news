@@ -93,12 +93,26 @@ def _build_quality_report(
     market_data_result: MarketDataResult,
     calendar_data_result: CalendarDataResult,
     theme_data_result: ThemeDataResult,
+    llm_failure_mode: str = "block",
+    llm_fallback_used: bool = False,
 ) -> dict[str, Any]:
     checks: list[dict[str, str]] = []
     warnings: list[str] = []
     blockers: list[str] = []
 
-    if llm_error:
+    if llm_error and llm_fallback_used and llm_failure_mode == "data_only":
+        _add_quality_check(
+            checks,
+            warnings,
+            blockers,
+            name="narrative_validation",
+            status="warning",
+            details=(
+                "LLM narrative was not accepted, so the run used a clearly labeled data-only fallback. "
+                f"Original error: {llm_error}"
+            ),
+        )
+    elif llm_error:
         _add_quality_check(
             checks,
             warnings,
@@ -226,6 +240,8 @@ def _build_quality_report(
     return {
         "verdict": verdict,
         "send_allowed": not blockers,
+        "llm_failure_mode": llm_failure_mode,
+        "llm_fallback_used": llm_fallback_used,
         "checks": checks,
         "warnings": warnings,
         "blockers": blockers,
@@ -240,6 +256,32 @@ def _write_log_event(settings: Settings, run_id: str, log_event: dict[str, Any])
     return log_path
 
 
+def _data_only_fallback(data, error: str):
+    note = (
+        "Data-only fallback: Gemini narrative failed validation, so LLM-written interpretation sections were "
+        "withheld. Use the dashboard, calendar, chart, source notes, and run log; do not treat the placeholder "
+        "narrative as a portfolio recommendation."
+    )
+    fallback_item = (
+        "LLM narrative synthesis failed validation, so this brief is data-only. "
+        "So what: review the verified tables, chart, source notes, and run log before making any portfolio judgment."
+    )
+    return replace(
+        data,
+        three_things=[fallback_item],
+        three_thing_titles=["Data-Only Fallback"],
+        theme_radar=[],
+        contrarian_corner=(
+            "Contrarian Corner is withheld because Gemini narrative validation failed. "
+            "The brief is still delivered only as a data checkpoint, not as an interpreted PM note."
+        ),
+        source_notes=[*data.source_notes, note],
+        assumptions=[*data.assumptions, note],
+        data_sources=[*data.data_sources, "data_only_llm_failure_fallback"],
+        topic_candidates=[],
+    )
+
+
 def run_brief(
     settings: Settings,
     *,
@@ -249,6 +291,7 @@ def run_brief(
     live_market_data: bool = False,
     live_calendar: bool = False,
     live_theme_radar: bool = False,
+    llm_failure_mode: str | None = None,
 ) -> RunResult:
     try:
         configured_zone = ZoneInfo(settings.timezone)
@@ -256,6 +299,7 @@ def run_brief(
         configured_zone = ZoneInfo("Asia/Hong_Kong")
     run_date = run_date or datetime.now(configured_zone).date()
     run_id = utc_run_id()
+    llm_failure_mode = llm_failure_mode or settings.llm_failure_mode
     data = build_sample_brief_data()
     data = apply_portfolio_assumptions(data, run_date=run_date, path=settings.portfolio_path)
     market_data_result = MarketDataResult(data=data, live_assets=[], cached_assets=[], fallback_assets=[], errors={}, sources=[])
@@ -267,6 +311,8 @@ def run_brief(
     estimated_llm_cost_usd = 0.0
     prompt_version = "none"
     synthesis: SynthesisResult | None = None
+    llm_error: str | None = None
+    llm_fallback_used = False
 
     if live_market_data:
         market_data_result = replace_market_rows_with_live(data, run_date=run_date, timezone_name=settings.timezone)
@@ -287,55 +333,71 @@ def run_brief(
         data = theme_data_result.data
 
     if use_llm:
-        data = select_portfolio_topics(data, run_date=run_date, portfolio_path=settings.portfolio_path)
+        data = select_portfolio_topics(
+            data,
+            run_date=run_date,
+            portfolio_path=settings.portfolio_path,
+            feedback_path=settings.feedback_path,
+        )
         if settings.llm_provider != "gemini":
             raise RuntimeError("Only Gemini synthesis is implemented for --use-llm right now")
         try:
             synthesis = synthesize_with_gemini(settings, data)
         except RuntimeError as exc:
-            quality_report = _build_quality_report(
-                use_llm=use_llm,
-                synthesis=None,
-                llm_error=str(exc),
-                live_market_data=live_market_data,
-                live_calendar=live_calendar,
-                live_theme_radar=live_theme_radar,
-                market_data_result=market_data_result,
-                calendar_data_result=calendar_data_result,
-                theme_data_result=theme_data_result,
-            )
-            _write_log_event(
-                settings,
-                run_id,
-                {
-                    "run_id": run_id,
-                    "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-                    "run_date": run_date.isoformat(),
-                    "run_mode": _effective_run_mode(
-                        settings,
-                        live_market_data=live_market_data,
-                        live_calendar=live_calendar,
-                        live_theme_radar=live_theme_radar,
-                    ),
-                    "llm_provider": settings.llm_provider,
-                    "llm_model": settings.gemini_model,
-                    "llm_status": "failed_synthesis",
-                    "prompt_version": "unknown",
-                    "delivery_status": "blocked_quality_gate" if send else "failed_quality_gate",
-                    "quality_report": quality_report,
-                    "delivery_attempted": False,
-                    "data_sources": data.data_sources,
-                    "source_notes": data.source_notes,
-                    "outputs": {},
-                },
-            )
-            raise RuntimeError(f"Quality gate blocked run before delivery: {exc}") from exc
-        data = synthesis.data
-        token_usage = synthesis.token_usage
-        llm_status = "used"
-        llm_model = synthesis.model
-        estimated_llm_cost_usd = synthesis.estimated_cost_usd
-        prompt_version = synthesis.prompt_version
+            llm_error = str(exc)
+            if llm_failure_mode == "data_only":
+                data = _data_only_fallback(data, llm_error)
+                llm_status = "data_only_fallback"
+                llm_model = settings.gemini_model
+                prompt_version = "unknown"
+                llm_fallback_used = True
+            else:
+                quality_report = _build_quality_report(
+                    use_llm=use_llm,
+                    synthesis=None,
+                    llm_error=str(exc),
+                    live_market_data=live_market_data,
+                    live_calendar=live_calendar,
+                    live_theme_radar=live_theme_radar,
+                    market_data_result=market_data_result,
+                    calendar_data_result=calendar_data_result,
+                    theme_data_result=theme_data_result,
+                    llm_failure_mode=llm_failure_mode,
+                    llm_fallback_used=False,
+                )
+                _write_log_event(
+                    settings,
+                    run_id,
+                    {
+                        "run_id": run_id,
+                        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+                        "run_date": run_date.isoformat(),
+                        "run_mode": _effective_run_mode(
+                            settings,
+                            live_market_data=live_market_data,
+                            live_calendar=live_calendar,
+                            live_theme_radar=live_theme_radar,
+                        ),
+                        "llm_provider": settings.llm_provider,
+                        "llm_model": settings.gemini_model,
+                        "llm_status": "failed_synthesis",
+                        "prompt_version": "unknown",
+                        "delivery_status": "blocked_quality_gate" if send else "failed_quality_gate",
+                        "quality_report": quality_report,
+                        "delivery_attempted": False,
+                        "data_sources": data.data_sources,
+                        "source_notes": data.source_notes,
+                        "outputs": {},
+                    },
+                )
+                raise RuntimeError(f"Quality gate blocked run before delivery: {exc}") from exc
+        if synthesis is not None:
+            data = synthesis.data
+            token_usage = synthesis.token_usage
+            llm_status = "used"
+            llm_model = synthesis.model
+            estimated_llm_cost_usd = synthesis.estimated_cost_usd
+            prompt_version = synthesis.prompt_version
 
     data = replace(
         data,
@@ -353,16 +415,18 @@ def run_brief(
     quality_report = _build_quality_report(
         use_llm=use_llm,
         synthesis=synthesis,
-        llm_error=None,
+        llm_error=llm_error,
         live_market_data=live_market_data,
         live_calendar=live_calendar,
         live_theme_radar=live_theme_radar,
         market_data_result=market_data_result,
         calendar_data_result=calendar_data_result,
         theme_data_result=theme_data_result,
+        llm_failure_mode=llm_failure_mode,
+        llm_fallback_used=llm_fallback_used,
     )
 
-    delivery_status = "dry_run"
+    delivery_status = "dry_run_data_only" if llm_fallback_used else "dry_run"
     if send:
         if not quality_report["send_allowed"]:
             delivery_status = "blocked_quality_gate"
@@ -398,7 +462,7 @@ def run_brief(
             html_body=render_html(data, run_date),
             chart_path=output_paths["latest_chart"],
         )
-        delivery_status = "sent"
+        delivery_status = "sent_data_only" if llm_fallback_used else "sent"
 
     log_event = {
         "run_id": run_id,
