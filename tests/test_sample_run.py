@@ -17,7 +17,15 @@ import macro_news.runner as runner_module
 from macro_news.calendar_data import replace_calendar_with_live
 from macro_news.runner import run_brief
 from macro_news.sample_data import CalendarEvent, MarketRow, ThemeItem, build_sample_brief_data
-from macro_news.theme_data import ThemeSearchQuery, ThemeSource, parse_feed, replace_theme_radar_with_live
+from macro_news.theme_data import (
+    THEME_RULES,
+    ThemeCandidate,
+    ThemeSearchQuery,
+    ThemeSource,
+    parse_feed,
+    replace_theme_radar_with_live,
+    select_theme_candidates,
+)
 from macro_news.topic_selection import select_portfolio_topics
 
 
@@ -2051,6 +2059,79 @@ def test_theme_feed_parser_uses_richer_content_field_when_available() -> None:
     assert len(candidates) == 1
     assert candidates[0].source_depth == "RSS content field"
     assert "longer feed content" in candidates[0].text
+
+
+def test_live_theme_radar_labels_article_metadata_when_available() -> None:
+    article_html = """
+    <html>
+      <head>
+        <meta property="og:title" content="Core inflation and rate expectations stay linked">
+        <meta property="og:description" content="The metadata summary says core inflation, Treasury yields, and central-bank credibility remain connected because investors are still deciding whether price pressure is durable enough to keep policy rates restrictive.">
+        <meta property="article:published_time" content="2026-06-04T14:30:00Z">
+      </head>
+      <body>Publisher page body is not used by this metadata-only enrichment test.</body>
+    </html>
+    """
+
+    class MetadataThemeClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        def get(self, url, **kwargs):
+            if "source-one" in url:
+                return FakeResponse(text=THEME_FEED_ONE)
+            if "fredblog.stlouisfed.org/example/core-pce" in url:
+                return FakeResponse(text=article_html)
+            raise RuntimeError("unexpected URL")
+
+    result = replace_theme_radar_with_live(
+        build_sample_brief_data(),
+        client_factory=MetadataThemeClient,
+        sources=[ThemeSource("FRED Blog", "https://source-one.test/feed/", "theme_feed:test_fred")],
+    )
+
+    assert result.data.theme_radar[0].source_depth == "RSS excerpt + article metadata"
+
+
+def test_theme_radar_recent_topic_penalty_is_not_a_hard_restriction() -> None:
+    repeat_rule = THEME_RULES[2]
+    fresh_rule = THEME_RULES[3]
+    repeat_candidate = ThemeCandidate(
+        title="Japan officials warn on yen volatility as USD/JPY rises again",
+        source="Reuters via Google News",
+        link="https://example.com/repeated-yen-warning",
+        text="Japan officials warn again on yen volatility, USD/JPY intervention risk, the Bank of Japan, and dollar pressure.",
+        published_at=datetime(2026, 6, 10, 12, 0),
+        matched_rule=repeat_rule,
+        matched_keywords=("japan", "dollar", "yen"),
+        score=20,
+        source_depth="search result snippet",
+        source_id="theme_search:test_usdjpy",
+    )
+    fresh_candidate = ThemeCandidate(
+        title="Gold investors watch inflation and rate expectations",
+        source="Bank Underground",
+        link="https://example.com/fresh-gold-rates",
+        text="Gold investors watch inflation and rate expectations as central banks assess price stability.",
+        published_at=datetime(2026, 6, 10, 13, 0),
+        matched_rule=fresh_rule,
+        matched_keywords=("gold", "inflation", "rate"),
+        score=5,
+        source_depth="RSS excerpt",
+        source_id="theme_feed:test_bank",
+    )
+
+    selected = select_theme_candidates(
+        [repeat_candidate, fresh_candidate],
+        max_items=1,
+        recent_links={repeat_candidate.link},
+        recent_topic_tokens=[frozenset({"japan", "official", "warn", "volatility"})],
+    )
+
+    assert selected == [repeat_candidate]
 
 
 def test_live_theme_radar_replaces_sample_sources() -> None:

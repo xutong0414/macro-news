@@ -16,7 +16,7 @@ Status: Gemini synthesis, Gmail delivery, live market rows, live calendar rows, 
 | Scheduler | Local/server scheduler / GitHub Actions | $0 expected | Local `launchd` scheduling is proven; GitHub manual runs are useful, but GitHub scheduled triggers are not dependable for time-sensitive delivery. |
 | Market data | Yahoo / Japan MOF / Frankfurter / CoinGecko | $0 initially | Current live dashboard sources are free/public, with cached real-source fallback and blank rows when no verified data exists. |
 | Calendar data | Forex Factory / Fair Economy | $0 initially | Free weekly feed with local cache; can rate-limit during repeated tests, and live mode leaves output blank if no verified rows exist. |
-| Theme sources | Liberty Street / Bank Underground / FRED Blog | $0 initially | Curated RSS feeds with source-depth labels; live mode leaves Theme Radar blank if no verified candidates exist. |
+| Theme sources | Liberty Street / Bank Underground / FRED Blog | $0 initially | Curated RSS feeds, no-key news RSS search, and best-effort article metadata with source-depth labels; live mode leaves Theme Radar blank if no verified candidates exist. |
 | Reader feedback | Local CSV | $0 | Optional local preference memory from `FEEDBACK_PATH`; it changes code ranking, not model training. |
 | Hosting | Local Mac/server for validation | $0 expected | Production should use an always-on Mac/workstation/VPS if precise scheduled delivery is required. |
 
@@ -40,6 +40,16 @@ Latest live model comparison: `model-compare-20260611T113020Z`.
 Takeaway: this single comparison does not support switching the default model to Pro. Pro was much slower and still needed one validation repair, so the next reliability gains should come from stricter templates, clearer validation logging, and fallback behavior.
 
 ## Runtime Accounting
+
+Latest successful live send after the Theme Radar metadata and soft-novelty pass: `20260611T150357Z`, run on Thursday at 23:03 HKT.
+
+- Runtime: about 47 seconds in the local validation shell.
+- Token use: 20,904 input, 2,886 output, 23,790 total.
+- Estimated LLM cost: $0.0032448.
+- Prompt version: `gemini_narrative_v40`.
+- Source result: all 13 market dashboard rows refreshed from live public sources; no sample fallback rows were used. Calendar used the live Fair Economy weekly feed with six live-source rows. Theme Radar selected one Google News RSS item and one Liberty Street Economics item with `RSS content field + article metadata`; the FRED Blog RSS feed timed out.
+- Ranking result: selected Equity Risk Tone, EM Debt Conditions, and US Inflation Event Risk; chart used S&P 500; Contrarian Corner challenged the first selected topic.
+- Safety note: an immediately prior normal send was blocked before delivery after Gemini inverted DXY/dollar-pressure logic. The v40 prompt tightened direction checks, and the successful send passed after two validation repairs.
 
 Latest live dry run after the safety fallback and feedback pass: `20260611T120030Z`, run on Thursday at 20:02 HKT.
 
@@ -93,6 +103,7 @@ These rows are enough to estimate daily operating cost. The development process 
 | 2026-06-11 | `20260611T052916Z` | Portfolio-aware live dry run | about 34s | 11,276 | 1,562 | $0.0017524 | Not sent |
 | 2026-06-11 | `20260611T054059Z` | Combined market/calendar/news ranking dry run | about 59s | 5,696 | 778 | $0.0008808 | Not sent |
 | 2026-06-11 | `20260611T063208Z` | Portfolio-aware live email validation | 33.64s | 5,838 | 791 | $0.0009002 | Sent |
+| 2026-06-11 | `20260611T150357Z` | Metadata-enriched Theme Radar email validation | about 47s | 20,904 | 2,886 | $0.0032448 | Sent |
 | 2026-06-11 | `20260611T073855Z` | Portfolio-aware live email validation | about 45s | 12,195 | 1,407 | $0.0017823 | Sent |
 | 2026-06-11 | `20260611T074941Z` | Direct-link ranking live dry run | about 50s | 19,335 | 2,124 | $0.0027831 | Not sent |
 | 2026-06-11 | `20260611T120030Z` | Safety fallback / feedback live dry run | about 104s | 13,249 | 2,212 | $0.0022097 | Not sent |

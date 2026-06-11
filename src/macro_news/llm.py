@@ -17,7 +17,7 @@ from .narrative_rules import (
 )
 from .sample_data import BriefData, ThemeItem
 
-PROMPT_VERSION = "gemini_narrative_v39"
+PROMPT_VERSION = "gemini_narrative_v40"
 
 
 @dataclass(frozen=True)
@@ -256,6 +256,10 @@ def build_narrative_prompt(data: BriefData) -> str:
         "- For ECB event risk, a hawkish ECB surprise is generally euro-supportive and a dovish ECB surprise is generally euro-negative; if the facts do not give the actual outcome, frame it as two-way event risk.\n"
         "- A gold overweight benefits when gold rises, but is pressured by higher US yields/rates or dollar strength.\n"
         "- EM debt exposure is usually pressured by higher US yields, stronger dollar funding stress, or weaker China demand.\n\n"
+        "Dashboard direction checks:\n"
+        "- If DXY Change is positive, do not say broad dollar pressure eased or dollar funding conditions loosened.\n"
+        "- If DXY Change is negative, do not say broad dollar pressure tightened unless other provided facts support that claim.\n"
+        "- If oil Change is positive, do not say inflation pressure eased because of oil; if oil Change is negative, do not say oil increased inflation pressure.\n\n"
         "Return only valid JSON with this exact shape:\n"
         "{\n"
         '  "three_things": [\n'
@@ -450,6 +454,9 @@ def synthesize_with_gemini(settings: Settings, data: BriefData) -> SynthesisResu
                 " Do not frame hawkish Fed expectations as pressure on a long USD/JPY position unless the risk is intervention or yen reversal after USD/JPY rises."
                 " Do not say hotter US inflation lowers US yields or cooler US inflation raises US yields."
                 " Do not say a dovish ECB surprise supports the euro, and do not say a hawkish ECB surprise weakens the euro."
+                " If DXY Change is positive, do not say broad dollar pressure eased or dollar funding conditions loosened."
+                " If DXY Change is negative, do not say broad dollar pressure tightened unless another provided fact supports it."
+                " If oil Change is positive, do not say inflation pressure eased because of oil; if oil Change is negative, do not say oil increased inflation pressure."
                 " In contrarian_corner, avoid exact market move numbers; focus on the competing narrative and the trigger."
             )
 

@@ -53,6 +53,7 @@ def build_comparison_input(
             history_path=None,
             recent_days=settings.theme_recent_days,
             search_queries=DEFAULT_THEME_SEARCH_QUERIES,
+            metadata_fetch_limit=settings.theme_metadata_fetch_limit,
         ).data
     return select_portfolio_topics(
         data,

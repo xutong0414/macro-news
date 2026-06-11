@@ -218,7 +218,7 @@ def _build_quality_report(
                 f"selected_items={len(theme_data_result.selected_titles)}, "
                 f"candidate_count={theme_data_result.candidate_count}, "
                 f"errors={len(theme_data_result.errors)}. "
-                "RSS/search snippets are labeled by source depth; no generated replacement items are used."
+                "RSS text, article metadata, and search snippets are labeled by source depth; no generated replacement items are used."
             ),
         )
     else:
@@ -329,6 +329,7 @@ def run_brief(
             history_path=settings.theme_history_path,
             recent_days=settings.theme_recent_days,
             search_queries=DEFAULT_THEME_SEARCH_QUERIES,
+            metadata_fetch_limit=settings.theme_metadata_fetch_limit,
         )
         data = theme_data_result.data
 

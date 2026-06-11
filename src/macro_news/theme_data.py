@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timezone
 from email.utils import parsedate_to_datetime
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Callable
 from urllib.parse import quote_plus
@@ -52,6 +53,14 @@ class ThemeCandidate:
 
 
 @dataclass(frozen=True)
+class ArticleMetadata:
+    title: str = ""
+    description: str = ""
+    site_name: str = ""
+    published_at: datetime | None = None
+
+
+@dataclass(frozen=True)
 class ThemeDataResult:
     data: BriefData
     selected_titles: list[str]
@@ -76,7 +85,13 @@ DEFAULT_THEME_SEARCH_QUERIES = [
 ]
 DEFAULT_THEME_HISTORY_PATH = Path(".cache") / "theme_radar" / "history.json"
 DEFAULT_THEME_RECENT_DAYS = 7
+DEFAULT_THEME_METADATA_FETCH_LIMIT = 8
 THEME_TOPIC_SIMILARITY_THRESHOLD = 0.6
+RECENT_LINK_PENALTY = 6.0
+RECENT_TOPIC_PENALTY = 7.0
+SAME_RUN_TOPIC_PENALTY = 2.4
+SAME_SOURCE_PENALTY = 0.8
+SAME_RULE_PENALTY = 0.9
 THEME_TOPIC_STOPWORDS = {
     "about",
     "after",
@@ -214,6 +229,132 @@ def _published_at(element: ET.Element) -> datetime | None:
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(timezone.utc)
+
+
+def _parse_datetime(value: str) -> datetime | None:
+    raw_value = value.strip()
+    if not raw_value:
+        return None
+    try:
+        parsed = parsedate_to_datetime(raw_value)
+    except (TypeError, ValueError):
+        try:
+            parsed = datetime.fromisoformat(raw_value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+class _ArticleMetadataParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.meta: dict[str, str] = {}
+        self._inside_title = False
+        self._title_parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() == "title":
+            self._inside_title = True
+            return
+        if tag.lower() != "meta":
+            return
+        attrs_dict = {key.lower(): (value or "").strip() for key, value in attrs}
+        key = (attrs_dict.get("property") or attrs_dict.get("name") or "").lower()
+        content = attrs_dict.get("content", "")
+        if key and content:
+            self.meta[key] = html.unescape(content)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.lower() == "title":
+            self._inside_title = False
+
+    def handle_data(self, data: str) -> None:
+        if self._inside_title and data.strip():
+            self._title_parts.append(data.strip())
+
+    @property
+    def title(self) -> str:
+        return _strip_html(" ".join(self._title_parts))
+
+
+def _extract_article_metadata(html_text: str) -> ArticleMetadata:
+    parser = _ArticleMetadataParser()
+    try:
+        parser.feed(html_text)
+    except Exception:  # noqa: BLE001 - malformed publisher HTML should not break a run.
+        return ArticleMetadata()
+
+    title = parser.meta.get("og:title") or parser.meta.get("twitter:title") or parser.title
+    description = (
+        parser.meta.get("og:description")
+        or parser.meta.get("twitter:description")
+        or parser.meta.get("description")
+    )
+    site_name = parser.meta.get("og:site_name") or parser.meta.get("application-name") or ""
+    published_raw = (
+        parser.meta.get("article:published_time")
+        or parser.meta.get("article:modified_time")
+        or parser.meta.get("date")
+        or parser.meta.get("dc.date")
+    )
+    return ArticleMetadata(
+        title=_strip_html(title or ""),
+        description=_strip_html(description or ""),
+        site_name=_strip_html(site_name),
+        published_at=_parse_datetime(published_raw or ""),
+    )
+
+
+def _client_get(client: httpx.Client, url: str, *, timeout: float | None = None) -> httpx.Response:
+    if timeout is None:
+        return client.get(url)
+    try:
+        return client.get(url, timeout=timeout)
+    except TypeError:
+        return client.get(url)
+
+
+def _can_enrich_with_article_metadata(candidate: ThemeCandidate) -> bool:
+    if candidate.source_id.startswith("theme_search:"):
+        return False
+    return "news.google.com" not in candidate.link.lower()
+
+
+def _enrich_candidate_with_article_metadata(client: httpx.Client, candidate: ThemeCandidate) -> ThemeCandidate:
+    if not _can_enrich_with_article_metadata(candidate):
+        return candidate
+    try:
+        response = _client_get(client, candidate.link, timeout=5)
+        response.raise_for_status()
+    except Exception:  # noqa: BLE001 - metadata enrichment is best-effort.
+        return candidate
+
+    metadata = _extract_article_metadata(response.text)
+    metadata_text = _strip_html(" ".join(part for part in (metadata.title, metadata.description) if part))
+    if _word_count(metadata_text) < 18:
+        if metadata.published_at and candidate.published_at is None:
+            return replace(candidate, published_at=metadata.published_at)
+        return candidate
+
+    if metadata.description and metadata.description.lower() in candidate.text.lower():
+        combined_text = candidate.text
+    else:
+        combined_text = f"{candidate.text} {metadata_text}".strip()
+    matched_rule, matched_keywords, score = _best_rule(candidate.title, combined_text)
+    source_depth = candidate.source_depth
+    if "article metadata" not in source_depth.lower():
+        source_depth = f"{source_depth} + article metadata"
+    return replace(
+        candidate,
+        text=combined_text,
+        published_at=metadata.published_at or candidate.published_at,
+        matched_rule=matched_rule,
+        matched_keywords=matched_keywords,
+        score=max(candidate.score, score),
+        source_depth=source_depth,
+    )
 
 
 def google_news_search_sources(queries: list[ThemeSearchQuery] | tuple[ThemeSearchQuery, ...]) -> list[ThemeSource]:
@@ -368,13 +509,14 @@ def fetch_theme_candidates(
     client: httpx.Client,
     sources: list[ThemeSource] = THEME_SOURCES,
     max_items_per_source: int = 10,
+    metadata_fetch_limit: int = DEFAULT_THEME_METADATA_FETCH_LIMIT,
 ) -> tuple[list[ThemeCandidate], dict[str, str], list[str]]:
     candidates: list[ThemeCandidate] = []
     errors: dict[str, str] = {}
     successful_sources: list[str] = []
     for source in sources:
         try:
-            response = client.get(source.feed_url)
+            response = _client_get(client, source.feed_url)
             response.raise_for_status()
             source_candidates = parse_feed(response.text, source, max_items=max_items_per_source)
         except Exception as exc:  # noqa: BLE001 - source-level outage is logged per feed.
@@ -383,6 +525,21 @@ def fetch_theme_candidates(
         if source_candidates:
             candidates.extend(source_candidates)
             successful_sources.append(source.source_id)
+    if metadata_fetch_limit > 0:
+        enrich_indexes = [
+            index
+            for index, candidate in sorted(
+                enumerate(candidates),
+                key=lambda item: (
+                    -item[1].score,
+                    -(item[1].published_at.timestamp() if item[1].published_at else 0),
+                    item[1].title,
+                ),
+            )
+            if _can_enrich_with_article_metadata(candidate)
+        ][:metadata_fetch_limit]
+        for index in enrich_indexes:
+            candidates[index] = _enrich_candidate_with_article_metadata(client, candidates[index])
     return candidates, errors, successful_sources
 
 
@@ -507,60 +664,46 @@ def select_theme_candidates(
 ) -> list[ThemeCandidate]:
     recent_links = recent_links or set()
     recent_topic_tokens = recent_topic_tokens or []
-    ranked = sorted(
-        candidates,
-        key=lambda item: (
-            -item.score,
-            -(item.published_at.timestamp() if item.published_at else 0),
-            item.title,
-        ),
-    )
     selected: list[ThemeCandidate] = []
     seen_sources: set[str] = set()
     seen_links: set[str] = set()
     seen_rules: set[str] = set()
     selected_topic_tokens: list[frozenset[str]] = []
-    for candidate in ranked:
+    remaining = list(candidates)
+
+    def adjusted_rank(candidate: ThemeCandidate) -> tuple[float, int, float, str]:
         candidate_tokens = _theme_topic_tokens(candidate.title)
-        if (
-            candidate.link in seen_links
-            or candidate.link in recent_links
-            or _is_near_duplicate_topic(candidate, recent_topic_tokens)
-            or _is_near_duplicate_token_set(candidate_tokens, selected_topic_tokens)
-            or candidate.source in seen_sources
-            or candidate.matched_rule.label in seen_rules
-        ):
-            continue
-        selected.append(candidate)
-        seen_sources.add(candidate.source)
-        seen_links.add(candidate.link)
-        seen_rules.add(candidate.matched_rule.label)
-        if candidate_tokens:
-            selected_topic_tokens.append(candidate_tokens)
-        if len(selected) >= max_items:
-            return selected
-    for candidate in ranked:
-        candidate_tokens = _theme_topic_tokens(candidate.title)
-        if (
-            candidate.link in seen_links
-            or candidate.link in recent_links
-            or _is_near_duplicate_topic(candidate, recent_topic_tokens)
-            or _is_near_duplicate_token_set(candidate_tokens, selected_topic_tokens)
-        ):
-            continue
-        selected.append(candidate)
-        seen_links.add(candidate.link)
-        if candidate_tokens:
-            selected_topic_tokens.append(candidate_tokens)
-        if len(selected) >= max_items:
-            return selected
-    for candidate in ranked:
-        if candidate.link in seen_links:
-            continue
-        selected.append(candidate)
-        seen_links.add(candidate.link)
-        if len(selected) >= max_items:
-            return selected
+        adjusted_score = float(candidate.score)
+        if candidate.link in recent_links:
+            adjusted_score -= RECENT_LINK_PENALTY
+        if _is_near_duplicate_topic(candidate, recent_topic_tokens):
+            adjusted_score -= RECENT_TOPIC_PENALTY
+        if _is_near_duplicate_token_set(candidate_tokens, selected_topic_tokens):
+            adjusted_score -= SAME_RUN_TOPIC_PENALTY
+        if candidate.source in seen_sources:
+            adjusted_score -= SAME_SOURCE_PENALTY
+        if candidate.matched_rule.label in seen_rules:
+            adjusted_score -= SAME_RULE_PENALTY
+        return (
+            adjusted_score,
+            candidate.score,
+            candidate.published_at.timestamp() if candidate.published_at else 0.0,
+            candidate.title,
+        )
+
+    while remaining and len(selected) < max_items:
+        eligible = [candidate for candidate in remaining if candidate.link not in seen_links]
+        if not eligible:
+            break
+        best = max(eligible, key=adjusted_rank)
+        selected.append(best)
+        seen_sources.add(best.source)
+        seen_links.add(best.link)
+        seen_rules.add(best.matched_rule.label)
+        best_tokens = _theme_topic_tokens(best.title)
+        if best_tokens:
+            selected_topic_tokens.append(best_tokens)
+        remaining = [candidate for candidate in remaining if candidate is not best]
     return selected
 
 
@@ -584,6 +727,7 @@ def replace_theme_radar_with_live(
     client_factory: Callable[[], httpx.Client] | None = None,
     sources: list[ThemeSource] = THEME_SOURCES,
     search_queries: list[ThemeSearchQuery] | tuple[ThemeSearchQuery, ...] = (),
+    metadata_fetch_limit: int = DEFAULT_THEME_METADATA_FETCH_LIMIT,
 ) -> ThemeDataResult:
     client_factory = client_factory or (
         lambda: httpx.Client(
@@ -598,7 +742,11 @@ def replace_theme_radar_with_live(
 
     all_sources = [*sources, *google_news_search_sources(search_queries)]
     with client_factory() as client:
-        candidates, errors, successful_sources = fetch_theme_candidates(client, sources=all_sources)
+        candidates, errors, successful_sources = fetch_theme_candidates(
+            client,
+            sources=all_sources,
+            metadata_fetch_limit=metadata_fetch_limit,
+        )
     history = _read_theme_history(history_path) if history_path and run_date else []
     recent_links = _recent_links_before_today(history, run_date, recent_days) if run_date else set()
     recent_topic_tokens = _recent_topic_tokens_before_today(history, run_date, recent_days) if run_date else []
@@ -642,9 +790,9 @@ def replace_theme_radar_with_live(
         failed_note = f" {len(errors)} configured Theme Radar source(s) failed and are logged."
     repeat_note = ""
     if recent_repeat_titles:
-        repeat_note = " Recent-link memory allowed a repeat because too few non-recent candidates were available."
+        repeat_note = " Recent-link memory penalized a repeat, but the item still ranked highly enough to select."
     if recent_topic_repeat_titles:
-        repeat_note += " Recent-topic memory allowed a similar topic because too few novel candidates were available."
+        repeat_note += " Recent-topic memory penalized a similar topic, but current relevance kept it in the selection."
     theme_note = (
         "Theme Radar: selected "
         f"{len(selected)} items from live RSS/search sources: "
@@ -657,18 +805,18 @@ def replace_theme_radar_with_live(
         assumptions=[
             *data.assumptions,
             (
-                "Theme Radar live mode uses curated RSS source text when available "
+                "Theme Radar live mode uses curated RSS source text and best-effort article metadata when available "
                 f"([Liberty Street Economics]({LIBERTY_STREET_HOME}), "
                 f"[Bank Underground]({BANK_UNDERGROUND_HOME}), "
                 "FRED Blog, and no-key news RSS search) and leaves the section blank rather than using scaffold source items when no verified candidates exist."
             ),
             (
-                "Theme Radar recent-link rule: links selected before the current run date are avoided for "
-                f"{recent_days} days when enough alternatives exist; same-day reruns may repeat entries."
+                "Theme Radar recent-link rule: links selected before the current run date receive a strong penalty for "
+                f"{recent_days} days, not an absolute ban; same-day reruns may repeat entries."
             ),
             (
-                "Theme Radar near-duplicate rule: recently selected headline topics are avoided when enough distinct candidates exist; "
-                "same-day reruns may still repeat topics."
+                "Theme Radar near-duplicate rule: recently selected headline topics receive a novelty penalty, not a hard restriction; "
+                "important current items can still win, and same-day reruns may repeat topics."
             ),
         ],
         data_sources=[*data.data_sources, *selected_sources],

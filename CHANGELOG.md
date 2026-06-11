@@ -21,6 +21,7 @@ All notable public-facing changes are recorded here. Local run logs, cache files
 - Added exact validation-error capture to `compare-models` logs so model warnings can be diagnosed by failure type.
 - Added optional `LLM_FAILURE_MODE=data_only` support so failed Gemini narrative validation can produce a clearly labeled data-only fallback instead of an interpreted brief.
 - Added local reader-feedback CSV import so recurring comments can nudge topic ranking without fine-tuning the model.
+- Added best-effort Theme Radar article-metadata enrichment for selected RSS candidates.
 
 ### Changed
 
@@ -34,6 +35,8 @@ All notable public-facing changes are recorded here. Local run logs, cache files
 - Macro narrative validation now lives in a dedicated rule module instead of being embedded directly in the Gemini parser.
 - Gemini now returns "Three Things" items as structured `body` and `so_what` fields; the application renders the `So what:` label consistently.
 - Theme Radar now uses richer feed-provided content fields when available, while search-derived items remain labeled as snippets.
+- Theme Radar recent-link and near-duplicate memory now applies score penalties rather than hard restrictions, so highly important repeated stories can still be selected.
+- Gemini narrative prompt direction checks now explicitly cover DXY and oil moves after a blocked send exposed a recurring dollar-direction failure.
 
 ## 2026-06-10
 

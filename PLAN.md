@@ -13,8 +13,8 @@ Implemented:
 - Gemini 2.5 Flash-Lite narrative synthesis.
 - Live market dashboard with source links, freshness labels, and no generated market fallback values.
 - Live economic calendar with source links, consensus values when available, and status labels.
-- Live Theme Radar from curated RSS/search sources with source-depth labels; feed-provided content fields are used when richer than short RSS descriptions.
-- Theme Radar recent-link memory, near-duplicate topic filtering, and no-key Google News RSS search expansion.
+- Live Theme Radar from curated RSS/search sources with source-depth labels; feed-provided content fields and limited article metadata are used when available.
+- Theme Radar recent-link memory, near-duplicate topic scoring penalties, and no-key Google News RSS search expansion.
 - Portfolio-aware topic selector for "The 3 Things That Matter Today."
 - Direct portfolio-link preference when candidate topic scores are close.
 - Local reader-feedback CSV import that nudges topic ranking up or down without fine-tuning the model.
@@ -37,23 +37,23 @@ Implemented:
 
 ## Latest Verification
 
-Latest recorded live send after the safety fallback and feedback pass:
+Latest recorded live send after the Theme Radar metadata and soft-novelty pass:
 
-- Run id: `20260611T120459Z`
+- Run id: `20260611T150357Z`
 - Mode: live market data, live calendar, live Theme Radar, Gemini narrative
 - Delivery: sent
-- Token use: 13,254 input, 2,066 output, 15,320 total
-- Estimated LLM cost: $0.0021518
-- Prompt version: `gemini_narrative_v39`
-- Quality verdict: warning; Gemini repaired one validation issue before acceptance; one Theme Radar feed timed out
-- Source result: live public sources refreshed 11/13 dashboard rows, cached real-source rows covered 2 rows, and no blank/scaffold fallback rows were used; calendar used six live Fair Economy / Forex Factory rows; Theme Radar selected two live Google News RSS items
+- Token use: 20,904 input, 2,886 output, 23,790 total
+- Estimated LLM cost: $0.0032448
+- Prompt version: `gemini_narrative_v40`
+- Quality verdict: warning; Gemini repaired two validation issues before acceptance; one Theme Radar feed timed out
+- Source result: all 13 dashboard rows refreshed from live public sources; calendar used six live Fair Economy / Forex Factory rows; Theme Radar selected one Google News RSS item and one Liberty Street Economics item enriched with article metadata
 - Topic result: selected `Equity Risk Tone`, `EM Debt Conditions`, and `US Inflation Event Risk`; chart used `S&P 500: 3-Month Trend`; Contrarian Corner challenged equity risk tone
-- Safety note: a prior normal send attempt was blocked by the quality gate after Gemini failed validation, confirming the default no-send behavior before the later fallback-enabled run produced a validated normal send.
+- Safety note: a prior normal send attempt was blocked by the quality gate after Gemini inverted DXY/dollar-pressure logic; the prompt was tightened and the later v40 run sent only after validation repaired the same risk class.
 
 Latest local tests:
 
 - `PYTHONPATH=src pytest -q`
-- Result: 63 passed
+- Result: 65 passed
 
 Latest model comparison:
 
@@ -103,13 +103,13 @@ Before pushing future changes:
 
 Next safety improvements before adding major new content features:
 
-- Improve Theme Radar source depth beyond feed-provided text by fetching article text or abstracts only when allowed, while still labeling RSS/search snippets as snippet-level evidence.
+- Improve Theme Radar source depth beyond metadata by fetching article text or abstracts only when allowed, while still labeling RSS/search snippets as snippet-level evidence.
 - Repeat model comparisons only after prompt/fallback changes or when source complexity materially increases.
 
 ## Known Caveats
 
 - Free public market, calendar, and RSS sources can timeout, rate-limit, or lag on weekends and holidays.
-- Theme Radar uses RSS excerpts/content fields and search snippets, not guaranteed full article text.
+- Theme Radar uses RSS excerpts/content fields, article metadata when reachable, and search snippets, not guaranteed full article text.
 - Validation catches known unsafe narrative patterns, but it is not a complete macro-reasoning engine.
 - A permanent schedule requires an always-on machine or external scheduler.
 - GitHub scheduled workflows are documented but not treated as the dependable scheduler for this prototype.

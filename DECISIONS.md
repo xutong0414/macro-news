@@ -130,13 +130,13 @@ Current sources:
 
 Reason: curated RSS is easy to audit, but the first public feedback showed that a narrow feed set can repeat the same entries across days. Google News RSS broadens discovery without requiring a paid search API.
 
-Tradeoff: Theme Radar currently uses RSS/search-snippet text rather than full article text. Search-derived items must be labeled as snippets, not as full article reading. Full-text reading remains a later feature.
+Tradeoff: Theme Radar currently uses RSS/search-snippet text plus best-effort article metadata rather than full article text. Search-derived items must be labeled as snippets, not as full article reading. Full-text reading remains a later feature.
 
-Rule: for curated RSS/Atom feeds, the parser uses richer feed-provided content fields when they are meaningfully longer than short descriptions. Search-derived items remain labeled as snippets.
+Rule: for curated RSS/Atom feeds, the parser uses richer feed-provided content fields when they are meaningfully longer than short descriptions. The agent may open a limited number of article pages for standard metadata fields such as title, description, and publication time. Search-derived items remain labeled as snippets.
 
-Rule: Theme Radar keeps selected-link history locally under `.cache/theme_radar/`. Links selected before the current run date are avoided for the configured recent-day window when enough alternatives exist. Same-day reruns may repeat entries. The current run date is defined by `BRIEF_TIMEZONE`.
+Rule: Theme Radar keeps selected-link history locally under `.cache/theme_radar/`. Links selected before the current run date receive a strong score penalty for the configured recent-day window, but this is not an absolute restriction. Same-day reruns may repeat entries. The current run date is defined by `BRIEF_TIMEZONE`.
 
-Rule: Theme Radar also stores simple headline-topic fingerprints locally and avoids recently selected near-duplicate topics when enough distinct candidates exist.
+Rule: Theme Radar also stores simple headline-topic fingerprints locally. Recently selected near-duplicate topics receive a novelty penalty rather than a hard ban, so a genuinely important current story can still be selected.
 
 Rule: Google News RSS search results are filtered by trusted publisher name before scoring. Curated research feeds bypass this filter because they are already explicitly selected by the project.
 
