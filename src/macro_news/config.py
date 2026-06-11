@@ -73,6 +73,7 @@ class Settings:
     feedback_path: Path = Path("inputs/feedback/daily_feedback.local.csv")
     llm_failure_mode: str = "block"
     theme_metadata_fetch_limit: int = 8
+    theme_article_fetch_limit: int = 8
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -102,6 +103,9 @@ class Settings:
             output_dir=Path(os.getenv("OUTPUT_DIR", "outputs")),
             log_dir=Path(os.getenv("LOG_DIR", "logs")),
             theme_metadata_fetch_limit=int(os.getenv("THEME_METADATA_FETCH_LIMIT", "8")),
+            theme_article_fetch_limit=int(
+                os.getenv("THEME_ARTICLE_FETCH_LIMIT", os.getenv("THEME_METADATA_FETCH_LIMIT", "8"))
+            ),
         )
 
     def missing_for_send(self) -> list[str]:

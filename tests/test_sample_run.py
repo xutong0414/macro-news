@@ -22,15 +22,20 @@ from macro_news.theme_data import (
     ThemeCandidate,
     ThemeSearchQuery,
     ThemeSource,
+    _extract_article_text,
     parse_feed,
     replace_theme_radar_with_live,
     select_theme_candidates,
 )
-from macro_news.topic_selection import select_portfolio_topics
+from macro_news.topic_selection import _theme_source_score, select_portfolio_topics
 
 
 def _word_count(text: str) -> int:
     return len(text.split())
+
+
+def _words(prefix: str, count: int) -> str:
+    return " ".join(f"{prefix}{index}" for index in range(count))
 
 
 def _calendar_reference_now() -> datetime:
@@ -73,6 +78,18 @@ def test_timezone_aliases_normalize() -> None:
     assert normalize_timezone("HongKong") == "Asia/Hong_Kong"
     assert normalize_timezone("Asia/Hong Kong") == "Asia/Hong_Kong"
     assert normalize_timezone("Asia/Shanghai") == "Asia/Shanghai"
+
+
+def test_theme_article_fetch_limit_env_falls_back_to_metadata_limit(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("THEME_METADATA_FETCH_LIMIT", "3")
+    monkeypatch.delenv("THEME_ARTICLE_FETCH_LIMIT", raising=False)
+
+    assert Settings.from_env().theme_article_fetch_limit == 3
+
+    monkeypatch.setenv("THEME_ARTICLE_FETCH_LIMIT", "0")
+
+    assert Settings.from_env().theme_article_fetch_limit == 0
 
 
 def test_live_run_filters_replaced_sample_source_labels() -> None:
@@ -2329,6 +2346,146 @@ def test_theme_feed_parser_uses_richer_content_field_when_available() -> None:
     assert "longer feed content" in candidates[0].text
 
 
+def test_article_text_extractor_reads_article_paragraphs_and_ignores_boilerplate() -> None:
+    html = f"""
+    <html>
+      <body>
+        <nav>{_words("navcookie", 140)}</nav>
+        <script>{_words("scriptnoise", 140)}</script>
+        <article>
+          <p>{_words("inflation", 70)}</p>
+          <p>{_words("duration", 70)}</p>
+        </article>
+        <footer>{_words("footernoise", 140)}</footer>
+      </body>
+    </html>
+    """
+
+    extracted = _extract_article_text(html)
+
+    assert "inflation0" in extracted
+    assert "duration0" in extracted
+    assert "navcookie0" not in extracted
+    assert "scriptnoise0" not in extracted
+    assert "footernoise0" not in extracted
+
+
+def test_article_text_extractor_rejects_short_pages() -> None:
+    html = "<html><body><article><p>Short inflation and rates note.</p></article></body></html>"
+
+    assert _extract_article_text(html) == ""
+
+
+def test_article_text_extractor_rejects_publisher_navigation_paragraphs() -> None:
+    html = f"""
+    <html>
+      <body>
+        <article>
+          <p>Look for our next post on June 22. « Previous item | Main | Next item » {_words("nav", 130)}</p>
+          <p>{_words("credit", 70)}</p>
+          <p>{_words("borrower", 70)}</p>
+        </article>
+      </body>
+    </html>
+    """
+
+    extracted = _extract_article_text(html)
+
+    assert "Look for our next post" not in extracted
+    assert "Previous item" not in extracted
+    assert "credit0" in extracted
+    assert "borrower0" in extracted
+
+
+def test_article_text_extractor_strips_leading_byline() -> None:
+    html = f"""
+    <html>
+      <body>
+        <article>
+          <p>Rajashri Chakrabarti, Gabriel Leonard, Donald P. Morgan, Thu Pham, and Lee Seltzer In imperial China, {_words("credit", 130)}</p>
+        </article>
+      </body>
+    </html>
+    """
+
+    extracted = _extract_article_text(html)
+
+    assert extracted.startswith("In imperial China")
+    assert "Rajashri Chakrabarti" not in extracted
+
+
+def test_article_text_extractor_caps_long_pages() -> None:
+    html = f"<html><body><article><p>{_words('macro', 520)}</p></article></body></html>"
+
+    extracted = _extract_article_text(html)
+
+    assert 440 <= _word_count(extracted) <= 450
+    assert extracted.endswith(".")
+
+
+def test_live_theme_radar_labels_article_text_when_available() -> None:
+    article_html = f"""
+    <html>
+      <head>
+        <meta property="article:published_time" content="2026-06-04T14:30:00Z">
+      </head>
+      <body>
+        <article>
+          <p>{_words("articlebodyinflation", 70)}</p>
+          <p>{_words("articlebodyduration", 70)}</p>
+        </article>
+      </body>
+    </html>
+    """
+
+    class ArticleTextThemeClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        def get(self, url, **kwargs):
+            if "source-one" in url:
+                return FakeResponse(text=THEME_FEED_ONE)
+            if "fredblog.stlouisfed.org/example/core-pce" in url:
+                return FakeResponse(text=article_html)
+            raise RuntimeError("unexpected URL")
+
+    result = replace_theme_radar_with_live(
+        build_sample_brief_data(),
+        client_factory=ArticleTextThemeClient,
+        sources=[ThemeSource("FRED Blog", "https://source-one.test/feed/", "theme_feed:test_fred")],
+    )
+
+    item = result.data.theme_radar[0]
+    assert item.source_depth == "RSS excerpt + article text excerpt"
+    assert "articlebodyinflation0" in item.summary
+
+
+def test_live_theme_radar_article_fetch_limit_zero_disables_article_fetch() -> None:
+    class UnexpectedArticleFetchClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        def get(self, url, **kwargs):
+            if "source-one" in url:
+                return FakeResponse(text=THEME_FEED_ONE)
+            raise AssertionError("article page should not be fetched when article_fetch_limit=0")
+
+    result = replace_theme_radar_with_live(
+        build_sample_brief_data(),
+        client_factory=UnexpectedArticleFetchClient,
+        sources=[ThemeSource("FRED Blog", "https://source-one.test/feed/", "theme_feed:test_fred")],
+        article_fetch_limit=0,
+    )
+
+    assert result.data.theme_radar[0].source_depth == "RSS excerpt"
+
+
 def test_live_theme_radar_labels_article_metadata_when_available() -> None:
     article_html = """
     <html>
@@ -2362,6 +2519,46 @@ def test_live_theme_radar_labels_article_metadata_when_available() -> None:
     )
 
     assert result.data.theme_radar[0].source_depth == "RSS excerpt + article metadata"
+
+
+def test_live_theme_radar_keeps_rss_label_when_article_fetch_fails() -> None:
+    class ArticleFetchFailureClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        def get(self, url, **kwargs):
+            if "source-one" in url:
+                return FakeResponse(text=THEME_FEED_ONE)
+            if "fredblog.stlouisfed.org/example/core-pce" in url:
+                raise RuntimeError("simulated article-page failure")
+            raise RuntimeError("unexpected URL")
+
+    result = replace_theme_radar_with_live(
+        build_sample_brief_data(),
+        client_factory=ArticleFetchFailureClient,
+        sources=[ThemeSource("FRED Blog", "https://source-one.test/feed/", "theme_feed:test_fred")],
+    )
+
+    assert result.data.theme_radar[0].source_depth == "RSS excerpt"
+
+
+def test_theme_source_score_prefers_article_text_over_metadata_and_snippets() -> None:
+    article_item = ThemeItem(
+        "Inflation pressure and duration risk",
+        "FRED Blog",
+        "https://example.com/article",
+        "summary",
+        "What this means for our book: watch rates.",
+        "RSS excerpt + article text excerpt",
+    )
+    metadata_item = replace(article_item, source_depth="RSS excerpt + article metadata")
+    snippet_item = replace(article_item, source="Reuters via Google News", source_depth="search result snippet")
+
+    assert _theme_source_score(article_item) > _theme_source_score(metadata_item)
+    assert _theme_source_score(metadata_item) > _theme_source_score(snippet_item)
 
 
 def test_theme_radar_recent_topic_penalty_is_not_a_hard_restriction() -> None:

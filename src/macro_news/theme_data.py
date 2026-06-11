@@ -86,6 +86,9 @@ DEFAULT_THEME_SEARCH_QUERIES = [
 DEFAULT_THEME_HISTORY_PATH = Path(".cache") / "theme_radar" / "history.json"
 DEFAULT_THEME_RECENT_DAYS = 7
 DEFAULT_THEME_METADATA_FETCH_LIMIT = 8
+DEFAULT_THEME_ARTICLE_FETCH_LIMIT = 8
+MIN_ARTICLE_TEXT_WORDS = 120
+MAX_ARTICLE_TEXT_WORDS = 450
 THEME_TOPIC_SIMILARITY_THRESHOLD = 0.6
 RECENT_LINK_PENALTY = 6.0
 RECENT_TOPIC_PENALTY = 7.0
@@ -279,6 +282,74 @@ class _ArticleMetadataParser(HTMLParser):
         return _strip_html(" ".join(self._title_parts))
 
 
+class _ArticleTextParser(HTMLParser):
+    _ignored_tags = {"script", "style", "nav", "header", "footer", "aside", "form", "button", "svg", "noscript"}
+    _content_tags = {"p", "li"}
+    _boilerplate_markers = {
+        "accept cookies",
+        "all rights reserved",
+        "all posts",
+        "cookie policy",
+        "filed under",
+        "look for our next post",
+        "main |",
+        "next post",
+        "posted by",
+        "previous post",
+        "privacy policy",
+        "related posts",
+        "sign up",
+        "subscribe",
+    }
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.paragraphs: list[str] = []
+        self._ignore_depth = 0
+        self._active_tag: str | None = None
+        self._active_parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        normalized = tag.lower()
+        if normalized in self._ignored_tags:
+            self._ignore_depth += 1
+            return
+        if self._ignore_depth > 0:
+            return
+        if normalized in self._content_tags and self._active_tag is None:
+            self._active_tag = normalized
+            self._active_parts = []
+
+    def handle_endtag(self, tag: str) -> None:
+        normalized = tag.lower()
+        if normalized in self._ignored_tags and self._ignore_depth > 0:
+            self._ignore_depth -= 1
+            return
+        if self._ignore_depth > 0:
+            return
+        if normalized == self._active_tag:
+            text = _strip_html(" ".join(self._active_parts))
+            if self._is_useful_paragraph(text):
+                self.paragraphs.append(text)
+            self._active_tag = None
+            self._active_parts = []
+
+    def handle_data(self, data: str) -> None:
+        if self._ignore_depth == 0 and self._active_tag is not None and data.strip():
+            self._active_parts.append(data.strip())
+
+    def _is_useful_paragraph(self, text: str) -> bool:
+        words = _word_count(text)
+        if words < 12:
+            return False
+        lowered = text.lower()
+        if any(marker in lowered for marker in self._boilerplate_markers):
+            return False
+        if "«" in text or "»" in text or text.count("|") >= 2:
+            return False
+        return True
+
+
 def _extract_article_metadata(html_text: str) -> ArticleMetadata:
     parser = _ArticleMetadataParser()
     try:
@@ -307,6 +378,30 @@ def _extract_article_metadata(html_text: str) -> ArticleMetadata:
     )
 
 
+def _extract_article_text(
+    html_text: str,
+    *,
+    min_words: int = MIN_ARTICLE_TEXT_WORDS,
+    max_words: int = MAX_ARTICLE_TEXT_WORDS,
+) -> str:
+    parser = _ArticleTextParser()
+    try:
+        parser.feed(html_text)
+    except Exception:  # noqa: BLE001 - malformed publisher HTML should not break a run.
+        return ""
+    text = _strip_leading_byline(_strip_html(" ".join(parser.paragraphs)))
+    if _word_count(text) < min_words:
+        return ""
+    return _trim_words(text, max_words)
+
+
+def _strip_leading_byline(text: str) -> str:
+    opener = r"(?:In|The|A|An|Many|Several|Some|Over|During|Since|For|When|While|If)\b"
+    byline_name = r"[A-Z][A-Za-z.\-']+(?:\s+[A-Z][A-Za-z.\-']+)*"
+    byline_pattern = rf"^(?:{byline_name},\s+){{2,}}(?:and\s+)?{byline_name}\s+(?={opener})"
+    return re.sub(byline_pattern, "", text).strip()
+
+
 def _client_get(client: httpx.Client, url: str, *, timeout: float | None = None) -> httpx.Response:
     if timeout is None:
         return client.get(url)
@@ -322,7 +417,17 @@ def _can_enrich_with_article_metadata(candidate: ThemeCandidate) -> bool:
     return "news.google.com" not in candidate.link.lower()
 
 
-def _enrich_candidate_with_article_metadata(client: httpx.Client, candidate: ThemeCandidate) -> ThemeCandidate:
+def _source_depth_with(source_depth: str, addition: str) -> str:
+    if addition.lower() in source_depth.lower():
+        return source_depth
+    return f"{source_depth} + {addition}"
+
+
+def _metadata_text(metadata: ArticleMetadata) -> str:
+    return _strip_html(" ".join(part for part in (metadata.title, metadata.description) if part))
+
+
+def _enrich_candidate_with_article_context(client: httpx.Client, candidate: ThemeCandidate) -> ThemeCandidate:
     if not _can_enrich_with_article_metadata(candidate):
         return candidate
     try:
@@ -332,7 +437,21 @@ def _enrich_candidate_with_article_metadata(client: httpx.Client, candidate: The
         return candidate
 
     metadata = _extract_article_metadata(response.text)
-    metadata_text = _strip_html(" ".join(part for part in (metadata.title, metadata.description) if part))
+    article_text = _extract_article_text(response.text)
+    if article_text:
+        combined_text = f"{article_text} {candidate.text}".strip()
+        matched_rule, matched_keywords, score = _best_rule(candidate.title, combined_text)
+        return replace(
+            candidate,
+            text=combined_text,
+            published_at=metadata.published_at or candidate.published_at,
+            matched_rule=matched_rule,
+            matched_keywords=matched_keywords,
+            score=max(candidate.score, score),
+            source_depth=_source_depth_with(candidate.source_depth, "article text excerpt"),
+        )
+
+    metadata_text = _metadata_text(metadata)
     if _word_count(metadata_text) < 18:
         if metadata.published_at and candidate.published_at is None:
             return replace(candidate, published_at=metadata.published_at)
@@ -343,9 +462,6 @@ def _enrich_candidate_with_article_metadata(client: httpx.Client, candidate: The
     else:
         combined_text = f"{candidate.text} {metadata_text}".strip()
     matched_rule, matched_keywords, score = _best_rule(candidate.title, combined_text)
-    source_depth = candidate.source_depth
-    if "article metadata" not in source_depth.lower():
-        source_depth = f"{source_depth} + article metadata"
     return replace(
         candidate,
         text=combined_text,
@@ -353,7 +469,7 @@ def _enrich_candidate_with_article_metadata(client: httpx.Client, candidate: The
         matched_rule=matched_rule,
         matched_keywords=matched_keywords,
         score=max(candidate.score, score),
-        source_depth=source_depth,
+        source_depth=_source_depth_with(candidate.source_depth, "article metadata"),
     )
 
 
@@ -509,8 +625,16 @@ def fetch_theme_candidates(
     client: httpx.Client,
     sources: list[ThemeSource] = THEME_SOURCES,
     max_items_per_source: int = 10,
-    metadata_fetch_limit: int = DEFAULT_THEME_METADATA_FETCH_LIMIT,
+    metadata_fetch_limit: int | None = None,
+    article_fetch_limit: int | None = None,
 ) -> tuple[list[ThemeCandidate], dict[str, str], list[str]]:
+    enrichment_limit = (
+        article_fetch_limit
+        if article_fetch_limit is not None
+        else metadata_fetch_limit
+        if metadata_fetch_limit is not None
+        else DEFAULT_THEME_ARTICLE_FETCH_LIMIT
+    )
     candidates: list[ThemeCandidate] = []
     errors: dict[str, str] = {}
     successful_sources: list[str] = []
@@ -525,7 +649,7 @@ def fetch_theme_candidates(
         if source_candidates:
             candidates.extend(source_candidates)
             successful_sources.append(source.source_id)
-    if metadata_fetch_limit > 0:
+    if enrichment_limit > 0:
         enrich_indexes = [
             index
             for index, candidate in sorted(
@@ -537,9 +661,9 @@ def fetch_theme_candidates(
                 ),
             )
             if _can_enrich_with_article_metadata(candidate)
-        ][:metadata_fetch_limit]
+        ][:enrichment_limit]
         for index in enrich_indexes:
-            candidates[index] = _enrich_candidate_with_article_metadata(client, candidates[index])
+            candidates[index] = _enrich_candidate_with_article_context(client, candidates[index])
     return candidates, errors, successful_sources
 
 
@@ -727,7 +851,8 @@ def replace_theme_radar_with_live(
     client_factory: Callable[[], httpx.Client] | None = None,
     sources: list[ThemeSource] = THEME_SOURCES,
     search_queries: list[ThemeSearchQuery] | tuple[ThemeSearchQuery, ...] = (),
-    metadata_fetch_limit: int = DEFAULT_THEME_METADATA_FETCH_LIMIT,
+    metadata_fetch_limit: int | None = None,
+    article_fetch_limit: int | None = None,
 ) -> ThemeDataResult:
     client_factory = client_factory or (
         lambda: httpx.Client(
@@ -746,6 +871,7 @@ def replace_theme_radar_with_live(
             client,
             sources=all_sources,
             metadata_fetch_limit=metadata_fetch_limit,
+            article_fetch_limit=article_fetch_limit,
         )
     history = _read_theme_history(history_path) if history_path and run_date else []
     recent_links = _recent_links_before_today(history, run_date, recent_days) if run_date else set()
@@ -805,7 +931,8 @@ def replace_theme_radar_with_live(
         assumptions=[
             *data.assumptions,
             (
-                "Theme Radar live mode uses curated RSS source text and best-effort article metadata when available "
+                "Theme Radar live mode uses curated RSS source text, best-effort article text excerpts, "
+                "and article metadata when available "
                 f"([Liberty Street Economics]({LIBERTY_STREET_HOME}), "
                 f"[Bank Underground]({BANK_UNDERGROUND_HOME}), "
                 "FRED Blog, and no-key news RSS search) and leaves the section blank rather than using scaffold source items when no verified candidates exist."

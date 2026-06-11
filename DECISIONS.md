@@ -132,9 +132,9 @@ Current sources:
 
 Reason: curated RSS is easy to audit, but the first public feedback showed that a narrow feed set can repeat the same entries across days. Google News RSS broadens discovery without requiring a paid search API.
 
-Tradeoff: Theme Radar currently uses RSS/search-snippet text plus best-effort article metadata rather than full article text. Search-derived items must be labeled as snippets, not as full article reading. Full-text reading remains a later feature.
+Tradeoff: Theme Radar currently uses RSS/search-snippet text plus best-effort article text excerpts or article metadata, not guaranteed full article text. Search-derived items must be labeled as snippets, not as full article reading.
 
-Rule: for curated RSS/Atom feeds, the parser uses richer feed-provided content fields when they are meaningfully longer than short descriptions. The agent may open a limited number of article pages for standard metadata fields such as title, description, and publication time. Search-derived items remain labeled as snippets.
+Rule: for curated RSS/Atom feeds, the parser uses richer feed-provided content fields when they are meaningfully longer than short descriptions. The agent may open a limited number of direct RSS article pages for visible paragraph text and standard metadata. Article text is used only when enough useful text is extracted and is capped before entering the Gemini prompt. Search-derived items remain labeled as snippets.
 
 Rule: Theme Radar keeps selected-link history locally under `.cache/theme_radar/`. Links selected before the current run date receive a strong score penalty for the configured recent-day window, but this is not an absolute restriction. Same-day reruns may repeat entries. The current run date is defined by `BRIEF_TIMEZONE`.
 

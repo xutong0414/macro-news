@@ -13,7 +13,7 @@ Implemented:
 - Gemini 2.5 Flash-Lite narrative synthesis.
 - Live market dashboard with source links, freshness labels, and no generated market fallback values.
 - Live economic calendar with source links, consensus values when available, and status labels.
-- Live Theme Radar from curated RSS/search sources with source-depth labels; feed-provided content fields and limited article metadata are used when available.
+- Live Theme Radar from curated RSS/search sources with source-depth labels; feed-provided content fields, best-effort article text excerpts, and limited article metadata are used when available.
 - Theme Radar recent-link memory, near-duplicate topic scoring penalties, and no-key Google News RSS search expansion.
 - Portfolio-aware topic selector for "The 3 Things That Matter Today."
 - Direct portfolio-link preference when candidate topic scores are close.
@@ -51,10 +51,17 @@ Latest recorded live dry run after the narrative stability pass:
 - Source result: 10 dashboard rows refreshed from live public sources, three rows used cached real-source data, and no generated market fallback rows were used; calendar used six live Fair Economy / Forex Factory rows; Theme Radar selected one Google News RSS item and one Liberty Street Economics item, with one configured Theme Radar source timing out
 - Topic result: selected `EM Debt Conditions`, `Equity Risk Tone`, and `US Inflation Event Risk`; chart used `US 10Y yield: 3-Month Trend`; Contrarian Corner challenged EM debt conditions
 
+Latest Theme Radar source-depth smoke check:
+
+- Run id: `20260611T233800Z`
+- Mode: live Theme Radar only, no Gemini, no email
+- Result: warning; selected two live Theme Radar items from 27 candidates, with one FRED Blog timeout
+- Source-depth result: Google News remained labeled as `search result snippet`; Liberty Street Economics was labeled as `RSS content field + article text excerpt`
+
 Latest local tests:
 
 - `PYTHONPATH=src pytest -q`
-- Result: 76 passed
+- Result: 86 passed
 
 Latest model comparison:
 
@@ -82,13 +89,13 @@ For an email target time such as 08:30 Hong Kong time, schedule the job to start
 
 ## Current Milestone
 
-Milestone: Narrative Stability.
+Milestone: Theme Source Depth.
 
 Goal:
 
-- Reduce Gemini validation repairs by moving high-risk market-direction and portfolio read-through guidance into code-generated selected-topic fields.
-- Keep Gemini constrained to selected topics, code-generated guardrails, and explicit avoid-claims.
-- Keep Contrarian Corner tied to the first selected topic and validated before delivery.
+- Improve Theme Radar evidence quality by using best-effort direct article text excerpts when available.
+- Keep source-depth labels honest: RSS/search snippets must stay labeled as snippets unless real article text or metadata was actually used.
+- Keep article-page fetching bounded and optional through `THEME_ARTICLE_FETCH_LIMIT`.
 - Preserve the public/private boundary for local run history, headline history, and collaboration notes.
 
 ## Maintenance Checklist
@@ -104,13 +111,13 @@ Before pushing future changes:
 
 Next safety improvements before adding major new content features:
 
-- Improve Theme Radar source depth beyond metadata by fetching article text or abstracts only when allowed, while still labeling RSS/search snippets as snippet-level evidence.
+- Broaden Theme Radar coverage only through auditable source additions or provider APIs; keep RSS/search snippets clearly labeled when no article text or abstract is available.
 - Repeat model comparisons only after prompt/fallback changes or when source complexity materially increases.
 
 ## Known Caveats
 
 - Free public market, calendar, and RSS sources can timeout, rate-limit, or lag on weekends and holidays.
-- Theme Radar uses RSS excerpts/content fields, article metadata when reachable, and search snippets, not guaranteed full article text.
+- Theme Radar uses RSS excerpts/content fields, best-effort article text excerpts or metadata when reachable, and search snippets, not guaranteed full article text.
 - Validation catches known unsafe narrative patterns, but it is not a complete macro-reasoning engine.
 - A permanent schedule requires an always-on machine or external scheduler.
 - GitHub scheduled workflows are documented but not treated as the dependable scheduler for this prototype.

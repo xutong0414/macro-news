@@ -315,8 +315,10 @@ def _theme_source_score(item: ThemeItem) -> float:
     else:
         base = 1.2
     depth = item.source_depth.lower()
-    if "full" in depth:
+    if "article text" in depth or "full" in depth:
         base += 0.8
+    elif "article metadata" in depth:
+        base += 0.5
     elif "rss" in depth:
         base += 0.3
     elif "snippet" in depth:

@@ -2,6 +2,18 @@
 
 All notable public-facing changes are recorded here. Local run logs, cache files, and collaboration notes are intentionally excluded.
 
+## 2026-06-12
+
+### Added
+
+- Added best-effort Theme Radar article-text extraction for direct RSS article pages, with source-depth labels only upgraded when useful page text is actually extracted.
+- Added `THEME_ARTICLE_FETCH_LIMIT` as the preferred control for Theme Radar article-page enrichment, with `THEME_METADATA_FETCH_LIMIT` retained as a backward-compatible fallback.
+
+### Changed
+
+- Theme Radar source scoring now gives a modest preference to usable article text excerpts over metadata-only or search-snippet evidence.
+- Theme Radar documentation now distinguishes RSS excerpts, RSS content fields, article text excerpts, article metadata, and search result snippets more explicitly.
+
 ## 2026-06-11
 
 ### Added

@@ -16,7 +16,7 @@ Status: Gemini synthesis, Gmail delivery, live market rows, live calendar rows, 
 | Scheduler | Local/server scheduler / GitHub Actions | $0 expected | Local `launchd` scheduling is proven; GitHub manual runs are useful, but GitHub scheduled triggers are not dependable for time-sensitive delivery. |
 | Market data | Yahoo / Japan MOF / Frankfurter / CoinGecko | $0 initially | Current live dashboard sources are free/public, with cached real-source fallback and blank rows when no verified data exists. |
 | Calendar data | Forex Factory / Fair Economy | $0 initially | Free weekly feed with local cache; can rate-limit during repeated tests, and live mode leaves output blank if no verified rows exist. |
-| Theme sources | Liberty Street / Bank Underground / FRED Blog | $0 initially | Curated RSS feeds, no-key news RSS search, and best-effort article metadata with source-depth labels; live mode leaves Theme Radar blank if no verified candidates exist. |
+| Theme sources | Liberty Street / Bank Underground / FRED Blog | $0 initially | Curated RSS feeds, no-key news RSS search, and best-effort article text excerpts or metadata with source-depth labels; live mode leaves Theme Radar blank if no verified candidates exist. |
 | Reader feedback | Local CSV | $0 | Optional local preference memory from `FEEDBACK_PATH`; it changes code ranking, not model training. |
 | Hosting | Local Mac/server for validation | $0 expected | Production should use an always-on Mac/workstation/VPS if precise scheduled delivery is required. |
 

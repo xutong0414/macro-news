@@ -76,7 +76,7 @@ Recommended run settings:
 BRIEF_TIMEZONE=Asia/Hong_Kong
 THEME_HISTORY_PATH=.cache/theme_radar/history.json
 THEME_RECENT_DAYS=7
-THEME_METADATA_FETCH_LIMIT=8
+THEME_ARTICLE_FETCH_LIMIT=8
 PORTFOLIO_PATH=inputs/portfolio/positions.csv
 FEEDBACK_PATH=inputs/feedback/daily_feedback.local.csv
 OUTPUT_DIR=outputs
@@ -90,7 +90,7 @@ Notes:
 - Keep optional providers such as DeepSeek blank unless you add provider support.
 - Keep `LLM_FAILURE_MODE=block` for the safest default. Use `data_only` only if you prefer receiving a clearly labeled data checkpoint when Gemini narrative validation fails.
 - `FEEDBACK_PATH` should usually point to a local ignored file such as `inputs/feedback/daily_feedback.local.csv`.
-- `THEME_METADATA_FETCH_LIMIT` controls how many Theme Radar article pages the agent tries to open for basic page metadata. Use `0` for RSS/search-snippet-only behavior.
+- `THEME_ARTICLE_FETCH_LIMIT` controls how many direct RSS article pages the agent tries to open for best-effort article text and metadata. Use `0` for RSS/search-snippet-only behavior. Existing `.env` files that use `THEME_METADATA_FETCH_LIMIT` still work as a fallback.
 
 ## 3. Run Locally
 
@@ -251,7 +251,7 @@ Current live sources:
 
 Live mode does not use generated/sample market, calendar, or Theme Radar fallback content. If a live source and cached real row are both unavailable, the relevant value cells or section are left blank rather than filled with invented values.
 
-Theme Radar uses feed-provided RSS excerpts or content fields when available, and can make a small best-effort metadata pass over article pages for standard fields such as page title, description, and publication time. This is not full article scraping. Google News RSS search rows remain labeled as search snippets. Theme Radar keeps recent selected links and headline-topic fingerprints under `.cache/theme_radar/`. Links and near-duplicate topics selected before the current run date receive novelty penalties for `THEME_RECENT_DAYS`, but they are not banned; an important current story can still rank highly enough to appear again. Same-day reruns may repeat entries. This local headline history is ignored by git. Google News RSS search results are filtered to trusted publisher names before selection.
+Theme Radar uses feed-provided RSS excerpts or content fields when available, and can make a small best-effort pass over direct RSS article pages for visible article text and standard metadata such as page title, description, and publication time. Article text is used only when enough useful paragraph text is extracted, and the prompt receives a capped excerpt rather than an unlimited page dump. Google News RSS search rows remain labeled as search snippets. Theme Radar keeps recent selected links and headline-topic fingerprints under `.cache/theme_radar/`. Links and near-duplicate topics selected before the current run date receive novelty penalties for `THEME_RECENT_DAYS`, but they are not banned; an important current story can still rank highly enough to appear again. Same-day reruns may repeat entries. This local headline history is ignored by git. Google News RSS search results are filtered to trusted publisher names before selection.
 
 ## Portfolio And Feedback Inputs
 
@@ -306,6 +306,6 @@ The assignment PDF is intentionally kept local and ignored by git.
 ## Current Caveats
 
 - Free public data sources can timeout, rate-limit, or lag on weekends and holidays.
-- Theme Radar uses RSS excerpts/content fields, article metadata when reachable, and search snippets; it is not guaranteed full article text.
+- Theme Radar uses RSS excerpts/content fields, best-effort article text excerpts or metadata when reachable, and search snippets; it is not guaranteed full article text.
 - Scheduled delivery requires an always-on machine or external scheduler.
 - GitHub scheduled events are documented but not treated as the dependable production scheduler for this prototype.
