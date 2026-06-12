@@ -60,6 +60,8 @@ Fallback rule: `LLM_FAILURE_MODE=block` remains the safest default. `LLM_FAILURE
 
 Diagnostic rule: model-comparison logs record exact validation errors per model, not only repair counts, so model changes can be judged by failure type as well as cost and speed.
 
+Parsing rule: if Gemini returns one valid JSON object followed by stray trailing text, the parser reads the first complete object and then still applies all normal validation rules. This prevents harmless formatting junk from blocking a valid draft while preserving the reasoning gate.
+
 ## Data Fallback Policy
 
 Decision: sample mode and live mode are separate.
@@ -80,7 +82,7 @@ Decision: use free/public market sources for the prototype.
 
 Current sources:
 
-- Yahoo Finance chart/quote data for broad equities, US rates, China internet/tech proxy, dollar, gold, oil, and volatility.
+- Yahoo Finance chart/quote data for broad equities, US AI/growth proxies, US rates, China internet/tech proxy, dollar, gold, oil, copper, and volatility.
 - Japan MOF JGB yield CSV for Japan 10Y.
 - Frankfurter for EUR/USD and USD/JPY reference-rate rows.
 - CoinGecko for BTC.
@@ -96,6 +98,9 @@ Decision: include equities, rates, FX, gold, oil, and BTC.
 Current dashboard rows:
 
 - S&P 500
+- Nasdaq 100
+- US AI semiconductors basket
+- US data-center power basket
 - Euro Stoxx 50
 - US 10Y yield
 - Japan 10Y yield
@@ -106,6 +111,7 @@ Current dashboard rows:
 - Gold
 - Brent oil
 - WTI oil
+- Copper
 - VIX
 - BTC
 
@@ -152,13 +158,15 @@ Reason: this makes the prototype extendable without hard-coding the book in prom
 
 Rule: when Gemini synthesis is enabled, active portfolio rows are scored against live market moves, calendar events, and Theme Radar/news signals before the LLM call. The top selected topics become the required order for "The 3 Things That Matter Today."
 
+Rule: `exposure` captures assumed position size, while `significance` captures strategic monitoring importance. Significance is a ranking nudge, not a hard selection rule.
+
 Rule: selected topics include code-generated `narrative_guidance` and `avoid_claims` for high-risk logic such as DXY direction, EM debt funding pressure, USD/JPY long semantics, gold/rates, oil/inflation, volatility, and event-risk framing. Global dashboard guardrails are also attached to every selected topic when cross-cutting rows such as DXY, VIX, or oil move. Gemini may polish the prose, but it must not contradict those guardrails.
 
 Rule: when topic scores are close, direct portfolio links receive a modest ranking preference over broad indirect macro links. For example, an ECB event should attach first to EUR/USD rather than to a high-exposure but indirect USD/JPY position.
 
 Rule: Contrarian Corner must challenge the first selected topic rather than introduce an unrelated risk.
 
-Rule: the run log records selected topics, score components, and selected chart metadata for auditability.
+Rule: the run log records selected topics, readable selection reasons, score components, and selected chart metadata for auditability.
 
 ## Feedback Input
 

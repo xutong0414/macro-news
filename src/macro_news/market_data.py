@@ -55,6 +55,9 @@ class YahooSpec:
 
 YAHOO_SPECS = [
     YahooSpec("S&P 500", "^GSPC", "", 2, "pct", "yahoo_chart:^GSPC", "US equity risk tone frames the global open."),
+    YahooSpec("Nasdaq 100", "^NDX", "", 2, "pct", "yahoo_chart:^NDX", "Nasdaq leadership is the cleanest public proxy for US AI and growth-equity risk."),
+    YahooSpec("US AI semiconductors basket", "SOXX", "$", 2, "pct", "yahoo_chart:SOXX", "Semiconductors are the most direct listed-market proxy for AI capex momentum."),
+    YahooSpec("US data-center power basket", "XLU", "$", 2, "pct", "yahoo_chart:XLU", "Utilities proxy the AI power-demand and grid-infrastructure bottleneck."),
     YahooSpec("Euro Stoxx 50", "^STOXX50E", "", 2, "pct", "yahoo_chart:^STOXX50E", "European equities show whether risk appetite is broadening."),
     YahooSpec("US 10Y yield", "^TNX", "%", 2, "bp", "yahoo_chart:^TNX", "Treasury duration pressure drives USD/JPY, gold, and EM debt."),
     YahooSpec("China internet / tech basket", "KWEB", "$", 2, "pct", "yahoo_chart:KWEB", "China internet and tech sentiment proxy for China growth risk."),
@@ -62,6 +65,7 @@ YAHOO_SPECS = [
     YahooSpec("Gold", "GC=F", "$", 2, "pct", "yahoo_chart:GC=F", "Gold tests whether rate or dollar pressure is biting."),
     YahooSpec("Brent oil", "BZ=F", "$", 2, "pct", "yahoo_chart:BZ=F", "Brent is a global inflation and geopolitical risk proxy."),
     YahooSpec("WTI oil", "CL=F", "$", 2, "pct", "yahoo_chart:CL=F", "Oil matters for inflation risk and rates pricing."),
+    YahooSpec("Copper", "HG=F", "$", 2, "pct", "yahoo_chart:HG=F", "Copper links the AI/electrification buildout to cyclical industrial demand."),
     YahooSpec("VIX", "^VIX", "", 2, "pct", "yahoo_chart:^VIX", "Volatility shows whether defensive hedging demand is rising."),
 ]
 
@@ -121,6 +125,30 @@ def _why_it_matters(quote: LiveQuote) -> str:
             "up": "Risk tone improved; EM beta has some support if rates and the dollar stay contained.",
             "down": "Risk tone softened; EM debt and high-beta FX should trade defensively.",
             "flat": "US equities give little direction; rates and FX are the cleaner overnight signal.",
+        }[direction]
+    if asset == "Nasdaq 100":
+        return {
+            "up": "Growth leadership is firm, supporting AI-linked equity exposure if rates stay contained.",
+            "down": "Growth leadership is fading, a warning for AI-linked equity exposure and risk appetite.",
+            "flat": "Nasdaq is not adding a fresh signal; semiconductors and rates are the cleaner AI read-through.",
+        }[direction]
+    if asset == "US AI semiconductors basket":
+        return {
+            "up": "Semiconductor strength supports the AI capex theme and high-beta growth leadership.",
+            "down": "Semiconductor weakness challenges the AI capex theme and can spill into growth-equity risk.",
+            "flat": "Semiconductors are not moving the AI story today; watch rates, Nasdaq, and power proxies.",
+        }[direction]
+    if asset == "US data-center power basket":
+        return {
+            "up": "Utilities strength supports the AI power-infrastructure bottleneck theme.",
+            "down": "Utilities weakness cools the AI power-infrastructure read-through, especially if rates are rising.",
+            "flat": "The power proxy is quiet; AI infrastructure headlines need confirmation from chips and rates.",
+        }[direction]
+    if asset == "Copper":
+        return {
+            "up": "Copper strength supports electrification, grid, and industrial-demand read-throughs.",
+            "down": "Copper weakness questions the cyclical side of the AI infrastructure and China-demand story.",
+            "flat": "Copper is not adding a fresh industrial signal; use equities, oil, and rates for direction.",
         }[direction]
     if asset == "Euro Stoxx 50":
         return {
@@ -468,6 +496,9 @@ def replace_market_rows_with_live(
     fallback_by_asset = {row.asset: row for row in data.market_rows}
     target_order = [
         "S&P 500",
+        "Nasdaq 100",
+        "US AI semiconductors basket",
+        "US data-center power basket",
         "Euro Stoxx 50",
         "US 10Y yield",
         "Japan 10Y yield",
@@ -478,6 +509,7 @@ def replace_market_rows_with_live(
         "Gold",
         "Brent oil",
         "WTI oil",
+        "Copper",
         "VIX",
         "BTC",
     ]
@@ -576,7 +608,7 @@ def replace_market_rows_with_live(
     reference_now = reference_now or datetime.now(zone)
     extracted_at = reference_now.astimezone(zone).strftime("%Y-%m-%d %H:%M %Z")
     dashboard_notes = [
-        "Dashboard scope: equities (S&P 500, Euro Stoxx 50, China internet/tech proxy), rates (US/Japan 10Y), FX (DXY, EUR/USD, USD/JPY), gold, oil, volatility, and BTC.",
+        "Dashboard scope: equities (S&P 500, Nasdaq 100, US AI semiconductors, US data-center power, Euro Stoxx 50, China internet/tech proxy), rates (US/Japan 10Y), FX (DXY, EUR/USD, USD/JPY), gold, oil, copper, volatility, and BTC.",
         (
             f"Timing basis: extracted at {extracted_at}; equity/rate/commodity rows use latest source daily close vs prior source daily close; "
             "Frankfurter FX rows use the latest published daily reference rate vs the immediately previous published daily reference rate; "

@@ -16,6 +16,7 @@ Columns:
 - `asset`: position name used in brief logic.
 - `position`: plain-language direction, for example `long`, `overweight`, `exposed`, `neutral`, or `flat`.
 - `exposure`: optional size bucket, for example `high`, `medium`, or `low`.
+- `significance`: optional strategic-importance bucket, for example `high`, `medium`, or `low`.
 - `quantity`: optional numeric amount.
 - `unit`: optional unit for `quantity`.
 - `notes`: optional source or explanation.
@@ -46,6 +47,16 @@ Examples:
 
 In a real fund, exposure might be measured with `% NAV`, notional, DV01, beta, or risk contribution. This project uses `high`, `medium`, and `low` because the default book is fictional and public-safe.
 
+`significance` means strategic relevance for the daily note. It answers: how important is this topic to monitor, even if the current exposure is not huge?
+
+Examples:
+
+- `high`: central theme or major book risk.
+- `medium`: important context that can move the morning agenda when supported by data or news.
+- `low`: useful background signal, but it should not dominate unless the news or market move is unusually strong.
+
+Example distinction: a data-center power basket can have `exposure=low` but `significance=medium` because it is not a large assumed holding, yet it is a meaningful AI-infrastructure theme. Significance is a ranking nudge, not a hard rule.
+
 ## Watch Items
 
 A row with `position=watch` can be useful even if it is not a real trade. It gives the agent more macro context and can help the daily brief rotate away from the same few assets.
@@ -53,7 +64,7 @@ A row with `position=watch` can be useful even if it is not a real trade. It giv
 Example:
 
 ```csv
-2026-06-11,Brent oil,watch,medium,,,Inflation and geopolitical risk proxy
+2026-06-11,Brent oil,watch,medium,medium,,,Inflation and geopolitical risk proxy
 ```
 
 Plain English: Brent oil is not necessarily held directly, but a large oil move matters for inflation, rates, and risk appetite.
@@ -66,9 +77,11 @@ The simplified workflow is:
 
 1. Load active positions as of the run date.
 2. Match each position to relevant dashboard rows, calendar events, and Theme Radar/news inputs.
-3. Score candidates using live move size, event/source importance, freshness/status, `exposure`, and simple diversification rules.
+3. Score candidates using live move size, event/source importance, freshness/status, `exposure`, `significance`, and simple diversification rules.
 4. Select the top topics for "The 3 Things That Matter Today."
 5. Select a chart that supports the first selected topic when a live series is available.
 6. Ask Gemini to explain the selected topics and write a Contrarian Corner that challenges the first selected topic.
 
 This means adding a watched asset can help the brief rotate, especially when the agent has a live or cached market row, an important calendar event, or a relevant Theme Radar/news item that can support it. If an asset has no supporting data, it may appear in assumptions but will not strongly drive the main topics.
+
+The default public `positions.csv` includes a fictional, public-safe macro book. It is meant to demonstrate the agent logic, not to describe a real portfolio. To use a private real book, keep a separate local CSV outside git and point `PORTFOLIO_PATH` to that file.

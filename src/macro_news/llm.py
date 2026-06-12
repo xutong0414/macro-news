@@ -136,10 +136,15 @@ def _extract_json(text: str) -> dict:
         cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
         cleaned = re.sub(r"\s*```$", "", cleaned)
     start = cleaned.find("{")
-    end = cleaned.rfind("}")
-    if start == -1 or end == -1 or end <= start:
+    if start == -1:
         raise ValueError("Gemini response did not contain a JSON object")
-    return json.loads(cleaned[start : end + 1])
+    try:
+        payload, _end = json.JSONDecoder().raw_decode(cleaned[start:])
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Gemini response did not contain a valid JSON object: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("Gemini response JSON root must be an object")
+    return payload
 
 
 def _normalize_book_impact(text: str) -> str:
@@ -291,7 +296,8 @@ def build_narrative_prompt(data: BriefData) -> str:
         "Contrarian Corner:\n"
         "- If selected_topics is non-empty, write contrarian_corner as the pushback to the first selected topic.\n"
         "- The contrarian view should challenge the simple read from selected_topics[0], not introduce an unrelated topic.\n"
-        "- Include one concrete trigger that would make that contrarian view more plausible.\n\n"
+        "- Name the simple read or consensus view, state why that view could be wrong, include one concrete trigger that would make the pushback more plausible, and tie the implication back to the assumed book.\n"
+        "- Do not invent a further-reading link; the application renders available links separately.\n\n"
         "Portfolio semantics:\n"
         "- A long USD/JPY position benefits when USD/JPY rises, but is hurt by intervention or yen-strength reversal risk.\n"
         "- Stronger dollar pressure or higher US yields usually support a long USD/JPY position; they are not, by themselves, pressure on the long.\n"
@@ -330,7 +336,7 @@ def build_narrative_prompt(data: BriefData) -> str:
         "- Do not use the word 'posits'. Use 'argues', 'shows', or direct wording instead.\n"
         "- Each book_impact line must start with 'What this means for our book:' and must be specific to that source.\n"
         "- Do not repeat the same book_impact line across Theme Radar items.\n"
-        "- contrarian_corner must be 50-100 words, name a simple read or consensus narrative based only on the facts, challenge the first selected topic when selected_topics exists, include one concrete trigger that would challenge it, and avoid exact market move numbers unless essential.\n\n"
+        "- contrarian_corner must be 50-100 words, name a simple read or consensus narrative based only on the facts, challenge the first selected topic when selected_topics exists, explain why that read could be wrong, include one concrete trigger, tie the implication back to the book, and avoid exact market move numbers unless essential.\n\n"
         f"Facts:\n{json.dumps(facts, indent=2)}"
     )
 

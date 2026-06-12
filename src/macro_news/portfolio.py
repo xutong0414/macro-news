@@ -14,6 +14,7 @@ class PositionEntry:
     asset: str
     position: str
     exposure: str
+    significance: str
     quantity: str
     unit: str
     notes: str
@@ -40,6 +41,7 @@ def read_position_entries(path: Path) -> list[PositionEntry]:
                     asset=asset,
                     position=_clean(row.get("position")),
                     exposure=_clean(row.get("exposure")),
+                    significance=_clean(row.get("significance") or row.get("importance")),
                     quantity=_clean(row.get("quantity")),
                     unit=_clean(row.get("unit")),
                     notes=_clean(row.get("notes")),
@@ -66,6 +68,8 @@ def _position_phrase(entry: PositionEntry) -> str:
     details = [entry.position]
     if entry.exposure:
         details.append(f"exposure={entry.exposure}")
+    if entry.significance:
+        details.append(f"significance={entry.significance}")
     if entry.quantity:
         quantity = f"{entry.quantity} {entry.unit}".strip()
         details.append(f"quantity={quantity}")

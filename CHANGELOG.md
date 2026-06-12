@@ -8,11 +8,18 @@ All notable public-facing changes are recorded here. Local run logs, cache files
 
 - Added best-effort Theme Radar article-text extraction for direct RSS article pages, with source-depth labels only upgraded when useful page text is actually extracted.
 - Added `THEME_ARTICLE_FETCH_LIMIT` as the preferred control for Theme Radar article-page enrichment, with `THEME_METADATA_FETCH_LIMIT` retained as a backward-compatible fallback.
+- Added optional portfolio `significance` labels so strategic monitoring importance can influence topic ranking separately from assumed exposure size.
+- Added public-safe AI and current macro-theme portfolio assumptions, including US AI semiconductors, Nasdaq/growth, data-center power, copper, European defense, and stablecoin/crypto infrastructure monitors.
+- Added live Yahoo Finance proxy rows for Nasdaq 100, US AI semiconductors, US data-center power, and copper.
+- Added readable topic-selection reasons to run logs, alongside score components and selected chart metadata.
+- Added JSON parsing hardening for Gemini responses that contain one valid JSON object followed by stray trailing text; content validation still runs after parsing.
 
 ### Changed
 
 - Theme Radar source scoring now gives a modest preference to usable article text excerpts over metadata-only or search-snippet evidence.
 - Theme Radar documentation now distinguishes RSS excerpts, RSS content fields, article text excerpts, article metadata, and search result snippets more explicitly.
+- Topic selection now recognizes AI semiconductor, AI power, copper/electrification, defense, and stablecoin/crypto-plumbing themes when supported by market rows or Theme Radar inputs.
+- Contrarian Corner prompting now asks for a clearer simple-read challenge, trigger, and book implication while keeping existing validation boundaries.
 
 ## 2026-06-11
 

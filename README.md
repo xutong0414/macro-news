@@ -244,7 +244,7 @@ It also includes a feedback questionnaire, source status, and assumptions so the
 
 Current live sources:
 
-- Market dashboard: Yahoo Finance quote/chart data, Japan MOF JGB yield CSV, Frankfurter FX reference rates, and CoinGecko BTC data.
+- Market dashboard: Yahoo Finance quote/chart data, Japan MOF JGB yield CSV, Frankfurter FX reference rates, and CoinGecko BTC data. Yahoo Finance proxies include broad equities, US AI/growth proxies, rates, commodities, dollar, gold, oil, and volatility.
 - Calendar: Fair Economy / Forex Factory weekly calendar feed.
 - Theme Radar: curated RSS feeds from Liberty Street Economics, Bank Underground, FRED Blog, and no-key Google News RSS search queries when reachable.
 - Chart: selected from the portfolio-aware topic selector when live market history is available; common sources include Yahoo Finance chart data and Frankfurter FX reference rates.
@@ -263,7 +263,7 @@ inputs/portfolio/positions.csv
 
 Each row is an effective-date update. If there is no new row for a run date, the latest prior row carries forward.
 
-When `--use-llm` is enabled, the portfolio file also affects "The 3 Things That Matter Today," "One Chart Worth Seeing," and "Contrarian Corner." The agent ranks market moves, calendar events, and Theme Radar/news signals against active positions, gives a modest preference to direct portfolio links when scores are close, chooses the top topics, adds code-generated topic and dashboard guardrails, and then asks Gemini to write to those selected topics in order. The run log records the selected topics, score components, guidance, and avoid-claims. See `inputs/portfolio/README.md`.
+When `--use-llm` is enabled, the portfolio file also affects "The 3 Things That Matter Today," "One Chart Worth Seeing," and "Contrarian Corner." The agent ranks market moves, calendar events, and Theme Radar/news signals against active positions, gives a modest preference to direct portfolio links when scores are close, chooses the top topics, adds code-generated topic and dashboard guardrails, and then asks Gemini to write to those selected topics in order. The run log records the selected topics, readable selection reasons, score components, guidance, and avoid-claims. See `inputs/portfolio/README.md`.
 
 Human feedback is tracked with:
 

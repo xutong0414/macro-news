@@ -531,6 +531,7 @@ def run_brief(
         "topic_selection": {
             "selected_titles": data.three_thing_titles,
             "selected_topics": data.topic_candidates,
+            "selection_report": data.topic_selection_report,
             "selected_chart": {
                 "title": data.chart_title,
                 "source_label": data.chart_source_label,

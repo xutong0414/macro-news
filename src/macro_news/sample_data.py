@@ -56,6 +56,7 @@ class BriefData:
     chart_source_url: str = ""
     market_series: dict[str, tuple[tuple[str, float], ...]] = field(default_factory=dict)
     topic_candidates: list[dict[str, object]] = field(default_factory=list)
+    topic_selection_report: list[dict[str, object]] = field(default_factory=list)
     three_thing_titles: list[str] = field(default_factory=list)
 
 

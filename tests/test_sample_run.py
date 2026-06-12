@@ -73,6 +73,17 @@ def _assert_first_thing_rejected(base, first_thing: str, expected_message: str) 
         raise AssertionError(f"Expected narrative validation to fail: {expected_message}")
 
 
+def test_parse_narrative_response_ignores_trailing_non_json_junk() -> None:
+    response = _valid_response_with_first_thing(
+        "USD/JPY is near the intervention zone after a large rise. So what: keep the long USD/JPY risk tightly monitored."
+    )
+    response_with_junk = f"{response}\n  }}\n]"
+
+    generated = parse_narrative_response(response_with_junk, build_sample_brief_data())
+
+    assert generated.three_things[0].startswith("USD/JPY is near the intervention zone")
+
+
 def test_timezone_aliases_normalize() -> None:
     assert normalize_timezone("Hong Kong") == "Asia/Hong_Kong"
     assert normalize_timezone("HongKong") == "Asia/Hong_Kong"
@@ -142,6 +153,25 @@ def test_portfolio_positions_carry_forward(tmp_path) -> None:
     assert any("USD/JPY: long" in item for item in data.assumptions)
     assert any("Gold: neutral" in item for item in data.assumptions)
     assert any("carry-forward rule" in item.lower() for item in data.assumptions)
+
+
+def test_portfolio_positions_read_significance_column(tmp_path) -> None:
+    path = tmp_path / "positions.csv"
+    path.write_text(
+        "\n".join(
+            [
+                "effective_date,asset,position,exposure,significance,quantity,unit,notes",
+                "2026-06-01,US AI semiconductors basket,overweight,medium,high,,,AI capex proxy",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    entries = read_position_entries(path)
+    data = apply_portfolio_assumptions(build_sample_brief_data(), run_date=date(2026, 6, 12), path=path)
+
+    assert entries[0].significance == "high"
+    assert any("significance=high" in item for item in data.assumptions)
 
 
 def test_sample_brief_contains_required_sections() -> None:
@@ -701,6 +731,14 @@ def test_narrative_prompt_includes_selected_topic_guardrails(tmp_path) -> None:
     assert "DXY is up, so treat dollar pressure as tighter funding for EM debt." in prompt
 
 
+def test_narrative_prompt_requires_contrarian_book_implication() -> None:
+    prompt = build_narrative_prompt(build_sample_brief_data())
+
+    assert "state why that view could be wrong" in prompt
+    assert "tie the implication back to the assumed book" in prompt
+    assert "Do not invent a further-reading link" in prompt
+
+
 def test_topic_selection_can_rank_theme_radar_news_signal(tmp_path) -> None:
     portfolio_path = tmp_path / "positions.csv"
     portfolio_path.write_text(
@@ -736,6 +774,76 @@ def test_topic_selection_can_rank_theme_radar_news_signal(tmp_path) -> None:
 
     assert selected.topic_candidates[0]["origin"] == "theme"
     assert selected.three_thing_titles[0] == "Inflation Expectations Signal"
+
+
+def test_topic_selection_can_rank_ai_theme_signal(tmp_path) -> None:
+    portfolio_path = tmp_path / "positions.csv"
+    portfolio_path.write_text(
+        "\n".join(
+            [
+                "effective_date,asset,position,exposure,significance,quantity,unit,notes",
+                "2026-06-12,US AI semiconductors basket,overweight,medium,high,,,AI capex proxy",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    data = replace(
+        build_sample_brief_data(),
+        market_rows=[
+            MarketRow("US AI semiconductors basket", "$315.00", "$314.80", "+0.1%", "Semiconductors are not moving the AI story today; watch rates, Nasdaq, and power proxies."),
+            MarketRow("Nasdaq 100", "21,100", "21,090", "+0.0%", "Nasdaq is not adding a fresh signal; semiconductors and rates are the cleaner AI read-through."),
+            MarketRow("S&P 500", "7,269", "7,266", "+0.0%", "US equities give little direction; rates and FX are the cleaner overnight signal."),
+        ],
+        calendar=[],
+        theme_radar=[
+            ThemeItem(
+                "AI chip capex is moving from hype to delivery risk",
+                "Reuters",
+                "https://www.reuters.com/example-ai-chip-capex",
+                "Artificial intelligence spending remains concentrated in semiconductors, GPUs, cloud capacity, and data center buildouts. The evidence is stronger capex guidance from hyperscalers, tight memory supply, and a bigger focus on whether chip demand can translate into earnings.",
+                "What this means for our book: AI semiconductor exposure matters because a capex slowdown would hurt growth leadership even if broad equities look calm.",
+                "search result snippet",
+            )
+        ],
+    )
+
+    selected = select_portfolio_topics(data, run_date=date(2026, 6, 12), portfolio_path=portfolio_path)
+
+    assert selected.topic_candidates[0]["origin"] == "theme"
+    assert selected.three_thing_titles[0] == "AI Semiconductor Cycle"
+    assert selected.topic_candidates[0]["portfolio_asset"] == "US AI semiconductors basket"
+    assert selected.topic_selection_report[0]["significance"] == "high"
+
+
+def test_topic_selection_report_records_readable_reason(tmp_path) -> None:
+    portfolio_path = tmp_path / "positions.csv"
+    portfolio_path.write_text(
+        "\n".join(
+            [
+                "effective_date,asset,position,exposure,significance,quantity,unit,notes",
+                "2026-06-12,US AI semiconductors basket,overweight,medium,high,,,AI capex proxy",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    data = replace(
+        build_sample_brief_data(),
+        market_rows=[
+            MarketRow("US AI semiconductors basket", "$315.00", "$300.00", "+5.0%", "Semiconductor strength supports the AI capex theme and high-beta growth leadership."),
+            MarketRow("Nasdaq 100", "21,100", "20,900", "+1.0%", "Growth leadership is firm, supporting AI-linked equity exposure if rates stay contained."),
+            MarketRow("VIX", "14.0", "15.0", "-6.7%", "Lower volatility supports risk appetite, but it can also make hedges look underpriced."),
+        ],
+        calendar=[],
+        theme_radar=[],
+    )
+
+    selected = select_portfolio_topics(data, run_date=date(2026, 6, 12), portfolio_path=portfolio_path)
+    report = selected.topic_selection_report[0]
+
+    assert report["title"] == "AI Semiconductor Cycle"
+    assert "why_selected" in report
+    assert "portfolio significance" in str(report["why_selected"])
+    assert report["score_components"]["significance"] == 1.25
 
 
 def test_topic_selection_applies_reader_feedback_adjustment(tmp_path) -> None:
@@ -1831,10 +1939,17 @@ class FakeMarketClient:
                 raise RuntimeError("simulated DXY outage")
             closes = {
                 "^GSPC": [100.0, 102.0],
+                "^NDX": [500.0, 510.0],
+                "SOXX": [250.0, 260.0],
+                "XLU": [70.0, 71.0],
                 "^STOXX50E": [200.0, 198.0],
                 "^TNX": [4.40, 4.45],
+                "KWEB": [30.0, 30.3],
                 "GC=F": [2300.0, 2310.0],
+                "BZ=F": [84.0, 83.0],
                 "CL=F": [80.0, 82.0],
+                "HG=F": [4.30, 4.40],
+                "^VIX": [16.0, 15.0],
             }[symbol]
             return FakeResponse(
                 {
@@ -1898,6 +2013,10 @@ def test_live_market_data_replaces_rows_and_logs_fallback(tmp_path) -> None:
     assert "Germany 10Y yield" not in row_by_asset
     assert row_by_asset["S&P 500"].close == "102.00"
     assert row_by_asset["S&P 500"].change == "+2.0%"
+    assert row_by_asset["Nasdaq 100"].close == "510.00"
+    assert row_by_asset["US AI semiconductors basket"].close == "$260.00"
+    assert row_by_asset["US data-center power basket"].close == "$71.00"
+    assert row_by_asset["Copper"].close == "$4.40"
     assert row_by_asset["S&P 500"].as_of
     assert row_by_asset["S&P 500"].status == "*"
     assert row_by_asset["S&P 500"].so_what == "Risk tone improved; EM beta has some support if rates and the dollar stay contained."
@@ -1922,10 +2041,15 @@ def test_live_market_data_replaces_rows_and_logs_fallback(tmp_path) -> None:
     assert "frankfurter:EURUSD" in result.sources
     assert "mof_japan:jgbcm_10y" in result.sources
     assert "yahoo_chart:^GSPC" in result.sources
+    assert "yahoo_chart:^NDX" in result.sources
+    assert "yahoo_chart:SOXX" in result.sources
+    assert "yahoo_chart:XLU" in result.sources
+    assert "yahoo_chart:HG=F" in result.sources
     assert result.cached_assets == []
     assert any("extracted at" in note for note in result.data.dashboard_notes)
     assert any("Additional information about timing" in note for note in result.data.dashboard_notes)
     assert any("[Japan MOF JGB yield CSV]" in note for note in result.data.dashboard_notes)
+    assert any("US AI semiconductors" in note for note in result.data.dashboard_notes)
     assert any("rates (US/Japan 10Y)" in note for note in result.data.dashboard_notes)
     rendered = render_markdown(result.data)
     assert "Frankfurter FX rows use the latest published daily reference rate" in rendered

@@ -17,6 +17,7 @@ class TopicCandidate:
     portfolio_asset: str
     position: str
     exposure: str
+    significance: str
     related_assets: tuple[str, ...]
     evidence: tuple[str, ...]
     required_terms: tuple[str, ...]
@@ -31,6 +32,9 @@ class TopicCandidate:
 
 CHART_SOURCE_BY_ASSET = {
     "S&P 500": ("Yahoo Finance S&P 500 chart data", "https://finance.yahoo.com/quote/%5EGSPC/"),
+    "Nasdaq 100": ("Yahoo Finance Nasdaq 100 chart data", "https://finance.yahoo.com/quote/%5ENDX/"),
+    "US AI semiconductors basket": ("Yahoo Finance SOXX chart data", "https://finance.yahoo.com/quote/SOXX/"),
+    "US data-center power basket": ("Yahoo Finance XLU chart data", "https://finance.yahoo.com/quote/XLU/"),
     "Euro Stoxx 50": ("Yahoo Finance Euro Stoxx 50 chart data", "https://finance.yahoo.com/quote/%5ESTOXX50E/"),
     "US 10Y yield": ("Yahoo Finance US 10Y chart data", "https://finance.yahoo.com/quote/%5ETNX/"),
     "China internet / tech basket": ("Yahoo Finance KWEB chart data", "https://finance.yahoo.com/quote/KWEB/"),
@@ -40,6 +44,7 @@ CHART_SOURCE_BY_ASSET = {
     "Gold": ("Yahoo Finance gold futures chart data", "https://finance.yahoo.com/quote/GC=F/"),
     "Brent oil": ("Yahoo Finance Brent oil futures chart data", "https://finance.yahoo.com/quote/BZ=F/"),
     "WTI oil": ("Yahoo Finance WTI oil futures chart data", "https://finance.yahoo.com/quote/CL=F/"),
+    "Copper": ("Yahoo Finance copper futures chart data", "https://finance.yahoo.com/quote/HG=F/"),
     "VIX": ("Yahoo Finance VIX chart data", "https://finance.yahoo.com/quote/%5EVIX/"),
 }
 
@@ -57,6 +62,14 @@ def _exposure_weight(exposure: str) -> float:
         "medium": 2.0,
         "low": 1.0,
     }.get(exposure.lower(), 1.5)
+
+
+def _significance_weight(significance: str) -> float:
+    return {
+        "high": 1.25,
+        "medium": 1.0,
+        "low": 0.85,
+    }.get(significance.lower(), 1.0)
 
 
 def _position_weight(position: str) -> float:
@@ -93,6 +106,48 @@ def _asset_matches(left: str, right: str) -> bool:
 
 def _position_profile(entry: PositionEntry) -> tuple[str, tuple[str, ...], tuple[str, ...], str]:
     key = _clean_key(entry.asset)
+    if "semiconductor" in key or ("ai" in key and "chip" in key):
+        return (
+            "AI Semiconductor Cycle",
+            ("US AI semiconductors basket", "Nasdaq 100", "S&P 500", "US 10Y yield", "VIX"),
+            ("ai", "artificial intelligence", "semiconductor", "chip", "gpu", "capex", "data center"),
+            "ai_equity",
+        )
+    if "data center power" in key or "utility" in key or "power basket" in key:
+        return (
+            "AI Power Bottleneck",
+            ("US data-center power basket", "Copper", "US 10Y yield", "S&P 500"),
+            ("ai", "artificial intelligence", "data center", "datacenter", "power", "electricity", "grid", "utilities"),
+            "ai_power",
+        )
+    if "nasdaq" in key or ("ai" in key and "equity" in key):
+        return (
+            "US AI Equity Cycle",
+            ("Nasdaq 100", "US AI semiconductors basket", "S&P 500", "US 10Y yield", "VIX"),
+            ("ai", "artificial intelligence", "nasdaq", "growth", "semiconductor", "software", "capex"),
+            "ai_equity",
+        )
+    if "copper" in key:
+        return (
+            "Copper And Electrification Demand",
+            ("Copper", "China internet / tech basket", "US data-center power basket", "Brent oil"),
+            ("copper", "electrification", "grid", "industrial", "china", "ai infrastructure"),
+            "copper",
+        )
+    if "defense" in key or "rearmament" in key:
+        return (
+            "Defense And Fiscal Security Theme",
+            ("Euro Stoxx 50", "US 10Y yield", "DXY"),
+            ("defense", "rearmament", "security", "nato", "fiscal", "europe"),
+            "defense",
+        )
+    if "stablecoin" in key or "crypto infrastructure" in key:
+        return (
+            "Stablecoin And Crypto Plumbing",
+            ("BTC", "DXY", "US 10Y yield"),
+            ("stablecoin", "crypto", "token", "digital dollar", "payments", "btc"),
+            "crypto",
+        )
     if "usd jpy" in key:
         return (
             "USD/JPY Intervention Risk",
@@ -177,6 +232,12 @@ def _position_relevance(entry: PositionEntry, text: str, related_assets: tuple[s
         "china internet": ("china", "cny", "pmi", "m2", "tech", "internet", "growth"),
         "brent": ("oil", "brent", "wti", "inflation", "geopolitical", "energy"),
         "vix": ("vix", "volatility", "risk", "hedging", "equity", "equities"),
+        "nasdaq": ("nasdaq", "growth", "ai", "artificial intelligence", "semiconductor", "software"),
+        "semiconductor": ("ai", "artificial intelligence", "semiconductor", "chip", "gpu", "hbm", "capex"),
+        "data center power": ("ai", "artificial intelligence", "data center", "datacenter", "power", "electricity", "grid", "utilities"),
+        "copper": ("copper", "electrification", "grid", "industrial", "china"),
+        "defense": ("defense", "rearmament", "nato", "security", "fiscal", "europe"),
+        "stablecoin": ("stablecoin", "crypto", "payments", "token", "digital dollar", "btc"),
     }
     entry_key = _clean_key(entry.asset)
     extra_terms: tuple[str, ...] = ()
@@ -184,7 +245,7 @@ def _position_relevance(entry: PositionEntry, text: str, related_assets: tuple[s
         if key.replace("/", " ") in entry_key or key in entry.asset.lower():
             extra_terms = terms
             break
-    base_score = _exposure_weight(entry.exposure) * _position_weight(entry.position)
+    base_score = _exposure_weight(entry.exposure) * _position_weight(entry.position) * _significance_weight(entry.significance)
     direct_link = any(_asset_matches(entry.asset, asset) for asset in related_assets)
     term_match = _contains_any(text_haystack, required_terms) or (extra_terms and _contains_any(text_haystack, extra_terms))
     if direct_link:
@@ -198,7 +259,7 @@ def _book_relevance(
     positions: list[PositionEntry],
     text: str,
     related_assets: tuple[str, ...] = (),
-) -> tuple[float, str, str, str, float]:
+) -> tuple[float, str, str, str, str, float]:
     scored = [
         (entry, relevance, direct_bonus)
         for entry in positions
@@ -206,9 +267,9 @@ def _book_relevance(
         if relevance > 0
     ]
     if not scored:
-        return (0.5, "General macro", "", "", 0.0)
+        return (0.5, "General macro", "", "", "", 0.0)
     entry, score, direct_bonus = max(scored, key=lambda item: (item[1] + item[2], item[2], item[1]))
-    return (score, entry.asset, entry.position, entry.exposure, direct_bonus)
+    return (score, entry.asset, entry.position, entry.exposure, entry.significance, direct_bonus)
 
 
 def _evidence_for_assets(rows_by_asset: dict[str, MarketRow], assets: tuple[str, ...]) -> tuple[str, ...]:
@@ -224,7 +285,7 @@ def _evidence_for_assets(rows_by_asset: dict[str, MarketRow], assets: tuple[str,
 
 def _candidate_score(entry: PositionEntry, rows_by_asset: dict[str, MarketRow], related_assets: tuple[str, ...]) -> float:
     evidence_score = sum(_change_score(rows_by_asset[asset].change) for asset in related_assets if asset in rows_by_asset)
-    return evidence_score * _exposure_weight(entry.exposure) * _position_weight(entry.position)
+    return evidence_score * _exposure_weight(entry.exposure) * _position_weight(entry.position) * _significance_weight(entry.significance)
 
 
 def _event_importance(event: CalendarEvent) -> float:
@@ -273,7 +334,7 @@ def _calendar_candidates(data: BriefData, positions: list[PositionEntry]) -> lis
     for event in data.calendar:
         title, related_assets, required_terms, group = _event_profile(event)
         event_text = f"{event.session} {event.event} {event.why_it_matters}"
-        relevance, portfolio_asset, position, exposure, direct_bonus = _book_relevance(
+        relevance, portfolio_asset, position, exposure, significance, direct_bonus = _book_relevance(
             positions,
             event_text,
             related_assets,
@@ -289,6 +350,7 @@ def _calendar_candidates(data: BriefData, positions: list[PositionEntry]) -> lis
                 portfolio_asset=portfolio_asset,
                 position=position,
                 exposure=exposure,
+                significance=significance,
                 related_assets=related_assets,
                 evidence=_calendar_evidence(event),
                 required_terms=required_terms,
@@ -300,6 +362,7 @@ def _calendar_candidates(data: BriefData, positions: list[PositionEntry]) -> lis
                     ("event_importance", importance),
                     ("book_relevance", relevance),
                     ("direct_portfolio_link", direct_bonus),
+                    ("significance", _significance_weight(significance)),
                 ),
             )
         )
@@ -328,6 +391,45 @@ def _theme_source_score(item: ThemeItem) -> float:
 
 def _theme_profile(item: ThemeItem) -> tuple[str, tuple[str, ...], tuple[str, ...], str]:
     text = f"{item.title} {item.summary} {item.book_impact}".lower()
+    padded = f" {text} "
+    if _contains_any(padded, (" electricity", " power grid", " utilities", " grid bottleneck", " power demand")) and _contains_any(
+        padded,
+        (" ai ", " artificial intelligence", " semiconductor", " chip", " gpu", " data center", " datacenter"),
+    ):
+        return (
+            "AI Power Bottleneck",
+            ("US data-center power basket", "Copper", "Nasdaq 100", "US 10Y yield"),
+            ("ai", "data center", "power", "grid", "electricity"),
+            "ai_power",
+        )
+    if _contains_any(padded, (" semiconductor", " chip", " gpu", " hbm", " ai capex")):
+        return (
+            "AI Semiconductor Cycle",
+            ("US AI semiconductors basket", "Nasdaq 100", "S&P 500", "VIX"),
+            ("ai", "semiconductor", "chip", "gpu", "capex"),
+            "ai_equity",
+        )
+    if _contains_any(padded, (" artificial intelligence", " ai ", " hyperscaler", " software", " cloud")):
+        return (
+            "US AI Equity Cycle",
+            ("Nasdaq 100", "US AI semiconductors basket", "S&P 500", "US 10Y yield"),
+            ("ai", "artificial intelligence", "growth", "software", "cloud"),
+            "ai_equity",
+        )
+    if _contains_any(text, ("defense", "rearmament", "nato", "security spending")):
+        return (
+            "Defense And Fiscal Security Theme",
+            ("Euro Stoxx 50", "US 10Y yield", "DXY"),
+            ("defense", "rearmament", "nato", "security", "fiscal"),
+            "defense",
+        )
+    if _contains_any(text, ("stablecoin", "tokenized", "tokenised", "digital dollar", "crypto payments")):
+        return (
+            "Stablecoin And Crypto Plumbing",
+            ("BTC", "DXY", "US 10Y yield"),
+            ("stablecoin", "token", "crypto", "payments", "dollar"),
+            "crypto",
+        )
     if _contains_any(text, ("inflation expectation", "inflation", "housing")):
         return ("Inflation Expectations Signal", ("US 10Y yield", "Gold", "DXY"), ("inflation", "expectations", "rates", "gold"), "inflation")
     if _contains_any(text, ("credit", "loan", "borrower", "funding")):
@@ -541,7 +643,7 @@ def _theme_candidates(data: BriefData, positions: list[PositionEntry]) -> list[T
     for item in data.theme_radar:
         title, related_assets, required_terms, group = _theme_profile(item)
         theme_text = f"{item.title} {item.summary} {item.book_impact}"
-        relevance, portfolio_asset, position, exposure, direct_bonus = _book_relevance(
+        relevance, portfolio_asset, position, exposure, significance, direct_bonus = _book_relevance(
             positions,
             theme_text,
             related_assets,
@@ -558,6 +660,7 @@ def _theme_candidates(data: BriefData, positions: list[PositionEntry]) -> list[T
                 portfolio_asset=portfolio_asset,
                 position=position,
                 exposure=exposure,
+                significance=significance,
                 related_assets=related_assets,
                 evidence=(f"Theme Radar: {item.title} from {item.source}; {_shorten(item.summary)}",),
                 required_terms=required_terms,
@@ -569,6 +672,7 @@ def _theme_candidates(data: BriefData, positions: list[PositionEntry]) -> list[T
                     ("source_quality", source_score),
                     ("book_relevance", relevance),
                     ("direct_portfolio_link", direct_bonus),
+                    ("significance", _significance_weight(significance)),
                     ("freshness", freshness_score),
                 ),
             )
@@ -593,6 +697,7 @@ def _candidate_to_prompt_dict(
         "portfolio_asset": candidate.portfolio_asset,
         "position": candidate.position,
         "exposure": candidate.exposure,
+        "significance": candidate.significance,
         "evidence": list(candidate.evidence),
         "required_terms": list(candidate.required_terms),
         "source_label": candidate.source_label,
@@ -604,6 +709,59 @@ def _candidate_to_prompt_dict(
     }
 
 
+def _component_label(name: str) -> str:
+    return {
+        "market_move": "market move size",
+        "exposure": "portfolio exposure",
+        "significance": "portfolio significance",
+        "position_weight": "position stance",
+        "direct_portfolio_link": "direct portfolio link",
+        "event_importance": "event importance",
+        "book_relevance": "book relevance",
+        "source_quality": "source quality/depth",
+        "freshness": "freshness",
+        "reader_feedback": "reader feedback",
+    }.get(name, name.replace("_", " "))
+
+
+def _selection_driver_text(candidate: TopicCandidate) -> str:
+    positive_components = [
+        (name, value)
+        for name, value in candidate.score_components
+        if value > 0 and name not in {"position_weight"}
+    ]
+    top_components = sorted(positive_components, key=lambda item: item[1], reverse=True)[:3]
+    drivers = ", ".join(f"{_component_label(name)} {value:.2f}" for name, value in top_components)
+    if not drivers:
+        drivers = "available evidence and portfolio relevance"
+    if candidate.portfolio_asset and candidate.portfolio_asset != "General macro":
+        return f"Ranked from {candidate.origin} evidence because {drivers}; linked to {candidate.portfolio_asset} ({candidate.position or 'watch'}, exposure={candidate.exposure or 'n/a'}, significance={candidate.significance or 'n/a'})."
+    return f"Ranked from {candidate.origin} evidence because {drivers}; no direct active-position link dominated."
+
+
+def _selection_report(selected: list[TopicCandidate]) -> list[dict[str, object]]:
+    report: list[dict[str, object]] = []
+    for rank, candidate in enumerate(selected, 1):
+        report.append(
+            {
+                "rank": rank,
+                "title": candidate.title,
+                "origin": candidate.origin,
+                "portfolio_asset": candidate.portfolio_asset,
+                "position": candidate.position,
+                "exposure": candidate.exposure,
+                "significance": candidate.significance,
+                "score": round(candidate.score, 3),
+                "score_components": {name: round(value, 3) for name, value in candidate.score_components},
+                "why_selected": _selection_driver_text(candidate),
+                "source_label": candidate.source_label,
+                "link": candidate.link,
+                "evidence": list(candidate.evidence),
+            }
+        )
+    return report
+
+
 def _candidate_feedback_text(candidate: TopicCandidate) -> str:
     return " ".join(
         [
@@ -612,6 +770,7 @@ def _candidate_feedback_text(candidate: TopicCandidate) -> str:
             candidate.portfolio_asset,
             candidate.position,
             candidate.exposure,
+            candidate.significance,
             candidate.source_label,
             " ".join(candidate.related_assets),
             " ".join(candidate.evidence),
@@ -656,9 +815,9 @@ def _select_chart_asset(candidate: TopicCandidate, data: BriefData) -> str | Non
 def _chart_y_label(asset: str) -> str:
     if "yield" in asset.lower():
         return "Yield (%)"
-    if asset in {"Gold", "Brent oil", "WTI oil", "China internet / tech basket"}:
+    if asset in {"Gold", "Brent oil", "WTI oil", "China internet / tech basket", "US AI semiconductors basket", "US data-center power basket", "Copper"}:
         return "Price"
-    if asset in {"VIX", "S&P 500", "Euro Stoxx 50", "DXY"}:
+    if asset in {"VIX", "S&P 500", "Nasdaq 100", "Euro Stoxx 50", "DXY"}:
         return "Index"
     return "Spot"
 
@@ -700,6 +859,7 @@ def select_portfolio_topics(
                 portfolio_asset=entry.asset,
                 position=entry.position,
                 exposure=entry.exposure,
+                significance=entry.significance,
                 related_assets=related_assets,
                 evidence=evidence,
                 required_terms=required_terms,
@@ -708,6 +868,7 @@ def select_portfolio_topics(
                 score_components=(
                     ("market_move", sum(_change_score(rows_by_asset[asset].change) for asset in related_assets if asset in rows_by_asset)),
                     ("exposure", _exposure_weight(entry.exposure)),
+                    ("significance", _significance_weight(entry.significance)),
                     ("position_weight", _position_weight(entry.position)),
                     ("direct_portfolio_link", DIRECT_PORTFOLIO_LINK_BONUS),
                 ),
@@ -779,6 +940,7 @@ def select_portfolio_topics(
         chart_source_label=chart_source_label,
         chart_source_url=chart_source_url,
         topic_candidates=[_candidate_to_prompt_dict(candidate, rows_by_asset) for candidate in selected_with_guardrails],
+        topic_selection_report=_selection_report(selected),
         three_thing_titles=[candidate.title for candidate in selected],
         assumptions=[*data.assumptions, selection_note, *([feedback_note] if feedback_note else [])],
         data_sources=[*data.data_sources, "portfolio_topic_selection", *(["reader_feedback"] if feedback_match_count else [])],

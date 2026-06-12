@@ -17,6 +17,9 @@ Implemented:
 - Theme Radar recent-link memory, near-duplicate topic scoring penalties, and no-key Google News RSS search expansion.
 - Portfolio-aware topic selector for "The 3 Things That Matter Today."
 - Direct portfolio-link preference when candidate topic scores are close.
+- Portfolio `significance` labels that nudge topic selection separately from assumed exposure size.
+- Public-safe AI and current macro-theme portfolio assumptions with live proxy rows for Nasdaq 100, US AI semiconductors, US data-center power, and copper.
+- Readable topic-selection reasons in ignored run logs, alongside score components and selected chart metadata.
 - Code-generated topic and global dashboard narrative guardrails, so Gemini receives safe read-through guidance and explicit claims to avoid before drafting.
 - Local reader-feedback CSV import that nudges topic ranking up or down without fine-tuning the model.
 - Dynamic chart selection tied to the first selected portfolio topic, with roughly three months of history and the latest five observations highlighted when source history is available.
@@ -39,17 +42,17 @@ Implemented:
 
 ## Latest Verification
 
-Latest recorded live dry run after the narrative stability pass:
+Latest recorded full live dry run after the selection-quality pass:
 
-- Run id: `20260611T161327Z`
+- Run id: `20260612T001535Z`
 - Mode: live market data, live calendar, live Theme Radar, Gemini narrative
 - Delivery: dry run only
-- Token use: 25,437 input, 2,889 output, 28,326 total
-- Estimated LLM cost: $0.0036993
+- Token use: 26,662 input, 2,992 output, 29,654 total
+- Estimated LLM cost: $0.003863
 - Prompt version: `gemini_narrative_v43`
-- Quality verdict: warning; Gemini narrative passed after three attempts with two repairs; the rejected drafts included a market-number mismatch and an underweight-S&P direction error, both caught before rendering the final brief
-- Source result: 10 dashboard rows refreshed from live public sources, three rows used cached real-source data, and no generated market fallback rows were used; calendar used six live Fair Economy / Forex Factory rows; Theme Radar selected one Google News RSS item and one Liberty Street Economics item, with one configured Theme Radar source timing out
-- Topic result: selected `EM Debt Conditions`, `Equity Risk Tone`, and `US Inflation Event Risk`; chart used `US 10Y yield: 3-Month Trend`; Contrarian Corner challenged EM debt conditions
+- Quality verdict: warning; send allowed; Gemini narrative passed after three attempts with two repaired validation errors; one Theme Radar source timed out
+- Source result: 17 dashboard rows refreshed from live public sources with no cached or blank rows; calendar selected six live Fair Economy / Forex Factory rows; Theme Radar selected two live RSS/search items from 27 candidates and used no generated fallback items
+- Topic result: selected `US AI Equity Cycle`, `EM Debt Conditions`, and `US Duration And Term Premium`; chart used `Nasdaq 100: 3-Month Trend`; the run log includes readable `why_selected` fields plus score components for each selected topic
 
 Latest Theme Radar source-depth smoke check:
 
@@ -61,7 +64,23 @@ Latest Theme Radar source-depth smoke check:
 Latest local tests:
 
 - `PYTHONPATH=src pytest -q`
-- Result: 86 passed
+- Result: 91 passed
+
+Latest selection-quality dry run:
+
+- Run id: `20260612T000756Z`
+- Mode: sample data with Gemini narrative and portfolio topic selection
+- Delivery: dry run only
+- Quality verdict: warning; Gemini narrative passed after two attempts with one repaired USD/JPY/dollar-support validation error
+- Topic result: selected `USD/JPY Intervention Risk`, `EM Debt Conditions`, and `US Duration And Term Premium`; the run log includes readable `why_selected` fields plus score components for each selected topic
+- Parser result: trailing non-JSON text from repaired Gemini drafts is now ignored only after the first complete JSON object is parsed; all normal validation still runs
+
+Latest market-proxy smoke check:
+
+- Run id: `20260612T001202Z`
+- Mode: live market data only, no Gemini, no email
+- Quality verdict: passed
+- Result: 17 dashboard rows refreshed from live public sources, including Nasdaq 100, US AI semiconductors basket, US data-center power basket, and copper
 
 Latest model comparison:
 
@@ -89,14 +108,13 @@ For an email target time such as 08:30 Hong Kong time, schedule the job to start
 
 ## Current Milestone
 
-Milestone: Theme Source Depth.
+Milestone: Selection Quality.
 
 Goal:
 
-- Improve Theme Radar evidence quality by using best-effort direct article text excerpts when available.
-- Keep source-depth labels honest: RSS/search snippets must stay labeled as snippets unless real article text or metadata was actually used.
-- Keep article-page fetching bounded and optional through `THEME_ARTICLE_FETCH_LIMIT`.
-- Preserve the public/private boundary for local run history, headline history, and collaboration notes.
+- Make "The 3 Things That Matter Today" and "One Chart Worth Seeing" less mechanical by broadening the public-safe assumed book and making the ranking logic easier to audit.
+- Keep topic selection code-owned: Gemini explains the selected agenda but does not choose the facts or invent positions.
+- Keep the public/private boundary for local run history, headline history, feedback CSVs, and collaboration notes.
 
 ## Maintenance Checklist
 
@@ -113,6 +131,8 @@ Next safety improvements before adding major new content features:
 
 - Broaden Theme Radar coverage only through auditable source additions or provider APIs; keep RSS/search snippets clearly labeled when no article text or abstract is available.
 - Repeat model comparisons only after prompt/fallback changes or when source complexity materially increases.
+- Review whether the expanded dashboard is too wide for the email view after several live runs.
+- Consider sector-specific data providers only if the public Yahoo Finance proxies prove too noisy.
 
 ## Known Caveats
 
