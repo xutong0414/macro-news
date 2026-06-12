@@ -24,8 +24,11 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--live-theme-radar", action="store_true", help="Fetch live Theme Radar source candidates and leave the section blank if unavailable")
     run_parser.add_argument(
         "--llm-failure-mode",
-        choices=["block", "data_only"],
-        help="When --use-llm validation fails: block the run, or emit a clearly labeled data-only fallback.",
+        choices=["block", "section_fallback", "data_only"],
+        help=(
+            "When --use-llm validation fails: block the run, withhold only failed narrative sections, "
+            "or emit a clearly labeled data-only fallback."
+        ),
     )
     run_parser.add_argument("--date", help="Run date in YYYY-MM-DD format. Defaults to today.")
 

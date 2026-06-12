@@ -25,11 +25,15 @@ def normalize_llm_failure_mode(value: str) -> str:
         "block": "block",
         "fail": "block",
         "strict": "block",
+        "section_fallback": "section_fallback",
+        "section": "section_fallback",
+        "partial": "section_fallback",
+        "partial_fallback": "section_fallback",
         "data_only": "data_only",
         "dataonly": "data_only",
         "fallback": "data_only",
     }
-    return aliases.get(normalized, "block")
+    return aliases.get(normalized, "section_fallback")
 
 
 def load_dotenv(path: Path = Path(".env")) -> None:
@@ -71,7 +75,7 @@ class Settings:
     output_dir: Path
     log_dir: Path
     feedback_path: Path = Path("inputs/feedback/daily_feedback.local.csv")
-    llm_failure_mode: str = "block"
+    llm_failure_mode: str = "section_fallback"
     theme_metadata_fetch_limit: int = 8
     theme_article_fetch_limit: int = 8
 
@@ -99,7 +103,7 @@ class Settings:
             theme_recent_days=int(os.getenv("THEME_RECENT_DAYS", "7")),
             portfolio_path=Path(os.getenv("PORTFOLIO_PATH", "inputs/portfolio/positions.csv")),
             feedback_path=Path(os.getenv("FEEDBACK_PATH", "inputs/feedback/daily_feedback.local.csv")),
-            llm_failure_mode=normalize_llm_failure_mode(os.getenv("LLM_FAILURE_MODE", "block")),
+            llm_failure_mode=normalize_llm_failure_mode(os.getenv("LLM_FAILURE_MODE", "section_fallback")),
             output_dir=Path(os.getenv("OUTPUT_DIR", "outputs")),
             log_dir=Path(os.getenv("LOG_DIR", "logs")),
             theme_metadata_fetch_limit=int(os.getenv("THEME_METADATA_FETCH_LIMIT", "8")),

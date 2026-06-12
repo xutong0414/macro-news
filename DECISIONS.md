@@ -52,15 +52,17 @@ Implementation rule: macro narrative validation uses centralized deterministic r
 
 Implementation rule: Gemini returns each "Three Things" item as structured `body` and `so_what` fields. The application renders the `So what:` label itself, so a missing label is no longer left to model formatting.
 
-Quality-gate rule: each run writes a quality report to the run log. The report records source checks, Gemini validation attempts, validation repairs, repaired validation errors, and whether sending is allowed. If Gemini narrative validation fails after retries, the run writes a failed quality report and blocks email delivery.
+Quality-gate rule: each run writes a quality report to the run log. The report records source checks, Gemini validation attempts, validation repairs, repaired validation errors, section-fallback use, and whether sending is allowed. If Gemini narrative validation fails after retries, the configured failure mode controls whether delivery blocks or sends a clearly labeled fallback.
 
 Diagnostic rule: failed Gemini validation drafts are recorded only in ignored local run logs, not in public docs or committed outputs. This makes blocked quality-gate failures debuggable while preserving the public/local boundary.
 
-Fallback rule: `LLM_FAILURE_MODE=block` remains the safest default. `LLM_FAILURE_MODE=data_only` allows a clearly labeled data-only fallback when Gemini narrative validation fails; the fallback withholds LLM-written interpretation and keeps the failure visible in the quality report.
+Fallback rule: `LLM_FAILURE_MODE=section_fallback` is the scheduled-delivery default. It validates each narrative section independently after an overall Gemini validation failure, keeps any section that still passes, and explicitly withholds failed sections in the rendered brief and quality report. `LLM_FAILURE_MODE=block` remains available for strict no-email quality gates. `LLM_FAILURE_MODE=data_only` allows a clearly labeled data-only fallback when all LLM-written interpretation should be withheld.
 
 Diagnostic rule: model-comparison logs record exact validation errors per model, not only repair counts, so model changes can be judged by failure type as well as cost and speed.
 
 Parsing rule: if Gemini returns one valid JSON object followed by stray trailing text, the parser reads the first complete object and then still applies all normal validation rules. This prevents harmless formatting junk from blocking a valid draft while preserving the reasoning gate.
+
+Style-repair rule: common generic Theme Radar openers such as "This analysis explores" are normalized before final validation. This repair is limited to wording; source facts, links, market numbers, portfolio logic, and unsupported claims are still validated and can block sending.
 
 ## Data Fallback Policy
 

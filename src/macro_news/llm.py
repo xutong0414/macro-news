@@ -50,6 +50,13 @@ class NarrativeValidationFailure(RuntimeError):
         self.token_usage = token_usage
 
 
+@dataclass(frozen=True)
+class SectionFallbackResult:
+    data: BriefData
+    fallback_sections: tuple[str, ...]
+    section_errors: tuple[str, ...]
+
+
 def word_count(text: str) -> int:
     return len(re.findall(r"\b\w+(?:'\w+)?\b", text))
 
@@ -175,12 +182,19 @@ def _strip_theme_source_mechanics(summary: str) -> str:
 
 
 def _rewrite_common_theme_openers(summary: str) -> str:
-    rewritten = re.sub(r"\bthis article explores\b", "This article shows", summary, flags=re.IGNORECASE)
+    rewritten = re.sub(r"\bthe article explores\b", "The article shows", summary, flags=re.IGNORECASE)
+    rewritten = re.sub(r"\bthis article investigates\b", "This article shows", rewritten, flags=re.IGNORECASE)
+    rewritten = re.sub(r"\bthis article posits\b", "This article argues", rewritten, flags=re.IGNORECASE)
+    rewritten = re.sub(r"\bthis article explores\b", "This article shows", rewritten, flags=re.IGNORECASE)
     rewritten = re.sub(r"\bthis piece explores\b", "This piece argues", rewritten, flags=re.IGNORECASE)
     rewritten = re.sub(r"\bthis article examines\b", "This article shows", rewritten, flags=re.IGNORECASE)
     rewritten = re.sub(r"\bthis piece examines\b", "This piece shows", rewritten, flags=re.IGNORECASE)
+    rewritten = re.sub(r"\bthis analysis explores\b", "The analysis shows", rewritten, flags=re.IGNORECASE)
     rewritten = re.sub(r"\bthis analysis examines\b", "The analysis shows", rewritten, flags=re.IGNORECASE)
+    rewritten = re.sub(r"\bthis analysis posits\b", "The analysis argues", rewritten, flags=re.IGNORECASE)
     rewritten = re.sub(r"\bthis report examines\b", "The report shows", rewritten, flags=re.IGNORECASE)
+    rewritten = re.sub(r"\bit posits\b", "it argues", rewritten, flags=re.IGNORECASE)
+    rewritten = re.sub(r"\bposits\b", "argues", rewritten, flags=re.IGNORECASE)
     return rewritten
 
 
@@ -341,9 +355,7 @@ def build_narrative_prompt(data: BriefData) -> str:
     )
 
 
-def parse_narrative_response(text: str, base_data: BriefData) -> BriefData:
-    payload = _extract_json(text)
-
+def _parse_three_things_payload(payload: dict, base_data: BriefData) -> list[str]:
     three_things = payload.get("three_things")
     if not isinstance(three_things, list) or len(three_things) != 3:
         raise ValueError("Gemini response must include exactly three items in three_things")
@@ -358,7 +370,10 @@ def parse_narrative_response(text: str, base_data: BriefData) -> BriefData:
         validate_market_numbers(item, base_data.market_rows, f"three_things item {idx}")
         validate_market_directions(item, base_data.market_rows, f"three_things item {idx}")
         validate_asset_move_contradictions(item, base_data.market_rows, f"three_things item {idx}")
+    return three_things
 
+
+def _parse_theme_radar_payload(payload: dict, base_data: BriefData) -> list[ThemeItem]:
     allowed_theme_meta = {(item.title, item.source, item.link): item for item in base_data.theme_radar}
     theme_payload = payload.get("theme_radar")
     if not isinstance(theme_payload, list) or not 1 <= len(theme_payload) <= 3:
@@ -398,7 +413,10 @@ def parse_narrative_response(text: str, base_data: BriefData) -> BriefData:
                 source_depth=base_theme_item.source_depth,
             )
         )
+    return theme_radar
 
+
+def _parse_contrarian_payload(payload: dict, base_data: BriefData) -> str:
     contrarian_corner = _normalize_market_text_spacing(str(payload.get("contrarian_corner", "")).strip())
     _require_word_range("contrarian_corner", contrarian_corner, 50, 100)
     validate_portfolio_logic(contrarian_corner, "contrarian_corner")
@@ -407,6 +425,15 @@ def parse_narrative_response(text: str, base_data: BriefData) -> BriefData:
     validate_market_directions(contrarian_corner, base_data.market_rows, "contrarian_corner")
     validate_asset_move_contradictions(contrarian_corner, base_data.market_rows, "contrarian_corner")
     _require_contrarian_alignment(contrarian_corner, base_data)
+    return contrarian_corner
+
+
+def parse_narrative_response(text: str, base_data: BriefData) -> BriefData:
+    payload = _extract_json(text)
+
+    three_things = _parse_three_things_payload(payload, base_data)
+    theme_radar = _parse_theme_radar_payload(payload, base_data)
+    contrarian_corner = _parse_contrarian_payload(payload, base_data)
 
     return replace(
         base_data,
@@ -414,6 +441,123 @@ def parse_narrative_response(text: str, base_data: BriefData) -> BriefData:
         theme_radar=theme_radar,
         contrarian_corner=contrarian_corner,
         data_sources=[*base_data.data_sources, "gemini_synthesis"],
+    )
+
+
+def _fallback_three_thing_items(base_data: BriefData) -> tuple[list[str], list[str]]:
+    fallback_items: list[str] = []
+    fallback_titles: list[str] = []
+    candidates = list(base_data.topic_candidates[:3])
+    for idx in range(3):
+        candidate = candidates[idx] if idx < len(candidates) else {}
+        title = str(candidate.get("title", f"Topic {idx + 1}")).strip() or f"Topic {idx + 1}"
+        fallback_titles.append(title)
+        fallback_items.append(
+            f"{title} narrative was withheld after validation. "
+            "So what: use the verified evidence, source links, and run log before making a portfolio judgment on this topic."
+        )
+    return fallback_items, fallback_titles
+
+
+def _fallback_theme_radar_items(base_data: BriefData) -> list[ThemeItem]:
+    fallback_items: list[ThemeItem] = []
+    for item in base_data.theme_radar[:3]:
+        fallback_items.append(
+            ThemeItem(
+                title=item.title,
+                source=item.source,
+                link=item.link,
+                summary=(
+                    "Narrative summary withheld after validation. This source remains in the brief only as a verified "
+                    "reading link with its source-depth label. Review the linked material directly before drawing "
+                    "portfolio conclusions; no replacement source facts or model-written interpretation were generated."
+                ),
+                book_impact=(
+                    "What this means for our book: interpretation withheld after validation; treat this as reading "
+                    "material, not a portfolio conclusion."
+                ),
+                source_depth=item.source_depth,
+            )
+        )
+    return fallback_items
+
+
+def _fallback_contrarian_corner() -> str:
+    return (
+        "Contrarian Corner is withheld because narrative validation failed for this section. "
+        "The email is still delivered as a verified data checkpoint; no replacement contrarian thesis is generated."
+    )
+
+
+def build_section_fallback_narrative(text: str, base_data: BriefData, error: str) -> SectionFallbackResult:
+    fallback_sections: list[str] = []
+    section_errors: list[str] = []
+    fallback_note_prefix = (
+        "Section fallback: Gemini narrative validation failed, so unsafe narrative sections were withheld while "
+        "verified data sections remained in the email."
+    )
+
+    try:
+        payload = _extract_json(text)
+    except ValueError as exc:
+        three_things, three_thing_titles = _fallback_three_thing_items(base_data)
+        data = replace(
+            base_data,
+            three_things=three_things,
+            three_thing_titles=three_thing_titles,
+            theme_radar=_fallback_theme_radar_items(base_data),
+            contrarian_corner=_fallback_contrarian_corner(),
+            source_notes=[*base_data.source_notes, f"{fallback_note_prefix} Sections: all narrative. Original error: {error}"],
+            assumptions=[*base_data.assumptions, fallback_note_prefix],
+            data_sources=[*base_data.data_sources, "gemini_section_fallback"],
+        )
+        return SectionFallbackResult(
+            data=data,
+            fallback_sections=("three_things", "theme_radar", "contrarian_corner"),
+            section_errors=(f"json: {exc}",),
+        )
+
+    try:
+        three_things = _parse_three_things_payload(payload, base_data)
+        three_thing_titles = base_data.three_thing_titles
+    except ValueError as exc:
+        three_things, three_thing_titles = _fallback_three_thing_items(base_data)
+        fallback_sections.append("three_things")
+        section_errors.append(f"three_things: {exc}")
+
+    try:
+        theme_radar = _parse_theme_radar_payload(payload, base_data)
+    except ValueError as exc:
+        theme_radar = _fallback_theme_radar_items(base_data)
+        fallback_sections.append("theme_radar")
+        section_errors.append(f"theme_radar: {exc}")
+
+    try:
+        contrarian_corner = _parse_contrarian_payload(payload, base_data)
+    except ValueError as exc:
+        contrarian_corner = _fallback_contrarian_corner()
+        fallback_sections.append("contrarian_corner")
+        section_errors.append(f"contrarian_corner: {exc}")
+
+    if not fallback_sections:
+        section_errors.append(f"section_fallback: full response passed section validation after overall failure: {error}")
+
+    fallback_sections_text = ", ".join(fallback_sections) if fallback_sections else "none"
+    fallback_note = f"{fallback_note_prefix} Sections: {fallback_sections_text}. Original error: {error}"
+    data = replace(
+        base_data,
+        three_things=three_things,
+        three_thing_titles=three_thing_titles,
+        theme_radar=theme_radar,
+        contrarian_corner=contrarian_corner,
+        source_notes=[*base_data.source_notes, fallback_note],
+        assumptions=[*base_data.assumptions, fallback_note_prefix],
+        data_sources=[*base_data.data_sources, "gemini_section_fallback"],
+    )
+    return SectionFallbackResult(
+        data=data,
+        fallback_sections=tuple(fallback_sections),
+        section_errors=tuple(section_errors),
     )
 
 

@@ -10,7 +10,7 @@ The brief answers three practical questions:
 
 The LLM is deliberately constrained. Code owns market data, calendar data, portfolio-aware topic selection, charting, source links, validation, logging, and email delivery. Gemini drafts only the narrative sections from structured inputs.
 
-When `--use-llm` is enabled, the run validates Gemini's narrative before sending. The log includes a quality report with source checks, validation attempts, repaired validation errors, and a send/no-send decision. If validation fails after retries, the ignored local log also records the failed drafts for debugging. By default, failed narrative validation blocks email delivery. Users can opt into a clearly labeled data-only fallback with `LLM_FAILURE_MODE=data_only`.
+When `--use-llm` is enabled, the run validates Gemini's narrative before sending. The log includes a quality report with source checks, validation attempts, repaired validation errors, and a send/no-send decision. If validation fails after retries, the ignored local log also records the failed drafts for debugging. By default, failed narrative sections are explicitly withheld while the verified parts of the email are still delivered. Users can choose stricter blocking with `LLM_FAILURE_MODE=block` or a fully data-only fallback with `LLM_FAILURE_MODE=data_only`.
 
 ## What You Need
 
@@ -56,7 +56,7 @@ Minimum values for Gemini narrative synthesis:
 LLM_PROVIDER=gemini
 GEMINI_API_KEY=your_gemini_api_key
 GEMINI_MODEL=gemini-2.5-flash-lite
-LLM_FAILURE_MODE=block
+LLM_FAILURE_MODE=section_fallback
 ```
 
 Minimum values for Gmail delivery:
@@ -88,7 +88,9 @@ Notes:
 - For Gmail, use an app password, not the normal Google login password.
 - Gmail app passwords are usually shown in groups of four characters; remove spaces in `.env`.
 - Keep optional providers such as DeepSeek blank unless you add provider support.
-- Keep `LLM_FAILURE_MODE=block` for the safest default. Use `data_only` only if you prefer receiving a clearly labeled data checkpoint when Gemini narrative validation fails.
+- Use `LLM_FAILURE_MODE=section_fallback` for scheduled delivery: verified sections still send, but any unsafe narrative section is visibly withheld.
+- Use `LLM_FAILURE_MODE=block` only if you prefer no email whenever Gemini narrative validation fails.
+- Use `LLM_FAILURE_MODE=data_only` if you prefer receiving a clearly labeled data checkpoint with all LLM-written interpretation withheld.
 - `FEEDBACK_PATH` should usually point to a local ignored file such as `inputs/feedback/daily_feedback.local.csv`.
 - `THEME_ARTICLE_FETCH_LIMIT` controls how many direct RSS article pages the agent tries to open for best-effort article text and metadata. Use `0` for RSS/search-snippet-only behavior. Existing `.env` files that use `THEME_METADATA_FETCH_LIMIT` still work as a fallback.
 
@@ -140,7 +142,8 @@ Expected outcome:
 
 - One email is sent to `BRIEF_TO_EMAIL`.
 - The same local output files and logs are updated.
-- If Gemini narrative validation fails and `LLM_FAILURE_MODE=block`, the email is not sent and the run log records a failed quality report.
+- If Gemini narrative validation fails and `LLM_FAILURE_MODE=section_fallback`, the email is still sent with failed narrative section(s) explicitly withheld and logged.
+- If `LLM_FAILURE_MODE=block`, the email is not sent and the run log records a failed quality report.
 - If `LLM_FAILURE_MODE=data_only`, the run can send a clearly labeled data-only fallback instead of an interpreted PM note.
 - If delivery fails, check the Gmail app password, sender email, recipient email, and `.env` spelling.
 

@@ -11,7 +11,13 @@ from .calendar_data import CalendarDataResult, replace_calendar_with_live
 from .config import Settings
 from .costing import ZERO_TOKEN_USAGE
 from .emailer import send_email
-from .llm import NarrativeValidationFailure, SynthesisResult, synthesize_with_gemini
+from .llm import (
+    NarrativeValidationFailure,
+    SectionFallbackResult,
+    SynthesisResult,
+    build_section_fallback_narrative,
+    synthesize_with_gemini,
+)
 from .market_data import MarketDataResult, replace_market_rows_with_live
 from .portfolio import apply_portfolio_assumptions
 from .render import render_html, render_markdown, utc_run_id, write_outputs
@@ -95,12 +101,27 @@ def _build_quality_report(
     theme_data_result: ThemeDataResult,
     llm_failure_mode: str = "block",
     llm_fallback_used: bool = False,
+    llm_fallback_sections: list[str] | None = None,
 ) -> dict[str, Any]:
     checks: list[dict[str, str]] = []
     warnings: list[str] = []
     blockers: list[str] = []
 
-    if llm_error and llm_fallback_used and llm_failure_mode == "data_only":
+    fallback_sections = llm_fallback_sections or []
+    if llm_error and llm_fallback_used and llm_failure_mode == "section_fallback":
+        sections_text = ", ".join(fallback_sections) if fallback_sections else "narrative sections"
+        _add_quality_check(
+            checks,
+            warnings,
+            blockers,
+            name="narrative_validation",
+            status="warning",
+            details=(
+                "LLM narrative was not fully accepted, so failed section(s) were explicitly withheld "
+                f"and the verified parts were delivered. Withheld: {sections_text}. Original error: {llm_error}"
+            ),
+        )
+    elif llm_error and llm_fallback_used and llm_failure_mode == "data_only":
         _add_quality_check(
             checks,
             warnings,
@@ -242,6 +263,7 @@ def _build_quality_report(
         "send_allowed": not blockers,
         "llm_failure_mode": llm_failure_mode,
         "llm_fallback_used": llm_fallback_used,
+        "llm_fallback_sections": fallback_sections,
         "checks": checks,
         "warnings": warnings,
         "blockers": blockers,
@@ -313,6 +335,8 @@ def run_brief(
     synthesis: SynthesisResult | None = None
     llm_error: str | None = None
     llm_fallback_used = False
+    llm_fallback_sections: list[str] = []
+    llm_section_fallback_result: SectionFallbackResult | None = None
     llm_failure_diagnostics: dict[str, Any] = {}
 
     if live_market_data:
@@ -362,7 +386,23 @@ def run_brief(
                     "validation_errors": list(exc.validation_errors),
                     "failed_responses": list(exc.failed_responses),
                 }
-            if llm_failure_mode == "data_only":
+            if llm_failure_mode == "section_fallback":
+                failed_response = ""
+                if isinstance(exc, NarrativeValidationFailure) and exc.failed_responses:
+                    failed_response = exc.failed_responses[-1]
+                llm_section_fallback_result = build_section_fallback_narrative(failed_response, data, llm_error)
+                data = llm_section_fallback_result.data
+                llm_status = "section_fallback"
+                llm_model = settings.gemini_model
+                if not prompt_version or prompt_version == "none":
+                    prompt_version = "unknown"
+                llm_fallback_used = True
+                llm_fallback_sections = list(llm_section_fallback_result.fallback_sections)
+                llm_failure_diagnostics["section_fallback"] = {
+                    "fallback_sections": list(llm_section_fallback_result.fallback_sections),
+                    "section_errors": list(llm_section_fallback_result.section_errors),
+                }
+            elif llm_failure_mode == "data_only":
                 data = _data_only_fallback(data, llm_error)
                 llm_status = "data_only_fallback"
                 llm_model = settings.gemini_model
@@ -382,6 +422,7 @@ def run_brief(
                     theme_data_result=theme_data_result,
                     llm_failure_mode=llm_failure_mode,
                     llm_fallback_used=False,
+                    llm_fallback_sections=[],
                 )
                 _write_log_event(
                     settings,
@@ -443,9 +484,15 @@ def run_brief(
         theme_data_result=theme_data_result,
         llm_failure_mode=llm_failure_mode,
         llm_fallback_used=llm_fallback_used,
+        llm_fallback_sections=llm_fallback_sections,
     )
 
-    delivery_status = "dry_run_data_only" if llm_fallback_used else "dry_run"
+    if llm_fallback_used and llm_failure_mode == "data_only":
+        delivery_status = "dry_run_data_only"
+    elif llm_fallback_used and llm_failure_mode == "section_fallback":
+        delivery_status = "dry_run_section_fallback"
+    else:
+        delivery_status = "dry_run"
     if send:
         if not quality_report["send_allowed"]:
             delivery_status = "blocked_quality_gate"
@@ -481,7 +528,12 @@ def run_brief(
             html_body=render_html(data, run_date),
             chart_path=output_paths["latest_chart"],
         )
-        delivery_status = "sent_data_only" if llm_fallback_used else "sent"
+        if llm_fallback_used and llm_failure_mode == "data_only":
+            delivery_status = "sent_data_only"
+        elif llm_fallback_used and llm_failure_mode == "section_fallback":
+            delivery_status = "sent_section_fallback"
+        else:
+            delivery_status = "sent"
 
     log_event = {
         "run_id": run_id,
@@ -499,6 +551,7 @@ def run_brief(
         "prompt_version": prompt_version,
         "delivery_status": delivery_status,
         "quality_report": quality_report,
+        "llm_failure_diagnostics": llm_failure_diagnostics,
         "delivery_attempted": send,
         "data_sources": data.data_sources,
         "source_notes": data.source_notes,

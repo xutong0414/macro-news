@@ -13,6 +13,9 @@ All notable public-facing changes are recorded here. Local run logs, cache files
 - Added live Yahoo Finance proxy rows for Nasdaq 100, US AI semiconductors, US data-center power, and copper.
 - Added readable topic-selection reasons to run logs, alongside score components and selected chart metadata.
 - Added JSON parsing hardening for Gemini responses that contain one valid JSON object followed by stray trailing text; content validation still runs after parsing.
+- Added deterministic repair for common generic Theme Radar openers, including `This analysis explores`, before final narrative validation.
+- Added `LLM_FAILURE_MODE=section_fallback` so scheduled emails can still send verified sections while explicitly withholding failed narrative sections.
+- Added an explicit Theme Radar empty-state note when no verified Theme Radar source items are available.
 
 ### Changed
 

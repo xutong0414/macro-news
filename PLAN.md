@@ -24,9 +24,10 @@ Implemented:
 - Local reader-feedback CSV import that nudges topic ranking up or down without fine-tuning the model.
 - Dynamic chart selection tied to the first selected portfolio topic, with roughly three months of history and the latest five observations highlighted when source history is available.
 - Contrarian Corner constrained to challenge the first selected topic.
-- Run-level quality report with source checks, Gemini validation attempts, repaired validation errors, and a send/no-send decision.
-- Local failed-validation diagnostics in ignored run logs, so blocked drafts can be inspected without committing local run history.
-- Email delivery is blocked when Gemini narrative validation fails after retries.
+- Run-level quality report with source checks, Gemini validation attempts, repaired validation errors, section-fallback use, and a send/no-send decision.
+- Local failed-validation diagnostics in ignored run logs, so blocked or section-fallback drafts can be inspected without committing local run history.
+- Default section-level fallback for failed Gemini validation, controlled by `LLM_FAILURE_MODE=section_fallback`, so verified email sections still send while unsafe narrative sections are visibly withheld.
+- Strict email blocking remains available with `LLM_FAILURE_MODE=block`.
 - Optional data-only fallback mode for failed Gemini validation, controlled by `LLM_FAILURE_MODE=data_only`.
 - Centralized deterministic narrative rule groups for macro/portfolio validation.
 - Expanded contradiction tests for oil/inflation, gold positioning, dollar pressure, volatility, and EM debt logic.
@@ -64,7 +65,7 @@ Latest Theme Radar source-depth smoke check:
 Latest local tests:
 
 - `PYTHONPATH=src pytest -q`
-- Result: 91 passed
+- Result: 94 passed
 
 Latest selection-quality dry run:
 
@@ -81,6 +82,23 @@ Latest market-proxy smoke check:
 - Mode: live market data only, no Gemini, no email
 - Quality verdict: passed
 - Result: 17 dashboard rows refreshed from live public sources, including Nasdaq 100, US AI semiconductors basket, US data-center power basket, and copper
+
+Latest live send check:
+
+- Run id: `20260612T005816Z`
+- Mode: live market data, live calendar, live Theme Radar, Gemini narrative, Gmail send
+- Delivery: sent
+- Quality verdict: warning; send allowed; Gemini narrative passed after two attempts with one repair; `LLM_FAILURE_MODE=section_fallback` was active, but no section fallback was needed
+- Token use: 17,143 input, 2,008 output, 19,151 total
+- Estimated LLM cost: $0.002518
+- Source result: 16 live dashboard rows, one cached real-source row, six live calendar rows, and two live Theme Radar items from 28 candidates; no blank or scaffold market fallback rows were used
+- Repair result: Gemini first drafted one unsafe gold-position read-through; validation caught it, Gemini repaired it, and the email was sent after the corrected draft passed
+
+Latest section-fallback implementation check:
+
+- Mode: sample dry run with forced Gemini validation failure
+- Result: section-level fallback rendered the verified structure, explicitly withheld failed narrative sections, and recorded fallback sections in the quality report
+- Policy result: scheduled delivery can use `LLM_FAILURE_MODE=section_fallback` so an unsafe narrative section does not silently disappear and does not block the whole email
 
 Latest model comparison:
 

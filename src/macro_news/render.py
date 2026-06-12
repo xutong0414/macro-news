@@ -310,7 +310,7 @@ def render_markdown(data: BriefData, run_date: date | None = None) -> str:
             f"{_theme_book_impact(item.book_impact)}"
         )
         for item in data.theme_radar
-    )
+    ) or "No verified Theme Radar items are available for this run; no replacement items were generated."
     assumptions = _categorized_assumptions(data.assumptions)
     dashboard_notes = "\n".join(f"- {item}" for item in data.dashboard_notes)
     dashboard_notes_section = f"""

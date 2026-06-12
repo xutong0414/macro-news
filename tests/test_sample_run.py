@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 from macro_news.config import Settings, normalize_timezone
 from macro_news.costing import TokenUsage
-from macro_news.llm import SynthesisResult, build_narrative_prompt, parse_narrative_response
+from macro_news.llm import SynthesisResult, build_narrative_prompt, build_section_fallback_narrative, parse_narrative_response
 import macro_news.model_compare as model_compare_module
 from macro_news.model_compare import compare_gemini_models
 from macro_news.market_data import replace_market_rows_with_live
@@ -224,6 +224,12 @@ def test_sample_brief_html_renders_chart_reading_label() -> None:
     assert '<p class="footnote-heading">Dashboard notes:</p>' in html
     assert '<p class="footnote">- Dashboard scope:' in html
     assert "Caption:" not in html
+
+
+def test_theme_radar_empty_section_is_explicit() -> None:
+    brief = render_markdown(replace(build_sample_brief_data(), theme_radar=[]))
+
+    assert "No verified Theme Radar items are available for this run; no replacement items were generated." in brief
 
 
 def test_three_things_japan_yield_item_gets_rates_title() -> None:
@@ -1494,7 +1500,7 @@ def test_parse_narrative_response_rejects_change_at_price_language() -> None:
         raise AssertionError("Expected change-at-price validation to fail")
 
 
-def test_parse_narrative_response_rejects_generic_theme_openers() -> None:
+def test_parse_narrative_response_rewrites_theme_explores_openers() -> None:
     base = build_sample_brief_data()
     response = """
     {
@@ -1516,12 +1522,9 @@ def test_parse_narrative_response_rejects_generic_theme_openers() -> None:
     }
     """
 
-    try:
-        parse_narrative_response(response, base)
-    except ValueError as exc:
-        assert "generic phrasing" in str(exc)
-    else:
-        raise AssertionError("Expected generic Theme Radar opener validation to fail")
+    generated = parse_narrative_response(response, base)
+
+    assert generated.theme_radar[0].summary.startswith("The analysis shows")
 
 
 def test_parse_narrative_response_rewrites_theme_examines_openers() -> None:
@@ -1787,7 +1790,7 @@ def test_llm_validation_failure_blocks_send_and_writes_quality_log(tmp_path, mon
     monkeypatch.setattr(runner_module, "send_email", fake_send_email)
 
     try:
-        run_brief(settings, send=True, use_llm=True)
+        run_brief(settings, send=True, use_llm=True, llm_failure_mode="block")
     except RuntimeError as exc:
         assert "Quality gate blocked run before delivery" in str(exc)
     else:
@@ -1843,6 +1846,102 @@ def test_llm_validation_failure_can_write_data_only_fallback(tmp_path, monkeypat
     assert log_event["quality_report"]["llm_fallback_used"] is True
     assert "Data-only fallback" in markdown
     assert "data_only_llm_failure_fallback" in log_event["data_sources"]
+
+
+def test_section_fallback_salvages_valid_sections_and_withholds_failed_section() -> None:
+    base = build_sample_brief_data()
+    response = json.dumps(
+        {
+            "three_things": [
+                {
+                    "body": "US yields and the dollar are doing the work, while gold is softer against the rate move.",
+                    "so_what": "keep the FX and gold legs under review without inventing a new trade signal.",
+                },
+                {
+                    "body": "Oil is firmer, which keeps inflation risk alive even if broader risk appetite is mixed.",
+                    "so_what": "treat EM duration exposure cautiously until energy pressure fades.",
+                },
+                {
+                    "body": "Equities and BTC are useful cross-checks, but the dashboard reads more like a rates morning.",
+                    "so_what": "do not over-read one risk-asset bounce as a clean reflation signal.",
+                },
+            ],
+            "theme_radar": [
+                {
+                    "title": "Unverified new theme",
+                    "source": "Unknown source",
+                    "link": "https://example.com/unknown",
+                    "summary": (
+                        "This candidate does not reuse an existing Theme Radar source, so the section should be "
+                        "withheld by the section fallback even though other sections can pass. The text is long "
+                        "enough to avoid word-count failure, but the source identity is not allowed."
+                    ),
+                    "book_impact": "What this means for our book: this should not be accepted.",
+                }
+            ],
+            "contrarian_corner": (
+                "The simple read is that higher yields and a firmer dollar keep pressure on gold and EM debt while "
+                "supporting USD/JPY. That could be wrong if incoming inflation and growth data soften together, "
+                "letting yields fall without hurting risk appetite. The trigger would be a softer US inflation print "
+                "paired with stable oil, which would reduce pressure on the assumed book."
+            ),
+        }
+    )
+
+    result = build_section_fallback_narrative(response, base, "theme failed validation")
+
+    assert result.fallback_sections == ("theme_radar",)
+    assert result.data.three_things[0].startswith("US yields and the dollar")
+    assert result.data.theme_radar[0].summary.startswith("Narrative summary withheld after validation")
+    assert "gemini_section_fallback" in result.data.data_sources
+
+
+def test_llm_validation_failure_can_write_section_fallback(tmp_path, monkeypatch) -> None:
+    settings = Settings(
+        llm_provider="gemini",
+        gemini_api_key="test-key",
+        gemini_model="gemini-2.5-flash-lite",
+        deepseek_api_key=None,
+        deepseek_model="deepseek-v4-flash",
+        smtp_host=None,
+        smtp_port=587,
+        smtp_user=None,
+        smtp_password=None,
+        brief_from_email=None,
+        brief_to_email=None,
+        timezone="Asia/Shanghai",
+        run_mode="sample",
+        market_data_mode="sample",
+        calendar_mode="sample",
+        theme_source_mode="sample",
+        theme_history_path=tmp_path / "theme_history.json",
+        theme_recent_days=7,
+        portfolio_path=tmp_path / "positions.csv",
+        output_dir=tmp_path / "outputs",
+        log_dir=tmp_path / "logs",
+    )
+
+    def fake_synthesize(_settings, _data):
+        raise RuntimeError("Gemini response failed validation after retries: bad macro logic")
+
+    monkeypatch.setattr(runner_module, "synthesize_with_gemini", fake_synthesize)
+
+    result = run_brief(settings, send=False, use_llm=True, llm_failure_mode="section_fallback")
+    log_event = json.loads(result.log_path.read_text(encoding="utf-8"))
+    markdown = result.output_paths["latest_markdown"].read_text(encoding="utf-8")
+
+    assert result.delivery_status == "dry_run_section_fallback"
+    assert log_event["llm_status"] == "section_fallback"
+    assert log_event["quality_report"]["verdict"] == "warning"
+    assert log_event["quality_report"]["send_allowed"] is True
+    assert log_event["quality_report"]["llm_fallback_used"] is True
+    assert log_event["quality_report"]["llm_fallback_sections"] == [
+        "three_things",
+        "theme_radar",
+        "contrarian_corner",
+    ]
+    assert "Contrarian Corner is withheld" in markdown
+    assert "gemini_section_fallback" in log_event["data_sources"]
 
 
 def test_compare_gemini_models_logs_each_model_result(tmp_path, monkeypatch) -> None:
